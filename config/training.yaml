@@ -1,0 +1,147 @@
+training:
+  targets: ["PTS", "REB", "AST"]
+  seasons: ["2021-22", "2022-23", "2023-24"]
+  
+  data:
+    min_games_per_player: 20
+    min_minutes_per_game: 10
+    exclude_garbage_time: true
+    max_minutes_per_game: 48
+    
+  features:
+    engineering:
+      rolling_windows: [3, 5, 10, 20]
+      include_advanced_stats: true
+      include_matchup_history: true
+      include_rest_days: true
+      include_back_to_back: true
+      
+    scaling:
+      method: "robust"  # robust or standard
+      
+    selection:
+      method: "mutual_info"  # mutual_info, correlation, or all
+      max_features: 100
+      min_importance: 0.01
+    
+  models:
+    random_forest:
+      enabled: true
+      hyperparameter_tuning: true
+      n_trials: 100
+      
+    xgboost:
+      enabled: true
+      hyperparameter_tuning: true
+      n_trials: 100
+      early_stopping_rounds: 50
+      
+    lightgbm:
+      enabled: true
+      hyperparameter_tuning: true
+      n_trials: 100
+      early_stopping_rounds: 50
+      
+    neural_network:
+      enabled: false
+      epochs: 100
+      batch_size: 32
+      learning_rate: 0.001
+      hidden_layers: [256, 128, 64]
+      dropout_rate: 0.3
+      
+  ensemble:
+    meta_learner: "bayesian_ridge"  # bayesian_ridge, linear, or ridge
+    use_stacking: true
+    cross_validation_folds: 5
+    
+  evaluation:
+    metrics: ["r2", "mae", "rmse", "mape"]
+    confidence_intervals: true
+    confidence_level: 0.95
+    backtesting_seasons: 2
+    
+    splits:
+      train_ratio: 0.70
+      val_ratio: 0.15
+      test_ratio: 0.15
+      
+    cross_validation:
+      enabled: true
+      n_splits: 5
+      
+  mlflow:
+    experiment_name: "nba_player_prediction"
+    artifact_location: "./mlruns"
+    tracking_uri: "sqlite:///mlflow.db"
+    registry_uri: "sqlite:///mlflow.db"
+    
+  performance_targets:
+    min_r2_score: 0.94
+    max_mae: 3.5
+    max_rmse: 5.0
+    max_mape: 15.0  # percentage
+    
+  optimization:
+    optuna:
+      n_jobs: -1  # Use all CPU cores
+      timeout: 3600  # 1 hour timeout
+      gc_after_trial: true
+      
+    early_stopping:
+      enabled: true
+      patience: 10
+      min_delta: 0.001
+      
+  monitoring:
+    log_level: "INFO"
+    save_predictions: true
+    save_feature_importance: true
+    generate_plots: true
+    
+  production:
+    model_versioning: true
+    auto_deploy: false
+    deployment_threshold_r2: 0.94
+    rollback_on_failure: true
+    
+  data_quality:
+    max_missing_ratio: 0.1
+    outlier_detection: true
+    outlier_method: "isolation_forest"
+    
+  resources:
+    max_memory_gb: 16
+    n_jobs: -1  # Use all available cores
+    gpu_enabled: false
+    
+# Environment-specific overrides
+environments:
+  development:
+    mlflow:
+      tracking_uri: "sqlite:///mlflow_dev.db"
+    performance_targets:
+      min_r2_score: 0.90
+    models:
+      random_forest:
+        n_trials: 20
+      xgboost:
+        n_trials: 20
+      lightgbm:
+        n_trials: 20
+        
+  staging:
+    mlflow:
+      tracking_uri: "http://mlflow-staging:5000"
+    performance_targets:
+      min_r2_score: 0.92
+      
+  production:
+    mlflow:
+      tracking_uri: "http://mlflow-prod:5000"
+    optimization:
+      optuna:
+        n_jobs: 8
+    resources:
+      max_memory_gb: 32
+      gpu_enabled: true

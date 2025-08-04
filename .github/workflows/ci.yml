@@ -1,0 +1,322 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: 3.10.x
+  NODE_VERSION: 18.x
+
+jobs:
+  lint-and-type-check:
+    runs-on: ubuntu-latest
+    name: Code Quality Checks
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black ruff mypy
+    
+    - name: Run Black formatter check
+      run: black . --check --diff
+    
+    - name: Run Ruff linter
+      run: ruff check .
+    
+    - name: Run MyPy type checker
+      run: mypy . --ignore-missing-imports
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: Unit Tests
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: nba_ml_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio pytest-cov
+    
+    - name: Run unit tests
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/nba_ml_test
+        REDIS_URL: redis://localhost:6379/0
+        ENVIRONMENT: test
+      run: |
+        pytest tests/unit/ -v --cov=. --cov-report=xml --cov-report=term
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+          
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: nba_ml_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+        ports:
+          - 5432:5432
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run integration tests
+      env:
+        DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/nba_ml_test
+        REDIS_URL: redis://localhost:6379/0
+        ENVIRONMENT: test
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        pytest tests/integration/ -v
+
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scanning
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+    
+    - name: Run Safety check
+      run: safety check --json
+    
+    - name: Run Bandit security linter
+      run: bandit -r . -f json -o bandit-report.json || true
+    
+    - name: Upload Bandit report
+      uses: actions/upload-artifact@v3
+      with:
+        name: bandit-report
+        path: bandit-report.json
+
+  build-and-test-docker:
+    runs-on: ubuntu-latest
+    name: Docker Build and Test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build API Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./infrastructure/docker/Dockerfile.api
+        push: false
+        tags: nba-api:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker container
+      run: |
+        docker run -d --name nba-api-test \
+          -p 8000:8000 \
+          -e ENVIRONMENT=test \
+          nba-api:test
+        
+        # Wait for container to start
+        sleep 10
+        
+        # Test health endpoint
+        curl -f http://localhost:8000/health/status || exit 1
+        
+        # Cleanup
+        docker stop nba-api-test
+        docker rm nba-api-test
+
+  model-validation:
+    runs-on: ubuntu-latest
+    name: Model Validation
+    if: github.event_name == 'pull_request'
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Validate model performance
+      env:
+        REDIS_URL: redis://localhost:6379/0
+        ENVIRONMENT: test
+      run: |
+        python scripts/validate_models.py --min-accuracy 0.90
+    
+    - name: Generate model report
+      run: |
+        python scripts/generate_model_report.py --output model-report.json
+    
+    - name: Upload model report
+      uses: actions/upload-artifact@v3
+      with:
+        name: model-report
+        path: model-report.json
+
+  performance-test:
+    runs-on: ubuntu-latest
+    name: Performance Testing
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install locust
+    
+    - name: Start services
+      run: |
+        docker-compose -f infrastructure/docker/docker-compose.yml up -d
+        sleep 30
+    
+    - name: Run performance tests
+      run: |
+        locust -f tests/load/test_api_load.py \
+          --host http://localhost:8000 \
+          --users 50 \
+          --spawn-rate 5 \
+          --run-time 2m \
+          --headless \
+          --html performance-report.html
+    
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: performance-report.html
+    
+    - name: Cleanup
+      if: always()
+      run: docker-compose -f infrastructure/docker/docker-compose.yml down
+
+  notify-status:
+    runs-on: ubuntu-latest
+    name: Notify Build Status
+    needs: [lint-and-type-check, unit-tests, integration-tests, security-scan, build-and-test-docker]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: ${{ needs.lint-and-type-check.result == 'success' && needs.unit-tests.result == 'success' && needs.integration-tests.result == 'success' }}
+      run: echo "All CI checks passed successfully!"
+    
+    - name: Notify on failure
+      if: ${{ needs.lint-and-type-check.result == 'failure' || needs.unit-tests.result == 'failure' || needs.integration-tests.result == 'failure' }}
+      run: |
+        echo "CI checks failed. Please review the failed jobs."
+        exit 1
