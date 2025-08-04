@@ -13,7 +13,7 @@ from typing import Optional
 import logging
 
 from api.models import PredictionRequest, PredictionResponse, ExperimentResponse, InsightResponse
-from api.endpoints import predictions, experiments, health
+from api.endpoints import predictions, experiments, health, players
 from api.middleware.auth import verify_api_key
 from api.middleware.rate_limiting import RateLimiter
 
@@ -90,6 +90,7 @@ rate_limiter = RateLimiter()
 app.include_router(predictions.router, prefix="/v1", tags=["predictions"])
 app.include_router(experiments.router, prefix="/v1", tags=["experiments"])
 app.include_router(health.router, prefix="/health", tags=["health"])
+app.include_router(players.router, prefix="/v1", tags=["players"])
 
 @app.get("/")
 async def root():
