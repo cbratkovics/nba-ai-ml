@@ -115,4 +115,4 @@ Thumbs.db
 
 # Reports
 reports/
-benchmark_results/
+benchmark_results/frontend/.env.local
