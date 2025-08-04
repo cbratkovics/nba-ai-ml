@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import pickle
 from datetime import datetime, date
 from typing import Dict, List, Optional, Any
 import pandas as pd
@@ -15,6 +16,7 @@ from ml.data.collectors.nba_api_collector import NBADataCollector
 from ml.data.processors.feature_engineer import NBAFeatureEngineer
 import redis
 import os
+import shap
 
 logger = logging.getLogger(__name__)
 
