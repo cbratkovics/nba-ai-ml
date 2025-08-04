@@ -18,9 +18,17 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
-import mlflow
-import mlflow.sklearn
 from tqdm import tqdm
+
+# Conditional MLflow import
+MLFLOW_AVAILABLE = False
+if os.getenv('ENVIRONMENT', 'development') != 'production':
+    try:
+        import mlflow
+        import mlflow.sklearn
+        MLFLOW_AVAILABLE = True
+    except ImportError:
+        pass
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parents[2]))
@@ -51,13 +59,14 @@ class ProductionTrainingPipeline:
             config_path: Path to training configuration file
         """
         self.config = self._load_config(config_path)
-        self.mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+        self.mlflow_tracking_uri = None
+        if os.getenv('ENVIRONMENT', 'development') != 'production' and MLFLOW_AVAILABLE:
+            self.mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+            # Initialize MLflow
+            mlflow.set_tracking_uri(self.mlflow_tracking_uri)
         self.data_validator = NBADataValidator()
         self.feature_engineer = NBAFeatureEngineer()
         self.time_validator = TimeSeriesValidator()
-        
-        # Initialize MLflow
-        mlflow.set_tracking_uri(self.mlflow_tracking_uri)
         
         # Database connection
         self.db_manager = None
@@ -154,14 +163,21 @@ class ProductionTrainingPipeline:
         experiment_name = experiment_name or self.config["training"]["mlflow"]["experiment_name"]
         
         # Set MLflow experiment
-        mlflow.set_experiment(experiment_name)
+        if MLFLOW_AVAILABLE:
+            mlflow.set_experiment(experiment_name)
         
-        # Start MLflow run
-        with mlflow.start_run(run_name=f"{target}_training_{datetime.now():%Y%m%d_%H%M%S}"):
+        # Start MLflow run or use context manager
+        mlflow_context = mlflow.start_run(run_name=f"{target}_training_{datetime.now():%Y%m%d_%H%M%S}") if MLFLOW_AVAILABLE else None
+        
+        try:
+            if mlflow_context:
+                mlflow_context.__enter__()
+            
             # Log parameters
-            mlflow.log_param("target", target)
-            mlflow.log_param("seasons", seasons)
-            mlflow.log_param("config", self.config)
+            if MLFLOW_AVAILABLE:
+                mlflow.log_param("target", target)
+                mlflow.log_param("seasons", seasons)
+                mlflow.log_param("config", self.config)
             
             try:
                 # Step 1: Load data
@@ -175,11 +191,13 @@ class ProductionTrainingPipeline:
                 
                 if validation_result.status == ValidationStatus.FAILED:
                     logger.error(f"Data validation failed: {validation_result.errors}")
-                    mlflow.log_metric("data_validation_passed", 0)
+                    if MLFLOW_AVAILABLE:
+                        mlflow.log_metric("data_validation_passed", 0)
                     raise ValueError("Data validation failed")
                 
-                mlflow.log_metric("data_validation_passed", 1)
-                mlflow.log_metric("data_validation_warnings", validation_result.warning_checks)
+                if MLFLOW_AVAILABLE:
+                    mlflow.log_metric("data_validation_passed", 1)
+                    mlflow.log_metric("data_validation_warnings", validation_result.warning_checks)
                 
                 # Step 3: Engineer features
                 logger.info("Engineering features...")
@@ -188,7 +206,8 @@ class ProductionTrainingPipeline:
                                  ['GAME_DATE', 'GAME_ID', 'PLAYER_ID', 'TEAM_ID', target]]
                 
                 logger.info(f"Created {len(feature_columns)} features")
-                mlflow.log_metric("n_features", len(feature_columns))
+                if MLFLOW_AVAILABLE:
+                    mlflow.log_metric("n_features", len(feature_columns))
                 
                 # Step 4: Create time-based splits
                 logger.info("Creating time-based data splits...")
@@ -201,9 +220,10 @@ class ProductionTrainingPipeline:
                 X_test, y_test = test_data
                 
                 logger.info(f"Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
-                mlflow.log_metric("train_samples", len(X_train))
-                mlflow.log_metric("val_samples", len(X_val))
-                mlflow.log_metric("test_samples", len(X_test))
+                if MLFLOW_AVAILABLE:
+                    mlflow.log_metric("train_samples", len(X_train))
+                    mlflow.log_metric("val_samples", len(X_val))
+                    mlflow.log_metric("test_samples", len(X_test))
                 
                 # Step 5: Hyperparameter tuning (if enabled)
                 best_params = {}
@@ -213,7 +233,8 @@ class ProductionTrainingPipeline:
                     best_params = await self.hyperparameter_tuning(
                         X_train, y_train, X_val, y_val, target
                     )
-                    mlflow.log_params(best_params)
+                    if MLFLOW_AVAILABLE:
+                        mlflow.log_params(best_params)
                 
                 # Step 6: Train ensemble
                 logger.info("Training ensemble model...")
@@ -225,17 +246,20 @@ class ProductionTrainingPipeline:
                 
                 # Log metrics
                 for metric_name, value in metrics.items():
-                    mlflow.log_metric(metric_name, value)
+                    if MLFLOW_AVAILABLE:
+                        mlflow.log_metric(metric_name, value)
                 
                 logger.info(f"Test R²: {metrics['test_r2']:.4f}, MAE: {metrics['test_mae']:.4f}")
                 
                 # Step 8: Check performance targets
                 if not self._check_performance_targets(metrics):
                     logger.warning("Model did not meet performance targets")
-                    mlflow.log_metric("meets_targets", 0)
+                    if MLFLOW_AVAILABLE:
+                        mlflow.log_metric("meets_targets", 0)
                 else:
                     logger.info("Model meets all performance targets!")
-                    mlflow.log_metric("meets_targets", 1)
+                    if MLFLOW_AVAILABLE:
+                        mlflow.log_metric("meets_targets", 1)
                 
                 # Step 9: Register model
                 logger.info("Registering model...")
@@ -256,8 +280,12 @@ class ProductionTrainingPipeline:
                 
             except Exception as e:
                 logger.error(f"Training failed: {str(e)}")
-                mlflow.log_metric("training_failed", 1)
+                if MLFLOW_AVAILABLE:
+                    mlflow.log_metric("training_failed", 1)
                 raise
+        finally:
+            if mlflow_context:
+                mlflow_context.__exit__(None, None, None)
     
     async def load_training_data(self, seasons: List[str]) -> pd.DataFrame:
         """
@@ -601,14 +629,15 @@ class ProductionTrainingPipeline:
             Model registration info
         """
         # Save model to MLflow
-        mlflow.sklearn.log_model(
-            model,
-            "model",
-            registered_model_name=f"nba_{target.lower()}_predictor"
-        )
-        
-        # Save feature names
-        mlflow.log_text("\n".join(feature_columns), "features.txt")
+        if MLFLOW_AVAILABLE:
+            mlflow.sklearn.log_model(
+                model,
+                "model",
+                registered_model_name=f"nba_{target.lower()}_predictor"
+            )
+            
+            # Save feature names
+            mlflow.log_text("\n".join(feature_columns), "features.txt")
         
         # Save model locally
         model_path = f"models/{target.lower()}_ensemble_v{datetime.now():%Y%m%d}.pkl"
@@ -646,7 +675,7 @@ class ProductionTrainingPipeline:
         return {
             "model_id": model_id,
             "model_path": model_path,
-            "mlflow_run_id": mlflow.active_run().info.run_id,
+            "mlflow_run_id": mlflow.active_run().info.run_id if MLFLOW_AVAILABLE and mlflow.active_run() else None,
             "version": f"v{datetime.now():%Y%m%d_%H%M%S}"
         }
     
@@ -685,7 +714,8 @@ class ProductionTrainingPipeline:
         report_text = "\n".join(report)
         
         # Log to MLflow
-        mlflow.log_text(report_text, "training_report.txt")
+        if MLFLOW_AVAILABLE:
+            mlflow.log_text(report_text, "training_report.txt")
         
         # Save locally
         os.makedirs("reports", exist_ok=True)

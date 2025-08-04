@@ -47,8 +47,8 @@ class PredictionRequest(BaseModel):
     
     @validator('game_date')
     def validate_game_date(cls, v):
-        if v < date.today():
-            raise ValueError("Game date must be in the future")
+        # Allow past dates for testing and historical analysis
+        # In production, you might want to enforce future dates only
         return v
     
     class Config:

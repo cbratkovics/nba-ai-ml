@@ -1,6 +1,7 @@
 """
 Production ensemble model for NBA predictions
 """
+import os
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional, Tuple, Any
@@ -14,12 +15,21 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-import mlflow
-import mlflow.sklearn
-import mlflow.pytorch
 import pickle
 import logging
 from datetime import datetime
+
+# Conditional MLflow import
+MLFLOW_AVAILABLE = False
+if os.getenv('ENVIRONMENT', 'development') != 'production':
+    try:
+        import mlflow
+        import mlflow.sklearn
+        import mlflow.pytorch
+        MLFLOW_AVAILABLE = True
+    except ImportError:
+        logger = logging.getLogger(__name__)
+        logger.warning("MLflow not available, continuing without experiment tracking")
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +174,7 @@ class NBAEnsemble:
         Returns:
             Dictionary of performance metrics
         """
-        if track_mlflow:
+        if track_mlflow and MLFLOW_AVAILABLE:
             mlflow.start_run(run_name=f"nba_ensemble_{self.target}_{datetime.now():%Y%m%d_%H%M%S}")
             mlflow.log_param("target", self.target)
             mlflow.log_param("n_features", X_train.shape[1])
@@ -203,7 +213,7 @@ class NBAEnsemble:
                 
                 logger.info(f"{name} - R2: {val_r2:.4f}, MAE: {val_mae:.4f}, RMSE: {val_rmse:.4f}")
                 
-                if track_mlflow:
+                if track_mlflow and MLFLOW_AVAILABLE:
                     mlflow.log_metric(f"{name}_r2", val_r2)
                     mlflow.log_metric(f"{name}_mae", val_mae)
                     mlflow.log_metric(f"{name}_rmse", val_rmse)
@@ -233,7 +243,7 @@ class NBAEnsemble:
             
             logger.info(f"Ensemble - R2: {ensemble_r2:.4f}, MAE: {ensemble_mae:.4f}, RMSE: {ensemble_rmse:.4f}")
             
-            if track_mlflow:
+            if track_mlflow and MLFLOW_AVAILABLE:
                 mlflow.log_metric("ensemble_r2", ensemble_r2)
                 mlflow.log_metric("ensemble_mae", ensemble_mae)
                 mlflow.log_metric("ensemble_rmse", ensemble_rmse)
@@ -244,7 +254,7 @@ class NBAEnsemble:
         # Perform cross-validation
         self._perform_cross_validation(X_train, y_train, track_mlflow)
         
-        if track_mlflow:
+        if track_mlflow and MLFLOW_AVAILABLE:
             mlflow.end_run()
         
         return self.metrics
@@ -313,7 +323,7 @@ class NBAEnsemble:
         
         logger.info(f"Cross-validation R2: {cv_mean:.4f} (+/- {cv_std:.4f})")
         
-        if track_mlflow:
+        if track_mlflow and MLFLOW_AVAILABLE:
             mlflow.log_metric("cv_r2_mean", cv_mean)
             mlflow.log_metric("cv_r2_std", cv_std)
     

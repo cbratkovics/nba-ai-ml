@@ -16,7 +16,6 @@ from api.models import (
 from api.middleware.auth import verify_api_key
 from api.middleware.rate_limiting import check_rate_limit
 from ml.serving.predictor import PredictionService
-from ml.models.ensemble import ModelExperiment
 
 logger = logging.getLogger(__name__)
 

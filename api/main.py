@@ -16,7 +16,6 @@ from api.models import PredictionRequest, PredictionResponse, ExperimentResponse
 from api.endpoints import predictions, experiments, health
 from api.middleware.auth import verify_api_key
 from api.middleware.rate_limiting import RateLimiter
-from api.middleware.monitoring import track_request
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +25,35 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting NBA AI/ML Prediction API...")
+    logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
+    logger.info(f"Python version: {os.sys.version}")
+    
+    # Check if models exist
+    from pathlib import Path
+    models_dir = Path("models")
+    if models_dir.exists():
+        model_files = list(models_dir.glob("*.pkl"))
+        logger.info(f"Found {len(model_files)} model files")
+        if model_files:
+            for mf in model_files[:3]:  # Log first 3 model files
+                logger.info(f"  - {mf.name}")
+    else:
+        logger.warning("Models directory not found. Creating dummy models may be needed.")
+    
+    # Log Redis connection status
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        logger.info("Redis URL configured")
+    else:
+        logger.info("Running without Redis cache")
+    
+    # Log database connection status
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        logger.info("Database URL configured")
+    else:
+        logger.warning("No DATABASE_URL set - some features may be limited")
+    
     yield
     # Shutdown
     logger.info("Shutting down NBA AI/ML Prediction API...")
