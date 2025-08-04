@@ -18,7 +18,7 @@ import redis
 from fastapi import HTTPException, Depends, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 import logging
 
 Base = declarative_base()
@@ -308,7 +308,7 @@ class OrganizationCreate(BaseModel):
     website: Optional[str] = None
     tier: TenantTier = TenantTier.FREE
     
-    @validator('name')
+    @field_validator('name')
     def validate_name(cls, v):
         if len(v) < 3:
             raise ValueError('Organization name must be at least 3 characters')

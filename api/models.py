@@ -1,7 +1,7 @@
 """
 Pydantic models for API requests and responses
 """
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from enum import Enum
@@ -13,8 +13,6 @@ class ModelVersion(str, Enum):
     V2_0 = "v2.0.0"
     V2_1 = "v2.1.0"
     LATEST = "latest"
-    
-    model_config = {"protected_namespaces": ()}
 
 
 class PredictionTarget(str, Enum):
@@ -27,6 +25,20 @@ class PredictionTarget(str, Enum):
 
 class PredictionRequest(BaseModel):
     """Request model for predictions"""
+    model_config = {
+        "protected_namespaces": (),
+        "json_schema_extra": {
+            "example": {
+                "player_id": "203999",
+                "game_date": "2025-01-20",
+                "opponent_team": "LAL",
+                "targets": ["points", "rebounds", "assists"],
+                "model_version": "latest",
+                "include_explanation": True
+            }
+        }
+    }
+    
     player_id: str = Field(..., description="NBA player ID")
     game_date: date = Field(..., description="Game date for prediction")
     opponent_team: str = Field(..., description="Opponent team abbreviation (e.g., 'LAL')")
@@ -47,51 +59,18 @@ class PredictionRequest(BaseModel):
         description="Include 95% confidence intervals"
     )
     
-    @validator('game_date')
+    @field_validator('game_date')
     def validate_game_date(cls, v):
         # Allow past dates for testing and historical analysis
         # In production, you might want to enforce future dates only
         return v
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "player_id": "203999",
-                "game_date": "2025-01-20",
-                "opponent_team": "LAL",
-                "targets": ["points", "rebounds", "assists"],
-                "model_version": "latest",
-                "include_explanation": True
-            }
-        }
 
 
 class PredictionResponse(BaseModel):
     """Response model for predictions"""
-    player_id: str
-    player_name: str
-    game_date: date
-    opponent_team: str
-    predictions: Dict[str, float] = Field(..., description="Predicted statistics")
-    confidence: float = Field(..., description="Overall prediction confidence (0-1)")
-    confidence_intervals: Optional[Dict[str, Dict[str, float]]] = Field(
-        None,
-        description="95% confidence intervals for each prediction"
-    )
-    model_version: str
-    model_accuracy: Dict[str, float] = Field(..., description="Historical model accuracy metrics")
-    
-    model_config = {"protected_namespaces": ()}
-    explanation: Optional[str] = Field(None, description="Natural language explanation")
-    factors: Optional[List[Dict[str, Any]]] = Field(
-        None,
-        description="Key factors influencing the prediction"
-    )
-    prediction_id: str = Field(..., description="Unique prediction identifier")
-    timestamp: datetime = Field(default_factory=datetime.now)
-    
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "protected_namespaces": (),
+        "json_schema_extra": {
             "example": {
                 "player_id": "203999",
                 "player_name": "Nikola Jokic",
@@ -124,13 +103,34 @@ class PredictionResponse(BaseModel):
                 "timestamp": "2025-01-15T10:30:00"
             }
         }
+    }
+    
+    player_id: str
+    player_name: str
+    game_date: date
+    opponent_team: str
+    predictions: Dict[str, float] = Field(..., description="Predicted statistics")
+    confidence: float = Field(..., description="Overall prediction confidence (0-1)")
+    confidence_intervals: Optional[Dict[str, Dict[str, float]]] = Field(
+        None,
+        description="95% confidence intervals for each prediction"
+    )
+    model_version: str
+    model_accuracy: Dict[str, float] = Field(..., description="Historical model accuracy metrics")
+    explanation: Optional[str] = Field(None, description="Natural language explanation")
+    factors: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="Key factors influencing the prediction"
+    )
+    prediction_id: str = Field(..., description="Unique prediction identifier")
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class BatchPredictionRequest(BaseModel):
     """Request model for batch predictions"""
     predictions: List[PredictionRequest]
     
-    @validator('predictions')
+    @field_validator('predictions')
     def validate_batch_size(cls, v):
         if len(v) > 100:
             raise ValueError("Batch size cannot exceed 100 predictions")
@@ -147,6 +147,20 @@ class BatchPredictionResponse(BaseModel):
 
 class ExperimentRequest(BaseModel):
     """Request model for A/B testing experiments"""
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "neural_net_vs_ensemble",
+                "description": "Testing neural network against ensemble",
+                "control_model": "v2.0.0",
+                "treatment_model": "v2.1.0",
+                "traffic_percentage": 50.0,
+                "start_date": "2025-01-15T00:00:00",
+                "end_date": "2025-01-30T00:00:00"
+            }
+        }
+    }
+    
     name: str = Field(..., description="Experiment name")
     description: str = Field(..., description="Experiment description")
     control_model: ModelVersion = Field(..., description="Control model version")
@@ -159,37 +173,12 @@ class ExperimentRequest(BaseModel):
     )
     start_date: datetime = Field(default_factory=datetime.now)
     end_date: Optional[datetime] = None
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "neural_net_vs_ensemble",
-                "description": "Testing neural network against ensemble",
-                "control_model": "v2.0.0",
-                "treatment_model": "v2.1.0",
-                "traffic_percentage": 50.0,
-                "start_date": "2025-01-15T00:00:00",
-                "end_date": "2025-01-30T00:00:00"
-            }
-        }
 
 
 class ExperimentResponse(BaseModel):
     """Response model for experiment results"""
-    experiment_id: str
-    name: str
-    status: str = Field(..., description="active, completed, or paused")
-    control_metrics: Dict[str, float]
-    treatment_metrics: Dict[str, float]
-    lift: Dict[str, float] = Field(..., description="Improvement metrics")
-    sample_size: Dict[str, int]
-    statistical_significance: Dict[str, float]
-    recommendation: str
-    created_at: datetime
-    updated_at: datetime
-    
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "experiment_id": "exp_20250115_001",
                 "name": "neural_net_vs_ensemble",
@@ -222,6 +211,19 @@ class ExperimentResponse(BaseModel):
                 "updated_at": "2025-01-20T12:00:00"
             }
         }
+    }
+    
+    experiment_id: str
+    name: str
+    status: str = Field(..., description="active, completed, or paused")
+    control_metrics: Dict[str, float]
+    treatment_metrics: Dict[str, float]
+    lift: Dict[str, float] = Field(..., description="Improvement metrics")
+    sample_size: Dict[str, int]
+    statistical_significance: Dict[str, float]
+    recommendation: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class InsightRequest(BaseModel):
@@ -239,18 +241,8 @@ class InsightRequest(BaseModel):
 
 class InsightResponse(BaseModel):
     """Response model for player insights"""
-    player_id: str
-    player_name: str
-    insights: str = Field(..., description="LLM-generated insights")
-    key_stats: Dict[str, float]
-    trends: List[Dict[str, Any]]
-    strengths: List[str]
-    areas_for_improvement: List[str]
-    upcoming_predictions: Optional[List[Dict[str, Any]]]
-    generated_at: datetime
-    
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "player_id": "203999",
                 "player_name": "Nikola Jokic",
@@ -284,18 +276,23 @@ class InsightResponse(BaseModel):
                 "generated_at": "2025-01-15T10:30:00"
             }
         }
+    }
+    
+    player_id: str
+    player_name: str
+    insights: str = Field(..., description="LLM-generated insights")
+    key_stats: Dict[str, float]
+    trends: List[Dict[str, Any]]
+    strengths: List[str]
+    areas_for_improvement: List[str]
+    upcoming_predictions: Optional[List[Dict[str, Any]]]
+    generated_at: datetime
 
 
 class HealthCheckResponse(BaseModel):
     """Response model for health checks"""
-    status: str
-    version: str
-    timestamp: datetime
-    services: Dict[str, str]
-    metrics: Dict[str, Any]
-    
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "status": "healthy",
                 "version": "2.1.0",
@@ -313,18 +310,19 @@ class HealthCheckResponse(BaseModel):
                 }
             }
         }
+    }
+    
+    status: str
+    version: str
+    timestamp: datetime
+    services: Dict[str, str]
+    metrics: Dict[str, Any]
 
 
 class ErrorResponse(BaseModel):
     """Standard error response"""
-    error: str
-    status_code: int
-    path: str
-    timestamp: datetime
-    request_id: Optional[str] = None
-    
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "error": "Player not found",
                 "status_code": 404,
@@ -333,3 +331,10 @@ class ErrorResponse(BaseModel):
                 "request_id": "req_abc123"
             }
         }
+    }
+    
+    error: str
+    status_code: int
+    path: str
+    timestamp: datetime
+    request_id: Optional[str] = None
