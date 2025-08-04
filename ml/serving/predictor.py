@@ -16,7 +16,15 @@ from ml.data.collectors.nba_api_collector import NBADataCollector
 from ml.data.processors.feature_engineer import NBAFeatureEngineer
 import redis
 import os
-import shap
+
+# Make shap import optional
+try:
+    import shap
+    SHAP_AVAILABLE = True
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.warning("SHAP not available - model explainability features disabled")
+    SHAP_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 

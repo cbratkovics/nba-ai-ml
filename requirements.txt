@@ -51,5 +51,14 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 
 # Additional dependencies that might be needed
+boto3==1.29.7   # AWS SDK for cloud storage
+click==8.1.7    # Command line interface creation
+optuna==3.4.0   # Hyperparameter optimization (optional)
 Pillow==10.1.0  # For image processing if needed
+psutil==5.9.6   # System and process utilities
+pyyaml==6.0.1   # YAML configuration file support
+schedule==1.2.0  # Job scheduling
 scipy==1.11.4   # Often required by sklearn
+shap==0.44.0    # For model explainability
+stripe==7.8.0   # Payment processing
+tqdm==4.66.1    # Progress bars
