@@ -3,7 +3,6 @@ Health check endpoints
 """
 from fastapi import APIRouter
 from datetime import datetime
-import psutil
 import redis
 import os
 import logging
@@ -34,20 +33,12 @@ async def detailed_health_check():
     except Exception as e:
         services["redis"] = f"error: {str(e)}"
     
-    # Check system metrics
-    cpu_percent = psutil.cpu_percent(interval=1)
-    memory = psutil.virtual_memory()
-    disk = psutil.disk_usage('/')
-    
     return {
         "status": "healthy" if all("error" not in status for status in services.values()) else "degraded",
         "version": "2.1.0",
         "timestamp": datetime.now().isoformat(),
         "services": services,
         "system": {
-            "cpu_percent": cpu_percent,
-            "memory_percent": memory.percent,
-            "disk_percent": disk.percent,
-            "available_memory_gb": memory.available / (1024**3)
+            "status": "operational"
         }
     }

@@ -13,6 +13,8 @@ class ModelVersion(str, Enum):
     V2_0 = "v2.0.0"
     V2_1 = "v2.1.0"
     LATEST = "latest"
+    
+    model_config = {"protected_namespaces": ()}
 
 
 class PredictionTarget(str, Enum):
@@ -52,7 +54,7 @@ class PredictionRequest(BaseModel):
         return v
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "player_id": "203999",
                 "game_date": "2025-01-20",
@@ -78,6 +80,8 @@ class PredictionResponse(BaseModel):
     )
     model_version: str
     model_accuracy: Dict[str, float] = Field(..., description="Historical model accuracy metrics")
+    
+    model_config = {"protected_namespaces": ()}
     explanation: Optional[str] = Field(None, description="Natural language explanation")
     factors: Optional[List[Dict[str, Any]]] = Field(
         None,
@@ -87,7 +91,7 @@ class PredictionResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "player_id": "203999",
                 "player_name": "Nikola Jokic",
@@ -157,7 +161,7 @@ class ExperimentRequest(BaseModel):
     end_date: Optional[datetime] = None
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "neural_net_vs_ensemble",
                 "description": "Testing neural network against ensemble",
@@ -185,7 +189,7 @@ class ExperimentResponse(BaseModel):
     updated_at: datetime
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "experiment_id": "exp_20250115_001",
                 "name": "neural_net_vs_ensemble",
@@ -246,7 +250,7 @@ class InsightResponse(BaseModel):
     generated_at: datetime
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "player_id": "203999",
                 "player_name": "Nikola Jokic",
@@ -291,7 +295,7 @@ class HealthCheckResponse(BaseModel):
     metrics: Dict[str, Any]
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "status": "healthy",
                 "version": "2.1.0",
@@ -320,7 +324,7 @@ class ErrorResponse(BaseModel):
     request_id: Optional[str] = None
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "error": "Player not found",
                 "status_code": 404,
