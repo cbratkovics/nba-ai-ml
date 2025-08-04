@@ -1,25 +1,141 @@
-# NBA AI/ML Prediction System
+# NBA AI/ML Prediction Platform
 
-Production-grade NBA player performance prediction system achieving 94%+ accuracy while scaling to millions of predictions.
+A production-ready NBA player performance prediction system deployed on Railway with real-time API access.
 
-## Key Features
+## Current Status
 
-- **94%+ Prediction Accuracy**: State-of-the-art ensemble models for player performance prediction
-- **Real-time API**: Sub-100ms latency with automatic scaling
-- **A/B Testing Framework**: Interactive model experimentation with traffic routing
-- **LLM-Powered Insights**: Natural language analysis and explanations
-- **Production MLOps**: Automated training, versioning, and deployment pipelines
-- **Free Data Sources**: Uses nba_api and ESPN public endpoints
+**Live Production URL**: https://nba-ai-ml-production.up.railway.app
 
-## Quick Start
+### Working Features
+- ✅ FastAPI backend with prediction endpoints
+- ✅ React frontend with interactive UI
+- ✅ Redis caching for performance
+- ✅ Multiple ML models (Random Forest, XGBoost, LightGBM)
+- ✅ Player prediction interface
+- ✅ Model A/B testing framework
+- ✅ Health monitoring endpoints
+- ✅ Deployment health checks
+- ✅ Graceful error handling
+
+### Current Limitations
+- 🔄 Using dummy/mock data (not connected to real NBA API yet)
+- 🔄 Models trained on synthetic data
+- 🔄 No real-time data updates
+- 🔄 Limited to 4 demo players
+
+## Tech Stack
+
+### Backend
+- **Framework**: FastAPI (Python 3.10+)
+- **ML Libraries**: scikit-learn, XGBoost, LightGBM, PyTorch
+- **Data Processing**: pandas, numpy, shap
+- **Caching**: Redis
+- **Database**: SQLAlchemy with PostgreSQL support
+- **Deployment**: Railway with automatic restarts
+
+### Frontend
+- **Framework**: React with TypeScript
+- **UI Library**: Tailwind CSS
+- **State Management**: React Hooks
+- **API Client**: Axios
+- **Charts**: Chart.js
+
+### Infrastructure
+- **Hosting**: Railway (PaaS)
+- **CI/CD**: GitHub Actions ready
+- **Monitoring**: Prometheus metrics exposed
+- **Logging**: Structured logging with Python logging
+
+## Project Structure
+
+```
+nba-ai-ml/
+├── api/                    # FastAPI backend
+│   ├── main.py            # Application entry point
+│   ├── endpoints/         # API endpoints
+│   │   ├── predictions.py # Prediction endpoints
+│   │   ├── experiments.py # A/B testing endpoints
+│   │   └── health.py      # Health check endpoints
+│   └── enterprise/        # Enterprise features
+├── ml/                    # Machine learning modules
+│   ├── serving/          # Model serving
+│   │   └── predictor.py  # Prediction service (uses dummy data)
+│   ├── training/         # Training pipelines
+│   ├── models/           # Model implementations
+│   └── data/             # Data processing
+├── frontend/             # React frontend
+│   ├── src/
+│   │   ├── App.tsx       # Main application
+│   │   ├── api.ts        # API client
+│   │   └── components/   # React components
+│   └── package.json
+├── scripts/              # Utility scripts
+│   ├── deployment_health_check.py
+│   └── setup_project.py
+├── requirements.txt      # Python dependencies
+├── railway.json         # Railway deployment config
+└── .env.example         # Environment variables template
+```
+
+## API Endpoints
+
+### Base URL
+- Production: `https://nba-ai-ml-production.up.railway.app`
+- Local: `http://localhost:8000`
+
+### Available Endpoints
+
+#### Health Check
+```bash
+GET /health
+```
+Returns system health status.
+
+#### Predict Player Performance
+```bash
+POST /v1/predict
+Content-Type: application/json
+
+{
+    "player_id": "203999",
+    "game_date": "2025-01-15",
+    "opponent_team": "LAL",
+    "include_explanation": true
+}
+```
+
+**Available Demo Players**:
+- `203999` - Nikola Jokic
+- `2544` - LeBron James
+- `201939` - Stephen Curry
+- `1628369` - Jayson Tatum
+
+#### Get Next Game Prediction
+```bash
+GET /v1/predict/next-game/{player_id}
+```
+
+#### A/B Testing
+```bash
+POST /v1/experiments/predict
+Content-Type: application/json
+
+{
+    "experiment_id": "model_v2_test",
+    "player_id": "203999",
+    "game_date": "2025-01-15",
+    "opponent_team": "LAL"
+}
+```
+
+## Local Development
 
 ### Prerequisites
 - Python 3.10+
-- Docker (optional, for containerized deployment)
-- Redis (for caching)
+- Node.js 16+
+- Redis (optional, for caching)
 
-### Installation
-
+### Backend Setup
 ```bash
 # Clone repository
 git clone https://github.com/cbratkovics/nba-ai-ml.git
@@ -32,230 +148,164 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Setup environment
-cp .env.example .env
-# Edit .env with your configuration
-
-# Initialize database and collect data
-python scripts/setup.py
-python scripts/collect_historical_data.py --seasons 2021-2025
+# Run the API
+uvicorn api.main:app --reload --port 8000
 ```
 
-### Training Models
-
+### Frontend Setup
 ```bash
-# Train the ensemble model
-python -m ml.training.pipeline
+# Navigate to frontend directory
+cd frontend
 
-# Or use make command
-make train
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
 ```
 
-### Running the API
-
+### Running Health Checks
 ```bash
-# Development server
-uvicorn api.main:app --reload
+# Check all critical imports
+python scripts/deployment_health_check.py
 
-# Production server
-make serve
+# Test API imports
+python -c "import api.main; print('✓ API imports successful')"
 ```
 
-### Making Predictions
+## Environment Variables
 
-```python
-import requests
+Create a `.env` file based on `.env.example`:
 
-response = requests.post(
-    "http://localhost:8000/v1/predict",
-    json={
-        "player_id": "203999",  # Nikola Jokic
-        "game_date": "2025-01-15",
-        "opponent_team": "LAL"
-    },
-    headers={"X-API-Key": "your-api-key"}
-)
+```env
+# API Configuration
+API_KEY=your-secret-api-key
+ENVIRONMENT=development
 
-prediction = response.json()
-# {
-#     "points": 27.3,
-#     "rebounds": 13.8,
-#     "assists": 8.2,
-#     "confidence": 0.92,
-#     "model_version": "v2.1.0"
-# }
+# Redis Configuration (optional)
+REDIS_URL=redis://localhost:6379
+
+# Model Configuration
+MODEL_PATH=./models
+MODEL_VERSION=latest
+
+# Monitoring
+ENABLE_METRICS=true
 ```
 
-## Architecture
+## Current Model Performance (Mock Data)
 
-### System Components
+Since the system uses dummy data, these are simulated metrics:
 
-1. **Data Pipeline**: Automated collection from nba_api with validation
-2. **Feature Engineering**: 50+ engineered features including rolling stats, matchup difficulty
-3. **Model Ensemble**: XGBoost, LightGBM, Random Forest, and Neural Network
-4. **API Layer**: FastAPI with authentication, rate limiting, and monitoring
-5. **A/B Testing**: Real-time traffic routing for model experiments
-6. **LLMOps**: GPT-4 powered insights and explanations
+| Model | R² Score | MAE | RMSE |
+|-------|----------|-----|------|
+| Points | 0.942 | 3.1 | 4.2 |
+| Rebounds | 0.728 | 2.4 | 3.1 |
+| Assists | 0.715 | 1.8 | 2.3 |
 
-### Performance Metrics
+## Dependencies
 
-- **Accuracy**: >94% R² for points prediction
-- **Latency**: <100ms p99 inference time
-- **Throughput**: 10,000+ requests/second
-- **Availability**: 99.9% uptime SLA
+### Core ML Dependencies
+- `scikit-learn==1.3.2` - Base ML algorithms
+- `xgboost==2.0.2` - Gradient boosting
+- `lightgbm==4.1.0` - Fast gradient boosting
+- `torch==2.2.0` - Neural networks
+- `shap==0.44.0` - Model explainability (optional)
 
-## API Documentation
+### API Dependencies
+- `fastapi==0.104.1` - Web framework
+- `uvicorn==0.24.0` - ASGI server
+- `redis==5.0.1` - Caching
+- `pydantic==2.5.0` - Data validation
 
-### Endpoints
+### Additional Tools
+- `pandas==2.1.3` - Data manipulation
+- `numpy==1.26.0` - Numerical computing
+- `mlflow==2.8.1` - Model versioning
+- `prometheus-fastapi-instrumentator==6.1.0` - Metrics
 
-#### POST /v1/predict
-Predict player performance for upcoming games.
+## Deployment
 
-**Request:**
-```json
-{
-    "player_id": "string",
-    "game_date": "YYYY-MM-DD",
-    "opponent_team": "string"
-}
-```
+### Railway Deployment
 
-**Response:**
-```json
-{
-    "points": 25.5,
-    "rebounds": 10.2,
-    "assists": 6.8,
-    "confidence": 0.89,
-    "model_version": "string",
-    "explanation": "string (optional)"
-}
-```
+The project is configured for Railway deployment:
 
-#### GET /v1/experiments/{experiment_id}
-Get A/B test results for model variants.
+1. **Automatic Restarts**: Configured in `railway.json` with up to 10 retries
+2. **Health Checks**: Railway monitors the `/health` endpoint
+3. **Environment Variables**: Set in Railway dashboard
+4. **Build Command**: Automatically installs from `requirements.txt`
+5. **Start Command**: `uvicorn api.main:app --host 0.0.0.0 --port $PORT`
 
-#### GET /v1/insights/{player_id}
-Get LLM-generated insights for player performance.
-
-### Authentication
-
-All API endpoints require an API key passed in the `X-API-Key` header.
-
-### Rate Limits
-
-- **Free Tier**: 1,000 requests/hour
-- **Premium Tier**: Unlimited with SLA
-
-## Development
-
-### Running Tests
-
+### Manual Deployment Check
 ```bash
-# All tests
-pytest tests/ -v --cov=.
+# Verify all dependencies
+pip install -r requirements.txt
 
-# Unit tests only
-pytest tests/unit/
+# Run health check
+python scripts/deployment_health_check.py
 
-# Integration tests
-pytest tests/integration/
-
-# Load tests
-locust -f tests/load/test_api_load.py
+# Start server
+uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-### Code Quality
+## Next Steps
 
-```bash
-# Format code
-black .
-ruff . --fix
+### Phase 1: Real Data Integration
+- [ ] Connect to NBA API for live data
+- [ ] Implement data collection pipeline
+- [ ] Build historical data database
+- [ ] Create feature engineering from real stats
 
-# Type checking
-mypy .
+### Phase 2: Model Training
+- [ ] Train models on real NBA data
+- [ ] Implement backtesting framework
+- [ ] Add model versioning
+- [ ] Create automated retraining pipeline
 
-# Pre-commit hooks
-pre-commit run --all-files
-```
+### Phase 3: Production Features
+- [ ] Add authentication system
+- [ ] Implement rate limiting
+- [ ] Add comprehensive logging
+- [ ] Create admin dashboard
+- [ ] Set up monitoring alerts
 
-### Docker Deployment
-
-```bash
-# Build containers
-docker-compose build
-
-# Run services
-docker-compose up
-
-# Deploy to production
-make deploy
-```
-
-## Model Performance
-
-### Current Benchmarks
-
-| Metric | R² Score | MAE | RMSE |
-|--------|----------|-----|------|
-| Points | 94.2% | 3.1 | 4.2 |
-| Rebounds | 72.8% | 2.4 | 3.1 |
-| Assists | 71.5% | 1.8 | 2.3 |
-
-### Feature Importance
-
-Top 10 most influential features:
-1. 10-game rolling average
-2. Rest days
-3. Home/away indicator
-4. Opponent defensive rating
-5. Season average
-6. Minutes played (projected)
-7. Usage rate trend
-8. Matchup history
-9. Back-to-back games
-10. Team pace factor
-
-## Monitoring
-
-### Prometheus Metrics
-
-- `prediction_latency_seconds`: API response time
-- `model_accuracy_score`: Real-time accuracy tracking
-- `drift_score`: Data/concept drift detection
-- `api_requests_total`: Request counter by endpoint
-
-### Grafana Dashboards
-
-Access dashboards at `http://localhost:3000` when running locally.
-
-## Contributing
-
-Please read [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details on our code of conduct and submission process.
-
-## License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- NBA API for providing free access to statistics
-- Open source ML community for model architectures
-- FastAPI for the excellent web framework
-
-## Support
-
-For issues and feature requests, please use the [GitHub issue tracker](https://github.com/cbratkovics/nba-ai-ml/issues).
-
-## Roadmap
-
+### Phase 4: Advanced Features
 - [ ] Real-time game predictions
 - [ ] Player injury risk assessment
 - [ ] Team chemistry analysis
-- [ ] Draft pick projections
-- [ ] Mobile application
-- [ ] GraphQL API support
+- [ ] Fantasy sports integration
 
----
+## Troubleshooting
 
-Built with focus on production excellence and scalability.
+### Common Issues
+
+1. **Module Import Errors**
+   ```bash
+   # Install all dependencies
+   pip install -r requirements.txt
+   
+   # Run health check
+   python scripts/deployment_health_check.py
+   ```
+
+2. **Redis Connection Failed**
+   - The app works without Redis, just with warnings
+   - To use Redis: `export REDIS_URL=redis://localhost:6379`
+
+3. **Port Already in Use**
+   ```bash
+   # Use a different port
+   uvicorn api.main:app --port 8001
+   ```
+
+## Contributing
+
+This project is under active development. Current priorities:
+1. Connecting to real NBA data sources
+2. Training models on actual game statistics
+3. Improving prediction accuracy
+4. Adding more features to the frontend
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
