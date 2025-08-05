@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import MetricsGrid from '@/components/dashboard/MetricsGrid'
 import PredictionInterface from '@/components/dashboard/PredictionInterface'
@@ -23,6 +24,7 @@ import {
 import Link from 'next/link'
 
 export default function Home() {
+  const router = useRouter()
   const [githubStars, setGithubStars] = useState(0)
   const [githubForks, setGithubForks] = useState(0)
 
@@ -122,7 +124,10 @@ export default function Home() {
                     </span>
                   </div>
                 </a>
-                <button className="neon-button text-sm">
+                <button 
+                  onClick={() => router.push('/api-docs')}
+                  className="neon-button text-sm"
+                >
                   <Terminal className="w-4 h-4 mr-2" />
                   API Docs
                 </button>
@@ -158,7 +163,10 @@ export default function Home() {
           transition={{ delay: 0.3 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
         >
-          <div className="glass-card p-6 hover:scale-105 transition-transform cursor-pointer">
+          <div 
+            onClick={() => router.push('/feature-store')}
+            className="glass-card p-6 hover:scale-105 transition-transform cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-4">
               <Database className="w-8 h-8 text-secondary" />
               <ChevronRight className="w-5 h-5 text-text-secondary" />
@@ -169,7 +177,10 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="glass-card p-6 hover:scale-105 transition-transform cursor-pointer">
+          <div 
+            onClick={() => router.push('/model-registry')}
+            className="glass-card p-6 hover:scale-105 transition-transform cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-4">
               <Cpu className="w-8 h-8 text-primary" />
               <ChevronRight className="w-5 h-5 text-text-secondary" />
@@ -180,7 +191,10 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="glass-card p-6 hover:scale-105 transition-transform cursor-pointer">
+          <div 
+            onClick={() => router.push('/api-gateway')}
+            className="glass-card p-6 hover:scale-105 transition-transform cursor-pointer"
+          >
             <div className="flex items-center justify-between mb-4">
               <Activity className="w-8 h-8 text-success" />
               <ChevronRight className="w-5 h-5 text-text-secondary" />
