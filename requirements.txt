@@ -1,6 +1,7 @@
 # Core API
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+uvloop==0.19.0  # Added for better async performance
 gunicorn==21.2.0
 pydantic==2.5.0
 python-dotenv==1.0.0
@@ -26,9 +27,11 @@ mlflow==2.8.1
 
 # Database
 redis==5.0.1
+aioredis==2.0.1  # Added to fix Railway deployment error
 sqlalchemy==2.0.23
 alembic==1.12.1
 psycopg2-binary==2.9.9
+asyncpg==0.29.0  # PostgreSQL driver for asyncio
 
 # API Extensions
 httpx==0.24.1  # Compatible with supabase<0.25.0
@@ -56,7 +59,6 @@ schedule==1.2.0  # Job scheduling
 scipy==1.11.4   # Often required by sklearn
 stripe==7.8.0   # Payment processing
 tqdm==4.66.1    # Progress bars
-asyncpg==0.29.0  # PostgreSQL driver for asyncio
 apscheduler==3.10.4  # Advanced Python Scheduler
 aiohttp==3.9.1  # Async HTTP client/server
 supabase==2.0.3  # Supabase Python client
