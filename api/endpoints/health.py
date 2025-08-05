@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/")
+async def simple_health_check():
+    """Simple health check endpoint for Railway - returns 200 OK"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": os.getenv("MODEL_VERSION", "2.1.0")
+    }
+
+
 @router.get("/status")
 async def health_check():
     """Basic health check endpoint for load balancer/uptime monitoring"""
