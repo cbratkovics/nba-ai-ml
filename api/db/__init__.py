@@ -1,1 +1,1 @@
-# Database package
+# Database connection pool module
