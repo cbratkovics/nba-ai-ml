@@ -1,25 +1,46 @@
-# nixpacks.toml - Explicit Python configuration for Railway deployment
+# nixpacks.toml - Python virtual environment configuration for Railway
 
-# Setup phase: Install Python and build dependencies
+# Setup phase: Install Python and system dependencies
 [phases.setup]
-nixPkgs = ["python310", "python310Packages.pip", "gcc", "postgresql"]
-aptPkgs = ["libpq-dev"]  # For psycopg2
+# Install Python 3.10 and required system libraries
+nixPkgs = [
+    "python310",           # Python 3.10 interpreter
+    "gcc",                 # C compiler for building Python packages
+    "postgresql",          # PostgreSQL client libraries for psycopg2
+    "stdenv.cc.cc.lib"     # Standard C++ libraries
+]
 
-# Install phase: Install Python dependencies
+# Install phase: Create virtual environment and install Python packages
 [phases.install]
 dependsOn = ["setup"]
 cmds = [
-    "python -m venv /opt/venv",
-    ". /opt/venv/bin/activate && pip install --upgrade pip",
-    ". /opt/venv/bin/activate && pip install -r requirements.txt"
+    # Create a virtual environment with copies (not symlinks) in /opt/venv
+    "python3.10 -m venv --copies /opt/venv",
+    
+    # Activate venv and upgrade pip/setuptools/wheel to latest versions
+    "/opt/venv/bin/python -m pip install --upgrade pip setuptools wheel",
+    
+    # Install all requirements using the virtual environment's pip
+    "/opt/venv/bin/pip install -r requirements.txt"
 ]
 
-# Environment variables for runtime
+# Start command: Run the FastAPI app using virtual environment's Python
+[start]
+cmd = "/opt/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+
+# Environment variables to ensure virtual environment is used
 [variables]
+# Set Python path to virtual environment site-packages
+PYTHONPATH = "/opt/venv/lib/python3.10/site-packages"
+
+# Mark virtual environment location
 VIRTUAL_ENV = "/opt/venv"
+
+# Prepend virtual environment bin to PATH
 PATH = "/opt/venv/bin:$PATH"
+
+# Ensure Python output is not buffered (important for logs)
 PYTHONUNBUFFERED = "1"
 
-# Start command
-[start]
-cmd = ". /opt/venv/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+# Set production environment
+ENVIRONMENT = "production"
