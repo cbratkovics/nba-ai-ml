@@ -1,46 +1,51 @@
-# nixpacks.toml - Python virtual environment configuration for Railway
+# nixpacks.toml - Fixed with C++ runtime libraries for pandas
 
 # Setup phase: Install Python and system dependencies
 [phases.setup]
-# Install Python 3.10 and required system libraries
+# Install Python and all required libraries
 nixPkgs = [
-    "python310",           # Python 3.10 interpreter
-    "gcc",                 # C compiler for building Python packages
-    "postgresql",          # PostgreSQL client libraries for psycopg2
-    "stdenv.cc.cc.lib"     # Standard C++ libraries
+    "python310",
+    "gcc",
+    "stdenv.cc.cc.lib",
+    "postgresql",
+    "zlib",
+    "libgcc"
 ]
 
-# Install phase: Create virtual environment and install Python packages
+# Install phase: Create virtual environment and install packages
 [phases.install]
 dependsOn = ["setup"]
 cmds = [
-    # Create a virtual environment with copies (not symlinks) in /opt/venv
+    # Create virtual environment
     "python3.10 -m venv --copies /opt/venv",
     
-    # Activate venv and upgrade pip/setuptools/wheel to latest versions
-    "/opt/venv/bin/python -m pip install --upgrade pip setuptools wheel",
+    # Set library path for installation
+    "export LD_LIBRARY_PATH=/nix/store/*/lib:$LD_LIBRARY_PATH",
     
-    # Install all requirements using the virtual environment's pip
+    # Upgrade pip and install packages
+    "/opt/venv/bin/python -m pip install --upgrade pip setuptools wheel",
     "/opt/venv/bin/pip install -r requirements.txt"
 ]
 
-# Start command: Run the FastAPI app using virtual environment's Python
+# Runtime environment setup
+[phases.runtime]
+dependsOn = ["install"]
+cmds = [
+    # Find and set the library path for runtime
+    "export LIBPATH=$(find /nix/store -name 'libstdc++.so.6' -type f | head -1 | xargs dirname)",
+    "echo 'export LD_LIBRARY_PATH=$LIBPATH:$LD_LIBRARY_PATH' >> /env.sh"
+]
+
+# Start command with library path
 [start]
-cmd = "/opt/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "source /env.sh 2>/dev/null || true && LD_LIBRARY_PATH=$(find /nix/store -name 'libstdc++.so.6' -type f | head -1 | xargs dirname):$LD_LIBRARY_PATH /opt/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
 
-# Environment variables to ensure virtual environment is used
+# Environment variables
 [variables]
-# Set Python path to virtual environment site-packages
 PYTHONPATH = "/opt/venv/lib/python3.10/site-packages"
-
-# Mark virtual environment location
 VIRTUAL_ENV = "/opt/venv"
-
-# Prepend virtual environment bin to PATH
 PATH = "/opt/venv/bin:$PATH"
-
-# Ensure Python output is not buffered (important for logs)
 PYTHONUNBUFFERED = "1"
-
-# Set production environment
 ENVIRONMENT = "production"
+# Set library path to include Nix store libraries
+LD_LIBRARY_PATH = "/nix/store/*/lib:/usr/lib:/lib"
