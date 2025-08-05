@@ -1,4 +1,4 @@
-# 🏀 NBA AI/ML Prediction Platform
+# NBA AI/ML Prediction Platform
 
 <div align="center">
 
@@ -16,22 +16,22 @@
 
 ---
 
-## 🚀 Overview
+## Overview
 
 The NBA AI/ML Prediction Platform is a cutting-edge system that leverages machine learning to predict NBA player performance metrics. Built with production-grade architecture, it features real-time predictions, A/B testing capabilities, and enterprise-ready scalability.
 
-### 🎯 Key Features
+### Key Features
 
-- **🤖 Advanced ML Models**: Ensemble learning with Random Forest, XGBoost, and LightGBM
-- **⚡ Real-time API**: FastAPI backend with sub-100ms response times
-- **📊 Interactive Dashboard**: Modern Next.js frontend with real-time visualizations
-- **🧪 A/B Testing**: Built-in experimentation framework for model comparison
-- **🔄 Auto-scaling**: Containerized deployment with Railway's automatic scaling
-- **📈 Performance Monitoring**: Prometheus metrics and health checks
-- **🎨 Explainable AI**: SHAP-based model interpretability
-- **🔐 Enterprise Security**: API key authentication and rate limiting
+- **Advanced ML Models**: Ensemble learning with Random Forest, XGBoost, and LightGBM
+- **Real-time API**: FastAPI backend with sub-100ms response times
+- **Interactive Dashboard**: Modern Next.js frontend with real-time visualizations
+- **A/B Testing**: Built-in experimentation framework for model comparison
+- **Auto-scaling**: Containerized deployment with Railway's automatic scaling
+- **Performance Monitoring**: Prometheus metrics and health checks
+- **Explainable AI**: SHAP-based model interpretability
+- **Enterprise Security**: API key authentication and rate limiting
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TB
@@ -63,7 +63,7 @@ graph TB
     G --> L
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 <table>
 <tr>
@@ -95,11 +95,11 @@ graph TB
 </tr>
 </table>
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 nba-ai-ml/
-├── 🔧 api/                      # FastAPI Backend
+├── api/                      # FastAPI Backend
 │   ├── main.py                  # Application entry point
 │   ├── endpoints/               # REST API endpoints
 │   │   ├── predictions.py       # Player prediction endpoints
@@ -116,7 +116,7 @@ nba-ai-ml/
 │       ├── billing.py          # Usage tracking
 │       └── telemetry.py        # Analytics
 │
-├── 🧠 ml/                      # Machine Learning Core
+├── ml/                      # Machine Learning Core
 │   ├── models/                 # Model implementations
 │   │   └── ensemble.py         # Ensemble methods
 │   ├── training/               # Training pipelines
@@ -127,7 +127,7 @@ nba-ai-ml/
 │   └── features/               # Feature engineering
 │       └── feature_pipeline.py # Feature transformations
 │
-├── 🎨 frontend/                # Next.js Frontend
+├── frontend/                # Next.js Frontend
 │   ├── app/                    # App router pages
 │   │   ├── page.tsx           # Home page
 │   │   └── predictions/       # Predictions UI
@@ -136,27 +136,27 @@ nba-ai-ml/
 │   └── lib/                  # Utilities
 │       └── api-client.ts     # API integration
 │
-├── 📊 database/               # Database Layer
+├── database/               # Database Layer
 │   ├── models.py             # SQLAlchemy models
 │   ├── alembic/              # Database migrations
 │   └── connection.py         # Connection pooling
 │
-├── 🚀 scripts/               # Automation Scripts
+├── scripts/               # Automation Scripts
 │   ├── train_models.py       # Model training
 │   ├── collect_data.py       # Data collection
 │   └── deploy_check.py       # Deployment validation
 │
-├── 📦 models/                # Trained Models
+├── models/                # Trained Models
 │   ├── rf_points_model.pkl   # Points prediction
 │   ├── rf_rebounds_model.pkl # Rebounds prediction
 │   └── rf_assists_model.pkl  # Assists prediction
 │
-└── 📝 docs/                  # Documentation
+└── docs/                  # Documentation
     ├── architecture.md       # System design
     └── api_reference.md      # API documentation
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -165,7 +165,7 @@ nba-ai-ml/
 - Redis (optional for caching)
 - PostgreSQL (optional for persistence)
 
-### 🔧 Installation
+### Installation
 
 1. **Clone the repository**
    ```bash
@@ -214,7 +214,7 @@ nba-ai-ml/
    - API: http://localhost:8000
    - API Docs: http://localhost:8000/docs
 
-## 📡 API Reference
+## API Reference
 
 ### Authentication
 All API requests require an API key in the header:
@@ -224,7 +224,7 @@ X-API-Key: your-api-key-here
 
 ### Core Endpoints
 
-#### 🎯 Player Performance Prediction
+#### Player Performance Prediction
 ```bash
 POST /v1/predict
 Content-Type: application/json
@@ -268,7 +268,7 @@ Content-Type: application/json
 }
 ```
 
-#### 📊 Batch Predictions
+#### Batch Predictions
 ```bash
 POST /v1/predict/batch
 Content-Type: application/json
@@ -289,7 +289,7 @@ Content-Type: application/json
 }
 ```
 
-#### 🧪 A/B Testing
+#### A/B Testing
 ```bash
 POST /v1/experiments/predict
 Content-Type: application/json
@@ -302,12 +302,12 @@ Content-Type: application/json
 }
 ```
 
-#### 📈 Historical Performance
+#### Historical Performance
 ```bash
 GET /v1/players/{player_id}/performance?start_date=2024-01-01&end_date=2024-12-31
 ```
 
-#### 🏥 Health Check
+#### Health Check
 ```bash
 GET /health
 
@@ -325,7 +325,7 @@ GET /health
 }
 ```
 
-## 🧠 Machine Learning Models
+## Machine Learning Models
 
 ### Model Architecture
 
@@ -355,7 +355,7 @@ The system uses 50+ engineered features including:
 - **Matchup factors**: Head-to-head history, position matchups
 - **External factors**: Rest days, travel distance, altitude
 
-## 🚀 Deployment
+## Deployment
 
 ### Railway Deployment
 
@@ -408,7 +408,7 @@ SENTRY_DSN=https://...
 PROMETHEUS_ENABLED=true
 ```
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 ### Metrics Exposed
 
@@ -427,7 +427,7 @@ scrape_configs:
     metrics_path: '/metrics'
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run unit tests
@@ -443,7 +443,7 @@ pytest --cov=api --cov=ml tests/
 locust -f tests/performance/locustfile.py
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
@@ -455,37 +455,37 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📈 Roadmap
+## Roadmap
 
 ### Phase 1: Foundation (Current)
-- ✅ Core prediction API
-- ✅ Basic ML models
-- ✅ Frontend dashboard
-- ✅ Railway deployment
+- Core prediction API
+- Basic ML models
+- Frontend dashboard
+- Railway deployment
 
 ### Phase 2: Enhanced ML
-- 🔄 Real-time data ingestion
-- 🔄 Advanced feature engineering
-- 🔄 Deep learning models
-- 🔄 Model explainability dashboard
+- Real-time data ingestion
+- Advanced feature engineering
+- Deep learning models
+- Model explainability dashboard
 
 ### Phase 3: Production Features
-- 📋 User authentication system
-- 📋 Subscription management
-- 📋 Advanced caching strategies
-- 📋 Multi-region deployment
+- User authentication system
+- Subscription management
+- Advanced caching strategies
+- Multi-region deployment
 
 ### Phase 4: Advanced Analytics
-- 📋 Team chemistry analysis
-- 📋 Injury prediction models
-- 📋 Fantasy sports integration
-- 📋 Real-time game simulation
+- Team chemistry analysis
+- Injury prediction models
+- Fantasy sports integration
+- Real-time game simulation
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - NBA Stats API for providing comprehensive basketball data
 - The open-source community for amazing ML libraries
@@ -495,7 +495,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Built with ❤️ by Christopher Bratkovics**
+**Built by Christopher Bratkovics**
 
 [LinkedIn](https://linkedin.com/in/cbratkovics) • [GitHub](https://github.com/cbratkovics) • [Email](mailto:chris@bratkovics.com)
 
