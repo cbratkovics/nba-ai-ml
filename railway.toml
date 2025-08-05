@@ -1,11 +1,11 @@
-# railway.toml - Railway's Python template configuration
+# railway.toml - Corrected to ensure Python is installed first
 
 [build]
 builder = "NIXPACKS"
-buildCommand = "python -m venv /opt/venv && /opt/venv/bin/pip install -r requirements.txt"
+# Remove buildCommand - let Nixpacks handle the build process
 
 [deploy]
-startCommand = "/opt/venv/bin/python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 healthcheckPath = "/health"
