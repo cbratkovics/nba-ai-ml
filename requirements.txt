@@ -62,3 +62,8 @@ scipy==1.11.4   # Often required by sklearn
 shap==0.44.0    # For model explainability
 stripe==7.8.0   # Payment processing
 tqdm==4.66.1    # Progress bars
+asyncpg==0.29.0  # PostgreSQL driver for asyncio
+apscheduler==3.10.4  # Advanced Python Scheduler
+aiohttp==3.9.1  # Async HTTP client/server
+supabase==2.0.3  # Supabase Python client
+websockets==12.0  # WebSocket implementation

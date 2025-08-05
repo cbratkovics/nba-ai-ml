@@ -54,9 +54,29 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("No DATABASE_URL set - some features may be limited")
     
+    # Initialize optimizations
+    if os.getenv("ENABLE_MONITORING", "true").lower() == "true":
+        from api.optimization.railway_optimizer import initialize_optimizer
+        from api.monitoring.performance import collect_metrics_loop
+        
+        try:
+            await initialize_optimizer()
+            logger.info("Railway optimizer initialized")
+            
+            # Start performance monitoring
+            asyncio.create_task(collect_metrics_loop())
+            logger.info("Performance monitoring started")
+        except Exception as e:
+            logger.error(f"Failed to initialize optimizations: {e}")
+    
     yield
     # Shutdown
     logger.info("Shutting down NBA AI/ML Prediction API...")
+    
+    # Cleanup
+    from api.optimization.railway_optimizer import optimizer
+    if optimizer._initialized:
+        await optimizer.cleanup()
 
 # Create FastAPI app
 app = FastAPI(
@@ -93,6 +113,10 @@ app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(players.router, prefix="/v1", tags=["players"])
 app.include_router(experiments_v2.router, prefix="/v2", tags=["experiments-v2"])
 
+# Import and include dashboard router
+from api.endpoints import dashboard
+app.include_router(dashboard.router, tags=["dashboard"])
+
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
@@ -125,6 +149,16 @@ async def add_process_time_header(request: Request, call_next):
     # Log slow requests
     if process_time > 1.0:
         logger.warning(f"Slow request: {request.url.path} took {process_time:.2f}s")
+    
+    # Track performance metrics
+    if os.getenv("ENABLE_MONITORING", "true").lower() == "true":
+        from api.monitoring.performance import performance_monitor
+        performance_monitor.track_request(
+            endpoint=str(request.url.path),
+            method=request.method,
+            duration_ms=process_time * 1000,
+            status_code=response.status_code
+        )
     
     return response
 
