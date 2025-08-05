@@ -25,8 +25,5 @@ COPY . .
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Expose the port (optional, for documentation)
-EXPOSE 8000
-
-# Run the application with proper PORT expansion
-CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Use the Python startup script
+CMD ["python", "start.py"]
