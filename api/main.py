@@ -54,6 +54,29 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("No DATABASE_URL set - some features may be limited")
     
+    # Validate required environment variables
+    missing_vars = []
+    
+    if not os.getenv("DATABASE_URL"):
+        missing_vars.append("DATABASE_URL")
+    
+    if missing_vars:
+        logger.error("⚠️  Missing required environment variables:")
+        for var in missing_vars:
+            logger.error(f"   - {var}")
+        logger.error("Please configure these in Railway dashboard -> Variables")
+        logger.error("The API will start but database operations will fail!")
+    else:
+        logger.info("✅ All required environment variables are set")
+        
+        # Test database connection
+        from database.connection import test_db_connection
+        db_ok, db_msg = test_db_connection()
+        if db_ok:
+            logger.info(f"✅ {db_msg}")
+        else:
+            logger.error(f"⚠️  {db_msg}")
+    
     # Initialize optimizations
     if os.getenv("ENABLE_MONITORING", "true").lower() == "true":
         from api.optimization.railway_optimizer import initialize_optimizer
