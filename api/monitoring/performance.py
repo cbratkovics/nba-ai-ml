@@ -11,9 +11,16 @@ import psutil
 import os
 from functools import wraps
 from api.optimization.railway_optimizer import get_optimizer
-from api.db.connection_pool import get_db_pool
 
 logger = logging.getLogger(__name__)
+
+# Safe import with fallback
+try:
+    from api.db.connection_pool import get_db_pool
+    db_pool = get_db_pool()
+except ImportError:
+    logger.warning("Database pool not available for metrics")
+    db_pool = None
 
 
 class PerformanceMonitor:
@@ -135,8 +142,10 @@ class PerformanceMonitor:
     async def get_pool_stats(self) -> Dict[str, Any]:
         """Get database connection pool statistics"""
         try:
-            pool = await get_db_pool()
-            return await pool.get_pool_stats()
+            if db_pool:
+                return await db_pool.health_check()
+            else:
+                return {}
         except Exception as e:
             logger.error(f"Error getting pool stats: {e}")
             return {}

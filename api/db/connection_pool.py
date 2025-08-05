@@ -1,18 +1,27 @@
 """
 Production-grade database connection pool with async support
 """
+import socket
+import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 from sqlalchemy import event, pool
 import asyncpg
 import asyncio
 import logging
-import os
 from typing import Optional, AsyncGenerator
 from contextlib import asynccontextmanager
 import time
 
 logger = logging.getLogger(__name__)
+
+# Force IPv4 for Railway deployment
+if os.getenv("ENVIRONMENT") == "production":
+    original_getaddrinfo = socket.getaddrinfo
+    def force_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+        return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    socket.getaddrinfo = force_ipv4
+    logger.info("Forcing IPv4 in connection pool for Railway")
 
 
 class DatabasePool:
@@ -233,6 +242,10 @@ class DatabasePool:
 
 # Global database pool instance
 db_pool = DatabasePool()
+
+def get_db_pool():
+    """Get the database connection pool instance"""
+    return db_pool
 
 
 async def init_database_pool():

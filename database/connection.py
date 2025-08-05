@@ -1,4 +1,5 @@
 import os
+import socket
 import urllib.parse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -8,6 +9,17 @@ from contextlib import asynccontextmanager
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Force IPv4 for Railway deployment
+original_getaddrinfo = socket.getaddrinfo
+
+def force_ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
+# Apply IPv4 forcing in production
+if os.getenv("ENVIRONMENT") == "production":
+    socket.getaddrinfo = force_ipv4_getaddrinfo
+    logger.info("Forcing IPv4 connections for Railway deployment")
 
 def get_database_url():
     """Get properly formatted database URL with encoded special characters"""
@@ -54,8 +66,21 @@ except Exception as e:
 
 # Async engine for async operations
 async_database_url = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
+
+# Add connection parameters for Railway
+if "?" not in async_database_url:
+    async_database_url += "?server_settings={'jit': 'off'}"
+
 try:
-    async_engine = create_async_engine(async_database_url, pool_pre_ping=True)
+    async_engine = create_async_engine(
+        async_database_url, 
+        pool_pre_ping=True,
+        connect_args={
+            "server_settings": {"jit": "off"},
+            "timeout": 10,
+            "command_timeout": 10,
+        } if os.getenv("ENVIRONMENT") == "production" else {}
+    )
     AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 except Exception as e:
     logger.error(f"Failed to create async engine: {e}")
