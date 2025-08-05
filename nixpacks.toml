@@ -1,0 +1,25 @@
+# nixpacks.toml - Explicit Python configuration for Railway deployment
+
+# Setup phase: Install Python and build dependencies
+[phases.setup]
+nixPkgs = ["python310", "python310Packages.pip", "gcc", "postgresql"]
+aptPkgs = ["libpq-dev"]  # For psycopg2
+
+# Install phase: Install Python dependencies
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+    "python -m venv /opt/venv",
+    ". /opt/venv/bin/activate && pip install --upgrade pip",
+    ". /opt/venv/bin/activate && pip install -r requirements.txt"
+]
+
+# Environment variables for runtime
+[variables]
+VIRTUAL_ENV = "/opt/venv"
+PATH = "/opt/venv/bin:$PATH"
+PYTHONUNBUFFERED = "1"
+
+# Start command
+[start]
+cmd = ". /opt/venv/bin/activate && uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
