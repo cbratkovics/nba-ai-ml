@@ -14,7 +14,7 @@
 
 **Production-grade machine learning platform for NBA player performance prediction with real-time monitoring, A/B testing, and enterprise MLOps capabilities**
 
-[🚀 Live Demo](https://nba-ml-frontend.vercel.app) • [📊 API Dashboard](https://nba-ai-ml-production.up.railway.app/docs) • [📖 Documentation](#api-reference)
+[Live Demo](https://nba-ai-ml.vercel.app/) • [API Dashboard](https://nba-ai-ml.vercel.app/) • [Documentation](#api-reference)
 
 <img width="100%" alt="Dashboard Preview" src="https://via.placeholder.com/1200x600/0a0a0f/8b5cf6?text=NBA+ML+Platform+Dashboard">
 
@@ -22,7 +22,7 @@
 
 ---
 
-## 🎯 Executive Summary
+## Executive Summary
 
 A sophisticated end-to-end machine learning platform that demonstrates production ML engineering excellence through:
 
@@ -32,7 +32,7 @@ A sophisticated end-to-end machine learning platform that demonstrates productio
 - **Real-time MLOps monitoring** with drift detection and automated retraining
 - **Enterprise-grade architecture** with microservices, event-driven processing, and horizontal scaling
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TB
@@ -73,37 +73,37 @@ graph TB
     K --> S
 ```
 
-## 🚀 Key Features
+## Key Features
 
-### 🤖 Advanced Machine Learning
+### Advanced Machine Learning
 - **Ensemble Learning**: Combines XGBoost (weight: 0.4), LightGBM (0.35), and Random Forest (0.25)
 - **Feature Engineering**: 50+ engineered features including rolling averages, opponent analysis, and contextual factors
 - **Model Versioning**: Git-like version control for models with automatic rollback capabilities
 - **A/B Testing Framework**: Statistical significance testing with Bayesian inference
 - **Explainable AI**: SHAP-based feature importance and prediction explanations
 
-### 📊 Professional MLOps Dashboard
+### Professional MLOps Dashboard
 - **Real-time Metrics**: Live model accuracy, drift detection, and performance monitoring
 - **Infrastructure Health**: Service status monitoring with CPU/memory visualization
 - **Prediction Interface**: Confidence intervals, ensemble voting visualization, and feature importance
 - **Interactive Charts**: Time series analysis, latency distribution, and model comparison matrices
 - **Glassmorphism UI**: Modern dark theme with animated gradients and smooth transitions
 
-### ⚡ High-Performance API
+### High-Performance API
 - **Sub-100ms Latency**: Optimized model serving with Redis caching
 - **Horizontal Scaling**: Auto-scaling on Railway based on load
 - **Async Processing**: FastAPI with async/await for concurrent requests
 - **Rate Limiting**: Token bucket algorithm for fair resource allocation
 - **Health Monitoring**: Comprehensive health checks with automatic recovery
 
-### 🔒 Enterprise Security
+### Enterprise Security
 - **Multi-layer Authentication**: API keys, JWT tokens, and OAuth2 support
 - **Input Validation**: Pydantic models with strict type checking
 - **SQL Injection Prevention**: Parameterized queries with SQLAlchemy ORM
 - **Secrets Management**: Environment-based configuration with encrypted storage
 - **Audit Logging**: Complete request/response logging for compliance
 
-## 💻 Technology Stack
+## Technology Stack
 
 <table>
 <tr>
@@ -172,7 +172,7 @@ graph TB
 </tr>
 </table>
 
-## 📈 Performance Metrics
+## Performance Metrics
 
 ### Model Performance
 | Metric | Points | Rebounds | Assists | Overall |
@@ -263,7 +263,7 @@ redis-server
 - API Docs: http://localhost:8000/docs
 - Health Check: http://localhost:8000/health
 
-## 📚 API Reference
+## API Reference
 
 ### Authentication
 ```http
@@ -274,7 +274,7 @@ Content-Type: application/json
 
 ### Core Endpoints
 
-#### 🎯 Single Prediction
+#### Single Prediction
 ```http
 POST /v1/predict
 ```
@@ -321,27 +321,27 @@ POST /v1/predict
 ```
 </details>
 
-#### 📊 Batch Predictions
+#### Batch Predictions
 ```http
 POST /v1/predict/batch
 ```
 
-#### 🧪 A/B Testing
+#### A/B Testing
 ```http
 POST /v1/experiments/predict
 ```
 
-#### 📈 Model Performance
+#### Model Performance
 ```http
 GET /v1/models/performance?days=30
 ```
 
-#### 🏥 Health Check
+#### Health Check
 ```http
 GET /health/detailed
 ```
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ```bash
 # Unit tests (87% coverage)
@@ -357,7 +357,7 @@ locust -f tests/load/locustfile.py --users 100 --spawn-rate 10
 npm run test:e2e
 ```
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 ### Metrics Collected
 - **Model Metrics**: Accuracy, drift, feature importance shifts
@@ -372,7 +372,7 @@ npm run test:e2e
 - Error rate exceeds 1%
 - Memory usage exceeds 80%
 
-## 🚢 Deployment
+## Deployment
 
 ### Railway (Production)
 ```bash
@@ -395,33 +395,14 @@ docker build -t nba-ml:latest .
 docker run -p 8000:8000 --env-file .env nba-ml:latest
 ```
 
-## 🗺️ Roadmap
+## Next Steps
 
-### ✅ Phase 1: Foundation (Completed)
-- Core prediction API with ensemble models
-- Professional MLOps dashboard
-- Real-time monitoring
-- Railway deployment
-
-### 🚧 Phase 2: Advanced ML (In Progress)
 - Deep learning models (LSTM for sequences)
 - Real-time data streaming
 - Advanced feature store
 - AutoML capabilities
 
-### 📅 Phase 3: Enterprise Features (Q2 2024)
-- Multi-tenancy support
-- Advanced caching strategies
-- GraphQL API
-- Kubernetes deployment
-
-### 🔮 Phase 4: AI Innovation (Q3 2024)
-- GPT-powered insights
-- Computer vision for game analysis
-- Reinforcement learning for strategy
-- Mobile applications
-
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -434,11 +415,11 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 5. Open Pull Request
 ```
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **NBA Stats API** for comprehensive basketball data
 - **scikit-learn, XGBoost, LightGBM** communities for amazing ML tools
@@ -449,11 +430,10 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 <div align="center">
 
-### 👨‍💻 Built with passion by Christopher Bratkovics
+### Built with passion by Christopher Bratkovics
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/cbratkovics)
 [![GitHub](https://img.shields.io/badge/GitHub-Follow-181717?style=for-the-badge&logo=github)](https://github.com/cbratkovics)
-[![Email](https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail)](mailto:chris@bratkovics.com)
 
 **⭐ Star this repository if you find it useful!**
 
