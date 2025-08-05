@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import MetricsGrid from '@/components/dashboard/MetricsGrid'
 import PredictionInterface from '@/components/dashboard/PredictionInterface'
+import InfrastructureHealth from '@/components/dashboard/InfrastructureHealth'
 import { Toaster } from 'react-hot-toast'
 import { 
   Brain, 
@@ -195,6 +196,11 @@ export default function Home() {
       {/* Prediction Interface */}
       <section className="container mx-auto px-6 py-12">
         <PredictionInterface />
+      </section>
+
+      {/* Infrastructure Health */}
+      <section className="container mx-auto px-6 py-12">
+        <InfrastructureHealth />
       </section>
 
       {/* Tech Stack */}
