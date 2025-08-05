@@ -1,0 +1,17 @@
+# nixpacks.toml - Explicit Python installation
+
+# Tell Nixpacks this is a Python project
+providers = ["python"]
+
+# Ensure Python 3.10 is used
+[phases.setup]
+nixpkgs = ["python310", "python310Packages.pip"]
+
+# Install dependencies using the correct Python/pip path
+[phases.install]
+dependsOn = ["setup"]
+cmds = ["python3.10 -m pip install -r requirements.txt"]
+
+# Start command using Python 3.10
+[start]
+cmd = "python3.10 -m uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
