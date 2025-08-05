@@ -1,7 +1,7 @@
 """
 FastAPI application for NBA prediction service
 """
-from fastapi import FastAPI, Depends, HTTPException, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -13,7 +13,7 @@ from typing import Optional
 import logging
 
 from api.models import PredictionRequest, PredictionResponse, ExperimentResponse, InsightResponse
-from api.endpoints import predictions, experiments, health, players
+from api.endpoints import predictions, experiments, health, players, experiments_v2
 from api.middleware.auth import verify_api_key
 from api.middleware.rate_limiting import RateLimiter
 
@@ -91,6 +91,7 @@ app.include_router(predictions.router, prefix="/v1", tags=["predictions"])
 app.include_router(experiments.router, prefix="/v1", tags=["experiments"])
 app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(players.router, prefix="/v1", tags=["players"])
+app.include_router(experiments_v2.router, prefix="/v2", tags=["experiments-v2"])
 
 @app.get("/")
 async def root():
@@ -153,6 +154,40 @@ async def general_exception_handler(request: Request, exc: Exception):
             "timestamp": datetime.now().isoformat()
         }
     )
+
+
+# WebSocket endpoint for real-time updates
+@app.websocket("/ws/live")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for live game updates"""
+    from api.streaming.game_monitor import GameMonitor, websocket_endpoint as ws_handler
+    
+    # Create game monitor instance
+    monitor = GameMonitor()
+    
+    # Start monitoring if not already running
+    await monitor.start_monitoring()
+    
+    # Handle WebSocket connection
+    await ws_handler(websocket, monitor)
+
+
+# Demo showcase endpoints
+@app.get("/demo/tonight")
+async def demo_tonight_predictions():
+    """Demo endpoint: Predict tonight's games"""
+    from api.demo.showcase import ShowcaseDemo
+    demo = ShowcaseDemo()
+    return await demo.predict_tonights_games()
+
+
+@app.get("/demo/metrics")
+async def demo_platform_metrics():
+    """Demo endpoint: Show impressive platform metrics"""
+    from api.demo.showcase import ShowcaseDemo
+    demo = ShowcaseDemo()
+    return await demo.generate_impressive_metrics()
+
 
 if __name__ == "__main__":
     # Run with uvicorn for development
