@@ -41,20 +41,35 @@ class RailwayOptimizer:
         if self._initialized:
             return
         
-        try:
-            # Initialize Redis connection pool
-            if self.redis_url:
+        # Initialize Redis connection pool (don't fail if Redis is unavailable)
+        if self.redis_url:
+            try:
                 self.redis_pool = redis.ConnectionPool.from_url(
                     self.redis_url,
                     max_connections=self.redis_pool_size,
-                    decode_responses=True
+                    decode_responses=True,
+                    socket_connect_timeout=5,
+                    socket_timeout=5
                 )
+                # Test connection
+                test_client = redis.Redis(connection_pool=self.redis_pool)
+                test_client.ping()
                 logger.info(f"Redis pool initialized with {self.redis_pool_size} connections")
-            
-            # Initialize PostgreSQL connection pool
-            if self.database_url:
+            except Exception as e:
+                logger.warning(f"Redis initialization failed: {e}")
+                logger.info("Continuing without Redis caching")
+                self.redis_pool = None
+        
+        # Initialize PostgreSQL connection pool
+        if self.database_url:
+            try:
+                # Convert to asyncpg format if needed
+                db_url = self.database_url
+                if db_url.startswith("postgresql://"):
+                    db_url = db_url.replace("postgresql://", "postgres://")
+                
                 self.db_pool = await asyncpg.create_pool(
-                    self.database_url,
+                    db_url,
                     min_size=5,
                     max_size=self.db_pool_size,
                     max_queries=50000,
@@ -62,15 +77,14 @@ class RailwayOptimizer:
                     command_timeout=60
                 )
                 logger.info(f"Database pool initialized with {self.db_pool_size} connections")
-            
-            self._initialized = True
-            
-            # Log memory usage
-            self._log_memory_usage("After initialization")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize optimizer: {e}")
-            raise
+            except Exception as e:
+                logger.error(f"Database pool initialization failed: {e}")
+                self.db_pool = None
+        
+        self._initialized = True
+        
+        # Log memory usage
+        self._log_memory_usage("After initialization")
     
     async def cleanup(self):
         """Cleanup connections"""
@@ -82,11 +96,15 @@ class RailwayOptimizer:
             self.redis_pool.disconnect()
             logger.info("Redis pool closed")
     
-    def get_redis_client(self) -> redis.Redis:
-        """Get Redis client from pool"""
+    def get_redis_client(self) -> Optional[redis.Redis]:
+        """Get Redis client from pool, returns None if Redis unavailable"""
         if not self.redis_pool:
-            raise RuntimeError("Redis pool not initialized")
-        return redis.Redis(connection_pool=self.redis_pool)
+            return None
+        try:
+            return redis.Redis(connection_pool=self.redis_pool)
+        except Exception as e:
+            logger.warning(f"Failed to get Redis client: {e}")
+            return None
     
     @asynccontextmanager
     async def get_db_connection(self):

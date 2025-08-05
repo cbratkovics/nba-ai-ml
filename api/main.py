@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from contextlib import asynccontextmanager
 import uvicorn
+import asyncio
 import os
 from datetime import datetime
 from typing import Optional
@@ -101,13 +102,27 @@ async def lifespan(app: FastAPI):
     if optimizer._initialized:
         await optimizer.cleanup()
 
-# Create FastAPI app
+# Create FastAPI app WITHOUT redirect_slashes to prevent 307 redirects
 app = FastAPI(
     title="NBA AI/ML Prediction API",
     description="Production-grade NBA player performance prediction system",
     version="2.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False  # Prevents 307 redirects on health checks
 )
+
+# Register health endpoint DIRECTLY on app (not via router) to ensure it works
+@app.get("/health")
+async def health_check():
+    """Railway health check - must return 200 OK without redirects"""
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": "nba-ai-ml"
+        }
+    )
 
 # Configure CORS
 app.add_middleware(

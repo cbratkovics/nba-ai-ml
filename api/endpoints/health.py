@@ -1,13 +1,13 @@
 """
 Production health check endpoints with comprehensive monitoring
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from datetime import datetime
 from sqlalchemy import text
 from typing import Dict, Any
 import redis
 import psutil
-import aioredis
 import os
 import logging
 import time
@@ -22,11 +22,14 @@ router = APIRouter()
 @router.get("/")
 async def simple_health_check():
     """Simple health check endpoint for Railway - returns 200 OK"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "version": os.getenv("MODEL_VERSION", "2.1.0")
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "version": os.getenv("MODEL_VERSION", "2.1.0")
+        }
+    )
 
 
 @router.get("/status")
@@ -127,29 +130,25 @@ async def detailed_health_check() -> Dict[str, Any]:
     if redis_url:
         try:
             redis_start = time.time()
-            # Try async redis first
+            # Try sync redis (more reliable)
             try:
-                redis_client = await aioredis.from_url(redis_url)
-                await redis_client.ping()
-                info = await redis_client.info()
-                await redis_client.close()
-                
-                health_status["components"]["redis"] = {
-                    "status": "healthy",
-                    "response_time_ms": round((time.time() - redis_start) * 1000, 2),
-                    "version": info.get("redis_version", "unknown"),
-                    "used_memory_mb": round(info.get("used_memory", 0) / 1024 / 1024, 2),
-                    "connected_clients": info.get("connected_clients", 0)
-                }
-            except:
-                # Fallback to sync redis
-                redis_client = redis.from_url(redis_url)
+                redis_client = redis.from_url(
+                    redis_url, 
+                    socket_connect_timeout=5,
+                    socket_timeout=5
+                )
                 redis_client.ping()
                 redis_time = (time.time() - redis_start) * 1000
                 
                 health_status["components"]["redis"] = {
                     "status": "healthy",
                     "response_time_ms": round(redis_time, 2)
+                }
+            except Exception as e:
+                logger.warning(f"Redis health check failed: {e}")
+                health_status["components"]["redis"] = {
+                    "status": "unhealthy",
+                    "error": str(e)[:200]
                 }
         except Exception as e:
             health_status["components"]["redis"] = {
