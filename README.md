@@ -13,8 +13,6 @@
 
 **Production-grade machine learning platform for NBA player performance prediction with comprehensive feature engineering and MLOps capabilities**
 
-[GitHub](https://github.com/cbratkovics/nba-ai-ml) 
-
 </div>
 
 ---
