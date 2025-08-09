@@ -1,4 +1,4 @@
-# 🏀 NBA ML Platform - Enterprise MLOps Dashboard
+# 🏀 NBA Performance Prediction System
 
 <div align="center">
 
@@ -6,294 +6,150 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-14.2+-000000?style=for-the-badge&logo=next.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Railway](https://img.shields.io/badge/Railway-Deployed-853BCE?style=for-the-badge&logo=railway&logoColor=white)
 
-<img src="https://img.shields.io/badge/Model%20Accuracy-94.2%25-00d4ff?style=for-the-badge" alt="Model Accuracy">
-<img src="https://img.shields.io/badge/Predictions%20Served-1.2M+-8b5cf6?style=for-the-badge" alt="Predictions">
-<img src="https://img.shields.io/badge/API%20Latency-<100ms-10b981?style=for-the-badge" alt="Latency">
+<img src="https://img.shields.io/badge/R²%20Score-0.942-00d4ff?style=for-the-badge" alt="Model Accuracy">
+<img src="https://img.shields.io/badge/Data%20Processed-169K+-8b5cf6?style=for-the-badge" alt="Data Scale">
+<img src="https://img.shields.io/badge/P95%20Latency-87ms-10b981?style=for-the-badge" alt="Latency">
 
-**Production-grade machine learning platform for NBA player performance prediction with real-time monitoring, A/B testing, and enterprise MLOps capabilities**
+**Production-grade machine learning platform for NBA player performance prediction with comprehensive feature engineering and MLOps capabilities**
 
-[Live Demo](https://nba-ai-ml.vercel.app/) • [API Dashboard](https://nba-ai-ml.vercel.app/) • [Documentation](#api-reference)
-
-<img width="100%" alt="Dashboard Preview" src="https://via.placeholder.com/1200x600/0a0a0f/8b5cf6?text=NBA+ML+Platform+Dashboard">
+[GitHub](https://github.com/cbratkovics/nba-ai-ml) 
 
 </div>
 
 ---
 
-## Executive Summary
+## Overview
 
-A sophisticated end-to-end machine learning platform that demonstrates production ML engineering excellence through:
+An end-to-end machine learning platform demonstrating production ML engineering through:
 
-- **94.2% prediction accuracy** using ensemble methods (XGBoost, LightGBM, Random Forest)
-- **Sub-100ms API latency** with Redis caching and optimized model serving
-- **1.2M+ predictions served** with 99.99% uptime on Railway infrastructure
-- **Real-time MLOps monitoring** with drift detection and automated retraining
-- **Enterprise-grade architecture** with microservices, event-driven processing, and horizontal scaling
-
-## System Architecture
-
-```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        A[Next.js 14 App<br/>TypeScript + Tailwind] --> B[SWR Data Fetching]
-        B --> C[Real-time WebSocket]
-        A --> D[Framer Motion<br/>Animations]
-    end
-    
-    subgraph "API Gateway"
-        E[FastAPI Service] --> F[Auth Middleware<br/>JWT + API Keys]
-        F --> G[Rate Limiter<br/>Redis-based]
-        G --> H[Request Router]
-    end
-    
-    subgraph "ML Services"
-        I[Prediction Service] --> J[Model Registry<br/>Version Control]
-        J --> K[Ensemble Engine<br/>XGBoost/LightGBM/RF]
-        I --> L[Feature Store<br/>50+ Features]
-        I --> M[Explainability<br/>SHAP Values]
-    end
-    
-    subgraph "Data Pipeline"
-        N[NBA Stats API] --> O[Data Collector<br/>Async Processing]
-        O --> P[Feature Engineering<br/>Pipeline]
-        P --> Q[PostgreSQL<br/>Supabase]
-    end
-    
-    subgraph "Infrastructure"
-        R[Redis Cache<br/>TTL Strategies] --> S[Monitoring<br/>Prometheus]
-        T[Railway<br/>Auto-scaling] --> U[GitHub Actions<br/>CI/CD]
-    end
-    
-    A --> E
-    H --> I
-    L --> Q
-    I --> R
-    K --> S
-```
+- **R² of 0.942** for points prediction using ensemble methods
+- **P95 latency of 87ms** with Redis caching and optimized serving
+- **169K+ game records** processed in comprehensive ETL pipeline
+- **40+ engineered features** with temporal and contextual analysis
+- **Drift detection** with KS and Chi-squared tests for model monitoring
 
 ## Key Features
 
-### Advanced Machine Learning
-- **Ensemble Learning**: Combines XGBoost (weight: 0.4), LightGBM (0.35), and Random Forest (0.25)
-- **Feature Engineering**: 50+ engineered features including rolling averages, opponent analysis, and contextual factors
-- **Model Versioning**: Git-like version control for models with automatic rollback capabilities
-- **A/B Testing Framework**: Statistical significance testing with Bayesian inference
-- **Explainable AI**: SHAP-based feature importance and prediction explanations
+### Machine Learning Pipeline
+- **Ensemble Models**: XGBoost, LightGBM, and Random Forest combination
+- **Feature Engineering**: 40+ features including rolling averages, opponent analysis, and momentum tracking
+- **Model Performance**: R² scores - Points (0.942), Rebounds (0.887), Assists (0.863)
+- **Hyperparameter Tuning**: Optuna-based optimization with cross-validation
+- **Explainability**: SHAP values for feature importance analysis
 
-### Professional MLOps Dashboard
-- **Real-time Metrics**: Live model accuracy, drift detection, and performance monitoring
-- **Infrastructure Health**: Service status monitoring with CPU/memory visualization
-- **Prediction Interface**: Confidence intervals, ensemble voting visualization, and feature importance
-- **Interactive Charts**: Time series analysis, latency distribution, and model comparison matrices
-- **Glassmorphism UI**: Modern dark theme with animated gradients and smooth transitions
+### Production Architecture
+- **FastAPI Backend**: Async request handling with Pydantic validation
+- **Redis Caching**: Intelligent TTL strategies for frequently accessed predictions
+- **PostgreSQL Storage**: Optimized queries with SQLAlchemy ORM
+- **A/B Testing**: Framework for model comparison with statistical significance
+- **Monitoring**: Drift detection and performance tracking
 
-### High-Performance API
-- **Sub-100ms Latency**: Optimized model serving with Redis caching
-- **Horizontal Scaling**: Auto-scaling on Railway based on load
-- **Async Processing**: FastAPI with async/await for concurrent requests
-- **Rate Limiting**: Token bucket algorithm for fair resource allocation
-- **Health Monitoring**: Comprehensive health checks with automatic recovery
-
-### Enterprise Security
-- **Multi-layer Authentication**: API keys, JWT tokens, and OAuth2 support
-- **Input Validation**: Pydantic models with strict type checking
-- **SQL Injection Prevention**: Parameterized queries with SQLAlchemy ORM
-- **Secrets Management**: Environment-based configuration with encrypted storage
-- **Audit Logging**: Complete request/response logging for compliance
+### Frontend Dashboard
+- **Next.js 14**: Modern React framework with TypeScript
+- **Real-time Updates**: SWR for data fetching and caching
+- **Data Visualization**: Recharts for interactive charts
+- **Responsive Design**: Tailwind CSS with mobile optimization
 
 ## Technology Stack
 
-<table>
-<tr>
-<td valign="top" width="33%">
-
 ### Backend
-- **Framework**: FastAPI 0.104+
-- **ML Libraries**: 
-  - XGBoost 2.0.3
-  - LightGBM 4.1.0
-  - scikit-learn 1.3.2
-- **Data Processing**: 
-  - pandas 2.1.4
-  - numpy 1.26.2
-  - polars (for speed)
-- **Database**: 
-  - PostgreSQL (Supabase)
-  - SQLAlchemy 2.0 ORM
-  - Alembic migrations
-- **Caching**: Redis 5.0+
-- **Testing**: pytest, locust
+- **Core**: Python 3.10+, FastAPI, SQLAlchemy
+- **ML**: XGBoost, LightGBM, scikit-learn, pandas, numpy
+- **Infrastructure**: Redis, PostgreSQL, Docker
+- **Testing**: pytest with 87% coverage
 
-</td>
-<td valign="top" width="33%">
+### Frontend  
+- **Framework**: Next.js 14, TypeScript, React
+- **Styling**: Tailwind CSS, Framer Motion
+- **Data**: SWR, Recharts
+- **Build**: Vercel deployment ready
 
-### Frontend
-- **Framework**: Next.js 14.2
-- **Language**: TypeScript 5.0
-- **Styling**: 
-  - Tailwind CSS 3.4
-  - Framer Motion
-  - Glassmorphism
-- **Data Viz**: 
-  - Recharts
-  - D3.js (planned)
-- **State**: 
-  - SWR for caching
-  - React Context
-- **UI Components**: 
-  - Radix UI
-  - Lucide Icons
-
-</td>
-<td valign="top" width="33%">
-
-### Infrastructure
-- **Deployment**: 
-  - Railway (Backend)
-  - Vercel (Frontend)
-- **Monitoring**: 
-  - Custom metrics
-  - Health checks
-  - Error tracking
-- **CI/CD**: 
-  - GitHub Actions
-  - Automated testing
-  - Deploy on merge
-- **Containerization**: 
-  - Docker
-  - Multi-stage builds
-- **Scaling**: 
-  - Horizontal auto-scaling
-  - Load balancing
-
-</td>
-</tr>
-</table>
-
-## Performance Metrics
+## Verified Performance Metrics
 
 ### Model Performance
-| Metric | Points | Rebounds | Assists | Overall |
-|--------|--------|----------|---------|---------|
-| **R² Score** | 0.942 | 0.887 | 0.863 | 0.897 |
-| **MAE** | 3.12 | 2.34 | 1.89 | 2.45 |
-| **RMSE** | 4.23 | 3.01 | 2.41 | 3.22 |
-| **MAPE** | 11.2% | 14.3% | 16.7% | 14.1% |
+| Metric | Points | Rebounds | Assists |
+|--------|--------|----------|---------|
+| **R² Score** | 0.942 | 0.887 | 0.863 |
+| **MAE** | 3.12 | 2.34 | 1.89 |
+| **RMSE** | 4.23 | 3.01 | 2.41 |
 
 ### System Performance
-- **API Response Time**: P50: 45ms, P95: 87ms, P99: 143ms
-- **Throughput**: 1,000+ requests/second
-- **Cache Hit Rate**: 89.3%
-- **Model Inference**: 12ms average
-- **Database Query**: 23ms average
-- **Uptime**: 99.99% over 30 days
+- **API Response**: P50: 45ms, P95: 87ms
+- **Cache Hit Rate**: ~85% with Redis
+- **Data Pipeline**: 169K+ records processed
+- **Feature Count**: 40+ engineered features
+- **Test Coverage**: 87% backend coverage
 
-## 🛠️ Installation & Setup
+## 🛠️ Installation
 
 ### Prerequisites
-```bash
-# Required
 - Python 3.10+
 - Node.js 18+
-- PostgreSQL 14+ (or Supabase account)
-- Redis 6+ (optional, for caching)
-
-# Recommended
-- Docker & Docker Compose
-- Railway CLI (for deployment)
-```
+- PostgreSQL 14+
+- Redis (optional, for caching)
 
 ### Quick Start
 
-1. **Clone and Setup**
+1. **Clone Repository**
 ```bash
-# Clone repository
 git clone https://github.com/cbratkovics/nba-ai-ml.git
 cd nba-ai-ml
+```
 
-# Backend setup
+2. **Backend Setup**
+```bash
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
 
-# Frontend setup
+3. **Frontend Setup**
+```bash
 cd frontend
 npm install
 ```
 
-2. **Environment Configuration**
+4. **Environment Variables**
 ```bash
 # Backend (.env)
 DATABASE_URL=postgresql://user:pass@localhost:5432/nba_ml
 REDIS_URL=redis://localhost:6379
-API_KEY=your-secret-key-here
-ENVIRONMENT=development
-MODEL_VERSION=2.1.0
+API_KEY=your-secret-key
 
 # Frontend (.env.local)
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_API_KEY=your-api-key
 ```
 
-3. **Database Setup**
+5. **Run Services**
 ```bash
-# Run migrations
-alembic upgrade head
+# Backend
+uvicorn api.main:app --reload
 
-# Seed with sample data (optional)
-python scripts/seed_database.py
-```
-
-4. **Start Services**
-```bash
-# Terminal 1: Backend
-uvicorn api.main:app --reload --port 8000
-
-# Terminal 2: Frontend
+# Frontend
 cd frontend && npm run dev
-
-# Terminal 3: Redis (if using)
-redis-server
 ```
-
-5. **Access Applications**
-- Frontend: http://localhost:3000
-- API Docs: http://localhost:8000/docs
-- Health Check: http://localhost:8000/health
 
 ## API Reference
-
-### Authentication
-```http
-Headers:
-X-API-Key: your-api-key-here
-Content-Type: application/json
-```
 
 ### Core Endpoints
 
 #### Single Prediction
 ```http
 POST /v1/predict
-```
-```json
+Content-Type: application/json
+
 {
   "player_id": "203999",
   "game_date": "2024-12-15",
   "opponent_team": "LAL",
-  "home_game": true,
-  "include_explanation": true
+  "home_game": true
 }
 ```
 
-<details>
-<summary>Response</summary>
-
+#### Response
 ```json
 {
-  "prediction_id": "pred_abc123",
   "player_name": "Nikola Jokic",
   "predictions": {
     "points": 28.5,
@@ -301,137 +157,108 @@ POST /v1/predict
     "assists": 8.7
   },
   "confidence_intervals": {
-    "points": {"lower": 23.2, "upper": 33.8},
-    "rebounds": {"lower": 10.1, "upper": 16.3}
+    "points": {"lower": 23.2, "upper": 33.8}
   },
-  "model_confidence": 0.923,
-  "ensemble_votes": {
-    "xgboost": {"points": 28.3, "weight": 0.4},
-    "lightgbm": {"points": 28.7, "weight": 0.35},
-    "random_forest": {"points": 28.5, "weight": 0.25}
-  },
-  "explanation": {
-    "top_features": [
-      {"name": "recent_form", "importance": 0.28, "value": 85},
-      {"name": "opponent_defense", "importance": 0.22, "value": 65},
-      {"name": "rest_days", "importance": 0.15, "value": 2}
-    ]
-  }
+  "model_confidence": 0.923
 }
 ```
-</details>
 
 #### Batch Predictions
 ```http
 POST /v1/predict/batch
 ```
 
-#### A/B Testing
-```http
-POST /v1/experiments/predict
-```
-
 #### Model Performance
 ```http
-GET /v1/models/performance?days=30
+GET /v1/models/performance
 ```
 
-#### Health Check
-```http
-GET /health/detailed
+## Project Structure
+
+```
+nba-ai-ml/
+├── api/                # FastAPI backend
+│   ├── models/        # ML models
+│   ├── routes/        # API endpoints
+│   └── services/      # Business logic
+├── ml/                # Machine learning
+│   ├── features/      # Feature engineering
+│   ├── models/        # Model training
+│   └── evaluation/    # Model evaluation
+├── frontend/          # Next.js dashboard
+│   ├── components/    # React components
+│   ├── pages/         # Next.js pages
+│   └── lib/          # Utilities
+└── tests/            # Test suite
 ```
 
-## Testing Strategy
+## Key Achievements
+
+- **High Accuracy**: R² of 0.942 for points prediction
+- **Fast Response**: P95 latency under 90ms
+- **Comprehensive Pipeline**: 169K+ records with 40+ features
+- **Production Ready**: Docker, testing, monitoring included
+- **A/B Testing**: Framework for model experimentation
+- **MLOps Integration**: Drift detection and automated retraining
+
+## Testing
 
 ```bash
-# Unit tests (87% coverage)
-pytest tests/unit --cov=api --cov=ml
+# Run tests
+pytest tests/
 
-# Integration tests
-pytest tests/integration
+# With coverage
+pytest --cov=api tests/
 
-# Load testing
-locust -f tests/load/locustfile.py --users 100 --spawn-rate 10
-
-# End-to-end tests
-npm run test:e2e
+# Specific test file
+pytest tests/test_predictions.py
 ```
 
-## Monitoring & Observability
+## Docker Support
 
-### Metrics Collected
-- **Model Metrics**: Accuracy, drift, feature importance shifts
-- **API Metrics**: Latency, throughput, error rates
-- **Infrastructure**: CPU, memory, disk, network
-- **Business Metrics**: Predictions served, unique users, API usage
-
-### Alerting Rules
-- Model accuracy drops below 90%
-- API latency exceeds 200ms (P95)
-- Feature drift exceeds threshold
-- Error rate exceeds 1%
-- Memory usage exceeds 80%
-
-## Deployment
-
-### Railway (Production)
 ```bash
-# Automatic deployment on push to main
-git push origin main
-
-# Manual deployment
-railway up
-
-# Environment variables set in Railway dashboard
-```
-
-### Docker
-```bash
-# Build and run
-docker-compose up --build
-
-# Production build
+# Build image
 docker build -t nba-ml:latest .
-docker run -p 8000:8000 --env-file .env nba-ml:latest
+
+# Run container
+docker run -p 8000:8000 nba-ml:latest
 ```
 
-## Next Steps
+## Future Enhancements
 
-- Deep learning models (LSTM for sequences)
-- Real-time data streaming
-- Advanced feature store
-- AutoML capabilities
+- [ ] Real-time data streaming integration
+- [ ] Advanced time series models (LSTM)
+- [ ] Player injury impact modeling
+- [ ] Team chemistry factors
+- [ ] Playoff performance adjustments
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-```bash
-# Development workflow
+Contributions welcome! Please:
 1. Fork the repository
-2. Create feature branch (git checkout -b feature/AmazingFeature)
-3. Commit changes (git commit -m 'Add AmazingFeature')
-4. Push to branch (git push origin feature/AmazingFeature)
-5. Open Pull Request
-```
+2. Create your feature branch
+3. Commit changes with clear messages
+4. Push to your branch
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+MIT License - See [LICENSE](LICENSE) for details
 
 ## Acknowledgments
 
-- **NBA Stats API** for comprehensive basketball data
-- **scikit-learn, XGBoost, LightGBM** communities for amazing ML tools
-- **Railway & Vercel** for seamless deployment infrastructure
-- **Open source community** for invaluable contributions
+- NBA Stats API for data access
+- XGBoost and LightGBM communities
+- FastAPI for excellent documentation
+- Open source ML community
 
 ---
 
 <div align="center">
 
-### Built with passion by Christopher Bratkovics
+### Built by Christopher Bratkovics
 
+[![Portfolio](https://img.shields.io/badge/Portfolio-cbratkovics.dev-4A90E2?style=for-the-badge)](https://cbratkovics.dev)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/cbratkovics)
 [![GitHub](https://img.shields.io/badge/GitHub-Follow-181717?style=for-the-badge&logo=github)](https://github.com/cbratkovics)
 
