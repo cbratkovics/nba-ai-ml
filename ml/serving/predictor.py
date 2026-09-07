@@ -295,15 +295,15 @@ class PredictionService:
         return features
     
     def _get_model_accuracy(self, version: str) -> Dict[str, float]:
-        """Get historical accuracy metrics for model version"""
-        # Mock accuracy data (would come from model registry)
-        accuracy_data = {
-            "latest": {"r2_score": 0.942, "mae": 3.1, "rmse": 4.2},
-            "v2.1.0": {"r2_score": 0.942, "mae": 3.1, "rmse": 4.2},
-            "v2.0.0": {"r2_score": 0.935, "mae": 3.3, "rmse": 4.4}
-        }
-        return accuracy_data.get(version, accuracy_data["latest"])
-    
+        """
+        Return recorded evaluation metrics for a model version.
+
+        No evaluation metrics are recorded in this repository. Train and evaluate a model,
+        then wire this method to your model registry or metrics store. Returning a
+        placeholder score here would surface an unmeasured number through the API.
+        """
+        return {}
+
     async def _generate_explanation(self,
                                   player_id: str,
                                   features: pd.DataFrame,

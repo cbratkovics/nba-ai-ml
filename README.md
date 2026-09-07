@@ -7,11 +7,8 @@
 ![Next.js](https://img.shields.io/badge/Next.js-14.2+-000000?style=for-the-badge&logo=next.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 
-<img src="https://img.shields.io/badge/R²%20Score-0.942-00d4ff?style=for-the-badge" alt="Model Accuracy">
-<img src="https://img.shields.io/badge/Data%20Processed-169K+-8b5cf6?style=for-the-badge" alt="Data Scale">
-<img src="https://img.shields.io/badge/P95%20Latency-87ms-10b981?style=for-the-badge" alt="Latency">
 
-**Production-grade machine learning platform for NBA player performance prediction with comprehensive feature engineering and MLOps capabilities**
+**Machine learning platform for NBA player performance prediction with feature engineering, model serving, and monitoring**
 
 </div>
 
@@ -21,18 +18,18 @@
 
 An end-to-end machine learning platform demonstrating production ML engineering through:
 
-- **R² of 0.942** for points prediction using ensemble methods
-- **P95 latency of 87ms** with Redis caching and optimized serving
-- **169K+ game records** processed in comprehensive ETL pipeline
-- **40+ engineered features** with temporal and contextual analysis
+- **Ensemble prediction** for points, rebounds, and assists using tree-based models
+- **Redis caching** in front of model serving to avoid recomputing repeat requests
+- **ETL pipeline** for ingesting and cleaning historical game records
+- **Feature engineering** with rolling averages, matchup difficulty, rest days, and other contextual signals
 - **Drift detection** with KS and Chi-squared tests for model monitoring
 
 ## Key Features
 
 ### Machine Learning Pipeline
 - **Ensemble Models**: XGBoost, LightGBM, and Random Forest combination
-- **Feature Engineering**: 40+ features including rolling averages, opponent analysis, and momentum tracking
-- **Model Performance**: R² scores - Points (0.942), Rebounds (0.887), Assists (0.863)
+- **Feature Engineering**: Rolling averages, opponent analysis, rest days, and momentum tracking
+- **Multi-Target Prediction**: Separate models for points, rebounds, and assists
 - **Hyperparameter Tuning**: Optuna-based optimization with cross-validation
 - **Explainability**: SHAP values for feature importance analysis
 
@@ -63,21 +60,29 @@ An end-to-end machine learning platform demonstrating production ML engineering 
 - **Data**: SWR, Recharts
 - **Build**: Vercel deployment ready
 
-## Verified Performance Metrics
+## Model and System Notes
 
-### Model Performance
-| Metric | Points | Rebounds | Assists |
-|--------|--------|----------|---------|
-| **R² Score** | 0.942 | 0.887 | 0.863 |
-| **MAE** | 3.12 | 2.34 | 1.89 |
-| **RMSE** | 4.23 | 3.01 | 2.41 |
+### Trained Artifact
 
-### System Performance
-- **API Response**: P50: 45ms, P95: 87ms
-- **Cache Hit Rate**: ~85% with Redis
-- **Data Pipeline**: 169K+ records processed
-- **Feature Count**: 40+ engineered features
-- **Test Coverage**: 87% backend coverage
+The committed model metadata lives in [`models/features.json`](models/features.json) and describes
+what is actually trained and served:
+
+| Property | Value |
+|----------|-------|
+| Model type | RandomForestRegressor |
+| Feature count | 20 |
+| Targets | points, rebounds, assists |
+
+Feature names are listed in that file. They cover rolling averages over 5, 10, and 20 game windows
+for points, rebounds, and assists, shooting percentages, minutes, games played, age, home/away,
+rest days, back-to-back flags, matchup difficulty, and season game number.
+
+### Evaluation
+
+This repository does not publish model accuracy, latency, or dataset-size figures. Retrain on your
+own data pull and evaluate with the scripts in this repo to get numbers that describe your run.
+Model quality depends on the seasons you ingest, your train/test split, and how you handle
+injuries and rotation changes, so numbers copied from another environment would be misleading.
 
 ## 🛠️ Installation
 
@@ -192,10 +197,10 @@ nba-ai-ml/
 
 ## Key Achievements
 
-- **High Accuracy**: R² of 0.942 for points prediction
-- **Fast Response**: P95 latency under 90ms
-- **Comprehensive Pipeline**: 169K+ records with 40+ features
-- **Production Ready**: Docker, testing, monitoring included
+- **Multi-Target Models**: Separate predictors for points, rebounds, and assists
+- **Cached Serving**: FastAPI with Redis caching for repeat requests
+- **End-to-End Pipeline**: Ingestion, feature engineering, training, and serving
+- **Containerized**: Docker, testing, and monitoring included
 - **A/B Testing**: Framework for model experimentation
 - **MLOps Integration**: Drift detection and automated retraining
 

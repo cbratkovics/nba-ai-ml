@@ -60,23 +60,25 @@ async def get_experiment_results(
     
     exp = experiments[experiment_id]
     
-    # Mock results calculation
+    # Placeholder results. This endpoint is a demonstration of the experiment API shape,
+    # not a report of a real experiment. There is no metrics store wired up behind it, so
+    # it must not return numbers that could be mistaken for measured model performance.
     control_metrics = {
-        "r2_score": 0.935,
-        "mae": 3.3,
-        "rmse": 4.4
+        "r2_score": None,
+        "mae": None,
+        "rmse": None
     }
     
     treatment_metrics = {
-        "r2_score": 0.942,
-        "mae": 3.1,
-        "rmse": 4.2
+        "r2_score": None,
+        "mae": None,
+        "rmse": None
     }
     
     lift = {
-        "r2_improvement": treatment_metrics["r2_score"] - control_metrics["r2_score"],
-        "mae_reduction": control_metrics["mae"] - treatment_metrics["mae"],
-        "rmse_reduction": control_metrics["rmse"] - treatment_metrics["rmse"]
+        "r2_improvement": None,
+        "mae_reduction": None,
+        "rmse_reduction": None
     }
     
     sample_size = {
@@ -84,14 +86,14 @@ async def get_experiment_results(
         "treatment": exp["metrics"]["treatment"]["requests"]
     }
     
-    # Simple significance test (would be proper statistical test in production)
-    total_requests = sum(sample_size.values())
+    # No significance test is performed. Reporting a p-value without an actual
+    # experiment would be a fabricated statistic.
     significance = {
-        "p_value": 0.03 if total_requests > 1000 else 0.15,
-        "confidence": 0.97 if total_requests > 1000 else 0.85
+        "p_value": None,
+        "confidence": None
     }
     
-    recommendation = "Treatment model shows significant improvement" if significance["p_value"] < 0.05 else "Insufficient data for recommendation"
+    recommendation = "No experiment metrics are recorded; connect a metrics store to populate this endpoint"
     
     return ExperimentResponse(
         experiment_id=experiment_id,

@@ -88,11 +88,7 @@ class PredictionResponse(BaseModel):
                     "assists": {"lower": 5.8, "upper": 10.6}
                 },
                 "model_version": "v2.1.0",
-                "model_accuracy": {
-                    "r2_score": 0.942,
-                    "mae": 3.1,
-                    "rmse": 4.2
-                },
+                "model_accuracy": {},
                 "explanation": "Jokic is expected to have a strong performance...",
                 "factors": [
                     {"factor": "10-game average", "value": 28.5, "impact": "positive"},
@@ -184,19 +180,19 @@ class ExperimentResponse(BaseModel):
                 "name": "neural_net_vs_ensemble",
                 "status": "active",
                 "control_metrics": {
-                    "r2_score": 0.935,
-                    "mae": 3.3,
-                    "rmse": 4.4
+                    "r2_score": None,
+                    "mae": None,
+                    "rmse": None
                 },
                 "treatment_metrics": {
-                    "r2_score": 0.942,
-                    "mae": 3.1,
-                    "rmse": 4.2
+                    "r2_score": None,
+                    "mae": None,
+                    "rmse": None
                 },
                 "lift": {
-                    "r2_improvement": 0.007,
-                    "mae_reduction": 0.2,
-                    "rmse_reduction": 0.2
+                    "r2_improvement": None,
+                    "mae_reduction": None,
+                    "rmse_reduction": None
                 },
                 "sample_size": {
                     "control": 5000,
