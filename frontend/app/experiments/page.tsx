@@ -13,6 +13,7 @@ import {
   ChevronUp, Filter, Search, Calendar, Settings, CheckCircle,
   AlertCircle, XCircle
 } from 'lucide-react'
+import DemoDataBanner from '@/components/DemoDataBanner'
 
 export default function ExperimentsPage() {
   const [selectedExperiment, setSelectedExperiment] = useState<string | null>(null)
@@ -242,6 +243,7 @@ export default function ExperimentsPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
+        <DemoDataBanner />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

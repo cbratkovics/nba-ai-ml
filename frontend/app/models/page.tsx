@@ -14,6 +14,7 @@ import {
   Download, Upload, GitBranch, Shield, Cpu, HardDrive,
   Activity, BarChart3, Eye, ArrowRight, ArrowLeft, Play, XCircle
 } from 'lucide-react'
+import DemoDataBanner from '@/components/DemoDataBanner'
 
 export default function ModelsPage() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
@@ -318,6 +319,7 @@ export default function ModelsPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
+        <DemoDataBanner />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

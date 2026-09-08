@@ -16,6 +16,7 @@ import BackButton from '@/components/BackButton'
 import StatsCard from '@/components/StatsCard'
 import AnimatedCard from '@/components/ui/AnimatedCard'
 import CodeBlock from '@/components/CodeBlock'
+import DemoDataBanner from '@/components/DemoDataBanner'
 
 export default function ModelRegistry() {
   const [selectedModel, setSelectedModel] = useState('points_predictor')
@@ -183,6 +184,7 @@ export default function ModelRegistry() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
+        <DemoDataBanner />
         <BackButton href="/" />
         
         {/* Header */}

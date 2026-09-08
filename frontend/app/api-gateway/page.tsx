@@ -309,8 +309,8 @@ export default function APIGateway() {
           />
           <StatsCard
             title="Avg Response Time"
-            value="87ms"
-            subtitle="P99: 142ms"
+            value="--"
+            subtitle="Sample value"
             icon={Zap}
             iconColor="secondary"
             trend={{ value: 8.5, isPositive: false }}

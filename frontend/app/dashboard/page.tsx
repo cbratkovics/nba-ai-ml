@@ -11,6 +11,7 @@ import {
   TrendingUp, AlertTriangle, CheckCircle, Clock, 
   Cpu, HardDrive, Activity, Zap
 } from 'lucide-react'
+import DemoDataBanner from '@/components/DemoDataBanner'
 
 export default function DashboardPage() {
   // Mock data for charts
@@ -53,6 +54,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
+        <DemoDataBanner />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -104,10 +106,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-text-secondary text-sm">API Latency</p>
-                <p className="text-2xl font-bold text-text-primary">87ms</p>
-                <p className="text-xs text-success flex items-center gap-1 mt-1">
+                <p className="text-2xl font-bold text-text-primary">--</p>
+                <p className="text-xs text-text-secondary flex items-center gap-1 mt-1">
                   <Zap className="w-3 h-3" />
-                  Within SLA
+                  Sample value
                 </p>
               </div>
               <div className="p-3 bg-primary/20 rounded-lg">
