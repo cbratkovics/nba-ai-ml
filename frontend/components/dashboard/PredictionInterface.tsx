@@ -11,7 +11,7 @@ interface PlayerPrediction {
   player: string
   team: string
   prediction: number
-  confidence: number
+  exampleScore: number
   features: {
     name: string
     value: number
@@ -29,7 +29,7 @@ const mockPredictions: PlayerPrediction[] = [
     player: 'LeBron James',
     team: 'Lakers',
     prediction: 28.5,
-    confidence: 92.3,
+    exampleScore: 92.3,
     features: [
       { name: 'Recent Form', value: 85, importance: 0.25 },
       { name: 'Opponent Defense', value: 65, importance: 0.20 },
@@ -47,7 +47,7 @@ const mockPredictions: PlayerPrediction[] = [
     player: 'Stephen Curry',
     team: 'Warriors',
     prediction: 31.2,
-    confidence: 88.7,
+    exampleScore: 88.7,
     features: [
       { name: 'Recent Form', value: 92, importance: 0.28 },
       { name: 'Opponent Defense', value: 70, importance: 0.18 },
@@ -66,8 +66,7 @@ const mockPredictions: PlayerPrediction[] = [
 const PredictionCard: React.FC<{ prediction: PlayerPrediction; index: number }> = ({ prediction, index }) => {
   const [showDetails, setShowDetails] = useState(false)
 
-  const confidenceColor = prediction.confidence > 90 ? 'text-success' : 
-                          prediction.confidence > 80 ? 'text-warning' : 'text-danger'
+  const scoreColor = 'text-text-secondary'
 
   const distributionData = Array.from({ length: 20 }, (_, i) => {
     const x = prediction.prediction - 10 + i
@@ -90,13 +89,13 @@ const PredictionCard: React.FC<{ prediction: PlayerPrediction; index: number }> 
             <div className="text-3xl font-bold gradient-text">
               {prediction.prediction.toFixed(1)}
             </div>
-            <div className={cn('text-sm font-medium', confidenceColor)}>
-              {prediction.confidence.toFixed(1)}% confidence
+            <div className={cn('text-sm font-medium', scoreColor)}>
+              {prediction.exampleScore.toFixed(1)} illustrative score
             </div>
           </div>
         </div>
 
-        {/* Confidence Interval Visualization */}
+        {/* Illustrative distribution visualization */}
         <div className="h-24 mb-4">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={distributionData}>
@@ -159,7 +158,7 @@ const PredictionCard: React.FC<{ prediction: PlayerPrediction; index: number }> 
             >
               {/* Ensemble Voting */}
               <div className="mb-4">
-                <h4 className="text-sm font-medium text-text-secondary mb-2">Model Ensemble Voting</h4>
+                <h4 className="text-sm font-medium text-text-secondary mb-2">Illustrative ensemble values</h4>
                 <div className="space-y-2">
                   {prediction.ensemble.map((model, i) => (
                     <div key={i} className="flex items-center justify-between text-sm">
@@ -197,12 +196,11 @@ export default function PredictionInterface() {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary mb-2">Live Predictions</h2>
-          <p className="text-text-secondary">Real-time player performance predictions with confidence intervals</p>
+          <h2 className="text-2xl font-bold text-text-primary mb-2">Synthetic forecast fixtures</h2>
+          <p className="text-text-secondary">Deterministic examples for exploring forecast presentation; not trained-model output</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="pulse-dot" />
-          <span className="text-sm text-text-secondary">Live</span>
+          <span className="text-sm text-text-secondary">Source: synthetic fixture</span>
         </div>
       </div>
 

@@ -161,8 +161,8 @@ def test_vercel_frontend():
         if home_ok:
             # Check for key content
             content = response.text
-            check_status("NBA AI Predictions" in content, "Title present")
-            check_status("94.2%" in content or "Prediction Accuracy" in content, "Accuracy rate displayed")
+            check_status("NBA Performance Prediction System" in content, "Project title present")
+            check_status("Portfolio demonstration" in content, "Fixture provenance notice present")
         
         results.append(home_ok)
         

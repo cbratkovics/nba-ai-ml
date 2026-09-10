@@ -23,6 +23,7 @@ export interface PredictionResponse {
     assists: number;
   };
   confidence: number;
+  provenance: { source_kind: 'model_inference' | 'synthetic_fixture'; model_version: string; observed_at: string };
   confidence_intervals?: {
     points: { lower: number; upper: number };
     rebounds: { lower: number; upper: number };
@@ -155,48 +156,16 @@ class APIClient {
     return this.request<any>('/health/detailed');
   }
 
-  // Mock function for demo - gets today's predictions
+  // API failures remain failures. Fixtures are selected explicitly by the caller.
   async getTodaysPredictions(): Promise<PredictionResponse[]> {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Mock predictions for top 5 players
-    const topPlayers = TOP_PLAYERS.slice(0, 5);
-    const opponents = ['LAL', 'BOS', 'MIA', 'GSW', 'DAL'];
-    
-    const requests: PredictionRequest[] = topPlayers.map((player, index) => ({
-      player_id: player.id,
-      game_date: today,
-      opponent_team: opponents[index],
-      include_explanation: false,
-      include_confidence_intervals: false,
+    const gameDate = new Date().toISOString().split('T')[0];
+    const requests = TOP_PLAYERS.slice(0, 5).map((player, index) => ({
+      player_id: player.id, game_date: gameDate,
+      opponent_team: ['LAL', 'BOS', 'MIA', 'GSW', 'DAL'][index],
+      include_explanation: false, include_confidence_intervals: false,
     }));
-
-    try {
-      const response = await this.getBatchPredictions(requests);
-      return response.predictions;
-    } catch (error) {
-      // Return mock data if API is unavailable
-      return topPlayers.map((player, index) => ({
-        player_id: player.id,
-        player_name: player.name,
-        game_date: today,
-        opponent_team: opponents[index],
-        predictions: {
-          points: 25 + Math.random() * 10,
-          rebounds: 8 + Math.random() * 5,
-          assists: 6 + Math.random() * 4,
-        },
-        confidence: 0.85 + Math.random() * 0.1,
-        model_version: 'v2.1.0',
-        model_accuracy: {
-          r2_score: 0.942,
-          mae: 3.1,
-          rmse: 4.2,
-        },
-        prediction_id: `pred_${today}_${player.id}_${opponents[index]}`,
-        timestamp: new Date().toISOString(),
-      }));
-    }
+    const response = await this.getBatchPredictions(requests);
+    return response.predictions;
   }
 
   // Get player by ID
