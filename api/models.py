@@ -3,6 +3,7 @@ Pydantic models for API requests and responses
 """
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict, Any
+import math
 from datetime import datetime, date
 from enum import Enum
 
@@ -113,6 +114,10 @@ class PredictionResponse(BaseModel):
     )
     model_version: str
     model_accuracy: Dict[str, float] = Field(..., description="Historical model accuracy metrics")
+    provenance: Dict[str, str] = Field(
+        ...,
+        description="Source kind, model identity, and observation time for this result"
+    )
     explanation: Optional[str] = Field(None, description="Natural language explanation")
     factors: Optional[List[Dict[str, Any]]] = Field(
         None,
@@ -120,6 +125,12 @@ class PredictionResponse(BaseModel):
     )
     prediction_id: str = Field(..., description="Unique prediction identifier")
     timestamp: datetime = Field(default_factory=datetime.now)
+
+    @field_validator('predictions', 'model_accuracy')
+    def reject_non_finite_metrics(cls, values):
+        if any(not math.isfinite(value) for value in values.values()):
+            raise ValueError("Prediction and metric values must be finite")
+        return values
 
 
 class BatchPredictionRequest(BaseModel):

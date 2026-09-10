@@ -30,15 +30,23 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+class ModelUnavailableError(RuntimeError):
+    """Raised when a requested, explicitly configured artifact is unavailable."""
+
+
 class ModelRegistry:
-    """Model version management and loading"""
+    """Model version management and loading without synthetic fallbacks."""
     
     def __init__(self, model_path: str = "./models"):
         self.model_path = model_path
         self.loaded_models = {}
         
     def load_model(self, version: str, target: str = "points"):
-        """Load model from disk or create fallback"""
+        """Load a model from disk or fail honestly.
+
+        Joblib files are executable serialization formats. Only artifacts placed in
+        ``model_path`` by a trusted operator should be used here.
+        """
         model_key = f"{version}_{target}"
         
         if model_key not in self.loaded_models:
@@ -61,17 +69,10 @@ class ModelRegistry:
                         logger.error(f"Failed to load {model_file}: {e}")
             
             if not model_loaded:
-                # Create in-memory fallback model
-                logger.warning(f"No model file found, creating fallback model for {target}")
-                self.loaded_models[model_key] = RandomForestRegressor(
-                    n_estimators=100,
-                    max_depth=10,
-                    random_state=42
+                raise ModelUnavailableError(
+                    f"No trusted artifact is available for target '{target}' "
+                    f"and model version '{version}'"
                 )
-                # Fit with dummy data so it can make predictions
-                X_dummy = np.random.randn(100, 20)
-                y_dummy = np.random.randn(100) * 10 + 25
-                self.loaded_models[model_key].fit(X_dummy, y_dummy)
         
         return self.loaded_models[model_key]
 
@@ -91,18 +92,20 @@ class PredictionCache:
             except Exception as e:
                 logger.warning(f"Redis connection failed: {e}. Running without cache.")
         
-    def get_cache_key(self, player_id: str, game_date: date, opponent: str) -> str:
-        """Generate cache key"""
-        key_string = f"{player_id}_{game_date}_{opponent}"
+    def get_cache_key(self, player_id: str, game_date: date, opponent: str,
+                      model_version: str = "latest", source_kind: str = "model_inference") -> str:
+        """Generate a key partitioned by source and model contract."""
+        key_string = f"{source_kind}:{model_version}:{player_id}:{game_date}:{opponent}"
         return hashlib.md5(key_string.encode()).hexdigest()
     
-    def get(self, player_id: str, game_date: date, opponent: str) -> Optional[Dict]:
+    def get(self, player_id: str, game_date: date, opponent: str,
+            model_version: str = "latest", source_kind: str = "model_inference") -> Optional[Dict]:
         """Get cached prediction"""
         if not self.redis_client:
             return None
             
         try:
-            cache_key = self.get_cache_key(player_id, game_date, opponent)
+            cache_key = self.get_cache_key(player_id, game_date, opponent, model_version, source_kind)
             cached_data = self.redis_client.get(cache_key)
             
             if cached_data:
@@ -112,13 +115,14 @@ class PredictionCache:
         
         return None
     
-    def set(self, player_id: str, game_date: date, opponent: str, prediction: Dict):
+    def set(self, player_id: str, game_date: date, opponent: str, prediction: Dict,
+            model_version: str = "latest", source_kind: str = "model_inference"):
         """Cache prediction result"""
         if not self.redis_client:
             return
             
         try:
-            cache_key = self.get_cache_key(player_id, game_date, opponent)
+            cache_key = self.get_cache_key(player_id, game_date, opponent, model_version, source_kind)
             self.redis_client.setex(
                 cache_key, 
                 self.cache_ttl, 
@@ -166,7 +170,7 @@ class PredictionService:
             game_date = datetime.strptime(game_date, '%Y-%m-%d').date()
         
         # Check cache first
-        cached_result = self.cache.get(player_id, game_date, opponent_team)
+        cached_result = self.cache.get(player_id, game_date, opponent_team, str(model_version))
         if cached_result:
             logger.info(f"Cache hit for {player_id} vs {opponent_team}")
             return cached_result
@@ -276,6 +280,11 @@ class PredictionService:
                 "confidence_intervals": confidence_intervals,
                 "model_version": model_version,
                 "model_accuracy": model_accuracy,
+                "provenance": {
+                    "source_kind": "model_inference",
+                    "model_version": str(model_version),
+                    "observed_at": datetime.utcnow().isoformat() + "Z"
+                },
                 "explanation": explanation,
                 "factors": factors,
                 "features_used": {
@@ -286,14 +295,13 @@ class PredictionService:
             }
             
             # Cache result
-            self.cache.set(player_id, game_date, opponent_team, result)
+            self.cache.set(player_id, game_date, opponent_team, result, str(model_version))
             
             return result
             
         except Exception as e:
             logger.error(f"Prediction error for {player_id}: {str(e)}")
-            # Return a fallback prediction with dummy data
-            return self._get_fallback_prediction(player_id, player_name if 'player_name' in locals() else f"Player {player_id}")
+            raise
     
     def _get_model_accuracy(self, version: str) -> Dict[str, float]:
         """

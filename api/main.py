@@ -105,7 +105,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app WITHOUT redirect_slashes to prevent 307 redirects
 app = FastAPI(
     title="NBA AI/ML Prediction API",
-    description="Production-grade NBA player performance prediction system",
+    description="NBA player-performance modeling and portfolio demonstration API",
     version="2.1.0",
     lifespan=lifespan,
     redirect_slashes=False  # Prevents 307 redirects on health checks
@@ -161,7 +161,7 @@ async def root():
     return {
         "name": "NBA AI/ML Prediction API",
         "version": "2.1.0",
-        "status": "operational",
+        "status": "api_live",
         "endpoints": {
             "predictions": "/v1/predict",
             "experiments": "/v1/experiments",
@@ -255,7 +255,7 @@ async def demo_tonight_predictions():
 
 @app.get("/demo/metrics")
 async def demo_platform_metrics():
-    """Demo endpoint: Show impressive platform metrics"""
+    """Demo endpoint: report recorded-evidence availability"""
     from api.demo.showcase import ShowcaseDemo
     demo = ShowcaseDemo()
     return await demo.generate_impressive_metrics()

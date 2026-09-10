@@ -431,47 +431,15 @@ class ShowcaseDemo:
         return heatmap_data
     
     async def generate_impressive_metrics(self) -> Dict[str, Any]:
-        """
-        Generate impressive platform metrics for showcase
-        
-        Returns:
-            Platform performance metrics
-        """
+        """Return an honest empty state; no operational history is bundled."""
         return {
-            "platform_metrics": {
-                "total_predictions": "127,453,892",
-                "daily_predictions": "1.2M+",
-                "average_latency_ms": 87,
-                "p99_latency_ms": 142,
-                "model_accuracy": {
-                    "overall": 91.7,
-                    "top_players": 94.2,
-                    "last_7_days": 92.1
-                },
-                "uptime_percentage": 99.97,
-                "active_experiments": 12,
-                "models_in_production": 6,
-                "cache_hit_rate": 94.3,
-                "data_freshness_minutes": 5
-            },
-            "achievements": [
-                "Predicted 2024 MVP with 89% confidence in December",
-                "Sub-100ms latency for 95% of requests",
-                "Successfully handled 50K concurrent predictions during playoffs",
-                "A/B test improved accuracy by 4.7% in Q4"
-            ],
-            "testimonials": [
-                {
-                    "source": "Fantasy Sports Platform",
-                    "quote": "Best prediction accuracy we've seen",
-                    "metric": "Increased user engagement by 34%"
-                },
-                {
-                    "source": "Sports Analytics Firm",
-                    "quote": "Enterprise-grade reliability",
-                    "metric": "Zero downtime during critical games"
-                }
-            ]
+            "source_kind": "unavailable",
+            "observed_at": None,
+            "platform_metrics": None,
+            "message": (
+                "No recorded operational or model-evaluation artifact is available. "
+                "API liveness does not establish uptime, latency, traffic, or forecast quality."
+            ),
         }
     
     def _generate_game_insights(self, games: List[Dict]) -> List[str]:

@@ -1,25 +1,17 @@
 import './globals.css'
-import { Inter } from 'next/font/google'
 import GradientBackground from '@/components/ui/GradientBackground'
 
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'NBA ML Platform | Enterprise MLOps Dashboard',
-  description: 'Production-grade machine learning platform for NBA predictions with 94.2% accuracy',
+  title: 'NBA Performance Prediction System',
+  description: 'Explore NBA player-performance forecasts, feature engineering, and model evaluation in an applied data-science portfolio demonstration.',
+  openGraph: {
+    title: 'NBA Performance Prediction System',
+    description: 'An applied data-science portfolio for NBA forecasting and evaluation.',
+    type: 'website',
+  },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-background min-h-screen`}>
-        <GradientBackground />
-        {children}
-      </body>
-    </html>
-  )
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <html lang="en" className="dark"><body className="bg-background min-h-screen"><GradientBackground />{children}</body></html>
 }

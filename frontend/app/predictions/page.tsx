@@ -49,7 +49,7 @@ export default function PredictionsPage() {
       const response = await apiClient.getPrediction(request);
       setPrediction(response);
     } catch (err) {
-      setError('Failed to get prediction. Please try again.');
+      setError('Prediction unavailable. The API could not access required feature data or a trusted model artifact.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -63,7 +63,7 @@ export default function PredictionsPage() {
 Points: ${prediction.predictions.points.toFixed(1)}
 Rebounds: ${prediction.predictions.rebounds.toFixed(1)}
 Assists: ${prediction.predictions.assists.toFixed(1)}
-Confidence: ${(prediction.confidence * 100).toFixed(0)}%`;
+Source: ${prediction.provenance.source_kind}`;
     
     navigator.clipboard.writeText(text);
   };
@@ -77,7 +77,7 @@ Confidence: ${(prediction.confidence * 100).toFixed(0)}%`;
             NBA Player Predictions
           </h1>
           <p className="text-gray-400 text-lg">
-            Get AI-powered predictions for any NBA player's upcoming performance
+            Request a model inference. The API reports an error when historical features or a trusted artifact are unavailable.
           </p>
         </div>
 
@@ -299,7 +299,7 @@ Confidence: ${(prediction.confidence * 100).toFixed(0)}%`;
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between mb-2">
-                        <span className="text-gray-400">Overall Confidence</span>
+                        <span className="text-gray-400">Heuristic data-sufficiency score</span>
                         <span className="text-white font-semibold">
                           {(prediction.confidence * 100).toFixed(1)}%
                         </span>
@@ -307,31 +307,15 @@ Confidence: ${(prediction.confidence * 100).toFixed(0)}%`;
                       <Progress value={prediction.confidence * 100} className="h-3 bg-gray-700" />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4 pt-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-400">
-                          {prediction.model_accuracy.r2_score.toFixed(3)}
-                        </div>
-                        <div className="text-sm text-gray-400">R² Score</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-400">
-                          {prediction.model_accuracy.mae.toFixed(1)}
-                        </div>
-                        <div className="text-sm text-gray-400">MAE</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-400">
-                          {prediction.model_accuracy.rmse.toFixed(1)}
-                        </div>
-                        <div className="text-sm text-gray-400">RMSE</div>
-                      </div>
+                    <div className="rounded-lg bg-gray-700/50 p-4 text-gray-300">
+                      {Object.keys(prediction.model_accuracy).length > 0
+                        ? 'Recorded evaluation metrics are attached to this model response.'
+                        : 'Recorded evaluation metrics are unavailable for this model version.'}
                     </div>
 
                     <Alert className="bg-gray-700/50 border-gray-600">
                       <AlertDescription className="text-gray-300">
-                        Model version: {prediction.model_version} • 
-                        Trained on 100+ NBA players with 50+ engineered features
+                        Source: {prediction.provenance.source_kind} • Model version: {prediction.provenance.model_version} • Observed: {prediction.provenance.observed_at}
                       </AlertDescription>
                     </Alert>
                   </div>
