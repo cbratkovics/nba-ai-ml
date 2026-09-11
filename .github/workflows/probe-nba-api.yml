@@ -1,0 +1,87 @@
+name: Probe stats.nba.com from a GitHub runner
+
+# Manually triggered connectivity check. It answers one question: does
+# stats.nba.com serve requests coming from a GitHub Actions runner?
+# It makes two read-only HTTP calls and prints the results. It writes nothing.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install nba_api
+        run: python -m pip install --quiet "nba_api==1.4.1" pandas
+
+      - name: Probe two endpoints
+        run: |
+          python - <<'EOF'
+          import time
+          from datetime import date, timedelta
+
+          from nba_api.stats.endpoints import leaguegamefinder, playergamelog
+
+          TIMEOUT = 10  # seconds per request
+          HEADERS = {
+              "User-Agent": "nba-ai-ml-probe/1.0 (personal portfolio project; +https://github.com/cbratkovics/nba-ai-ml)",
+              "Accept": "application/json, text/plain, */*",
+              "Accept-Language": "en-US,en;q=0.9",
+              "Referer": "https://www.nba.com/",
+              "Origin": "https://www.nba.com",
+          }
+          PLAYER_ID = "203999"  # Nikola Jokic
+          SEASON = "2024-25"
+
+          def status_of(endpoint):
+              resp = getattr(endpoint, "nba_response", None)
+              if resp is None:
+                  return None
+              for attr in ("_status_code", "status_code"):
+                  if hasattr(resp, attr):
+                      return getattr(resp, attr)
+              return None
+
+          def run(label, make):
+              start = time.perf_counter()
+              try:
+                  endpoint = make()
+                  elapsed = time.perf_counter() - start
+                  frames = endpoint.get_data_frames()
+                  rows = sum(len(f) for f in frames)
+                  print(f"{label}: http_status={status_of(endpoint)} rows={rows} frames={len(frames)} elapsed={elapsed:.2f}s")
+              except Exception as exc:
+                  elapsed = time.perf_counter() - start
+                  print(f"{label}: FAILED {type(exc).__name__}: {exc} elapsed={elapsed:.2f}s")
+
+          yesterday = (date.today() - timedelta(days=1)).strftime("%m/%d/%Y")
+          print(f"probe date (yesterday): {yesterday}")
+
+          run(
+              "leaguegamefinder",
+              lambda: leaguegamefinder.LeagueGameFinder(
+                  date_from_nullable=yesterday,
+                  date_to_nullable=yesterday,
+                  league_id_nullable="00",
+                  headers=HEADERS,
+                  timeout=TIMEOUT,
+              ),
+          )
+          run(
+              "playergamelog",
+              lambda: playergamelog.PlayerGameLog(
+                  player_id=PLAYER_ID,
+                  season=SEASON,
+                  headers=HEADERS,
+                  timeout=TIMEOUT,
+              ),
+          )
+          EOF
