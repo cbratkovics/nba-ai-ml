@@ -16,56 +16,24 @@
 
 ## Overview
 
-An end-to-end machine learning platform demonstrating production ML engineering through:
+This is a batch NBA player-stat prediction pipeline (points, rebounds, assists) that is
+currently being rebuilt. The current tree contains earlier prototype code: a FastAPI service,
+a Next.js dashboard, data-collection scripts, and several training experiments. That code is
+not wired end to end, and the dashboard pages render sample data (see the demo banner on each
+page). Treat the repository as a work in progress rather than a deployed system.
 
-- **Ensemble prediction** for points, rebounds, and assists using tree-based models
-- **Redis caching** in front of model serving to avoid recomputing repeat requests
-- **ETL pipeline** for ingesting and cleaning historical game records
-- **Feature engineering** with rolling averages, matchup difficulty, rest days, and other contextual signals
-- **Drift detection** with KS and Chi-squared tests for model monitoring
+## Data source
 
-## Key Features
-
-### Machine Learning Pipeline
-- **Ensemble Models**: XGBoost, LightGBM, and Random Forest combination
-- **Feature Engineering**: Rolling averages, opponent analysis, rest days, and momentum tracking
-- **Multi-Target Prediction**: Separate models for points, rebounds, and assists
-- **Hyperparameter Tuning**: Optuna-based optimization with cross-validation
-- **Explainability**: SHAP values for feature importance analysis
-
-### Production Architecture
-- **FastAPI Backend**: Async request handling with Pydantic validation
-- **Redis Caching**: Intelligent TTL strategies for frequently accessed predictions
-- **PostgreSQL Storage**: Optimized queries with SQLAlchemy ORM
-- **A/B Testing**: Framework for model comparison with statistical significance
-- **Monitoring**: Drift detection and performance tracking
-
-### Frontend Dashboard
-- **Next.js 14**: Modern React framework with TypeScript
-- **Real-time Updates**: SWR for data fetching and caching
-- **Data Visualization**: Recharts for interactive charts
-- **Responsive Design**: Tailwind CSS with mobile optimization
-
-## Technology Stack
-
-### Backend
-- **Core**: Python 3.10+, FastAPI, SQLAlchemy
-- **ML**: XGBoost, LightGBM, scikit-learn, pandas, numpy
-- **Infrastructure**: Redis, PostgreSQL, Docker
-- **Testing**: pytest with 87% coverage
-
-### Frontend  
-- **Framework**: Next.js 14, TypeScript, React
-- **Styling**: Tailwind CSS, Framer Motion
-- **Data**: SWR, Recharts
-- **Build**: Vercel deployment ready
+Game logs come from `nba_api`, an unofficial client for `stats.nba.com`. This is a
+non-commercial personal portfolio project. Requests are rate-limited politely (a fixed delay
+between calls, no parallel scraping), and no data is redistributed from this repository.
 
 ## Model and System Notes
 
 ### Trained Artifact
 
-The committed model metadata lives in [`models/features.json`](models/features.json) and describes
-what is actually trained and served:
+Model artifacts are not committed to this repository; they live on Hugging Face. The local
+metadata file `models/features.json` (also not committed) describes the artifact layout:
 
 | Property | Value |
 |----------|-------|
@@ -133,98 +101,14 @@ uvicorn api.main:app --reload
 cd frontend && npm run dev
 ```
 
-## API Reference
-
-### Core Endpoints
-
-#### Single Prediction
-```http
-POST /v1/predict
-Content-Type: application/json
-
-{
-  "player_id": "203999",
-  "game_date": "2024-12-15",
-  "opponent_team": "LAL",
-  "home_game": true
-}
-```
-
-#### Response
-```json
-{
-  "player_name": "Nikola Jokic",
-  "predictions": {
-    "points": 28.5,
-    "rebounds": 13.2,
-    "assists": 8.7
-  },
-  "confidence_intervals": {
-    "points": {"lower": 23.2, "upper": 33.8}
-  },
-  "model_confidence": 0.923
-}
-```
-
-#### Batch Predictions
-```http
-POST /v1/predict/batch
-```
-
-#### Model Performance
-```http
-GET /v1/models/performance
-```
-
-## Project Structure
-
-```
-nba-ai-ml/
-├── api/                # FastAPI backend
-│   ├── models/        # ML models
-│   ├── routes/        # API endpoints
-│   └── services/      # Business logic
-├── ml/                # Machine learning
-│   ├── features/      # Feature engineering
-│   ├── models/        # Model training
-│   └── evaluation/    # Model evaluation
-├── frontend/          # Next.js dashboard
-│   ├── components/    # React components
-│   ├── pages/         # Next.js pages
-│   └── lib/          # Utilities
-└── tests/            # Test suite
-```
-
-## Key Achievements
-
-- **Multi-Target Models**: Separate predictors for points, rebounds, and assists
-- **Cached Serving**: FastAPI with Redis caching for repeat requests
-- **End-to-End Pipeline**: Ingestion, feature engineering, training, and serving
-- **Containerized**: Docker, testing, and monitoring included
-- **A/B Testing**: Framework for model experimentation
-- **MLOps Integration**: Drift detection and automated retraining
-
-## Testing
-
-```bash
-# Run tests
-pytest tests/
-
-# With coverage
-pytest --cov=api tests/
-
-# Specific test file
-pytest tests/test_predictions.py
-```
-
 ## Docker Support
 
 ```bash
 # Build image
 docker build -t nba-ml:latest .
 
-# Run container
-docker run -p 8000:8000 nba-ml:latest
+# Run container (start.py listens on $PORT, default 8080)
+docker run -p 8080:8080 nba-ml:latest
 ```
 
 ## Future Enhancements
