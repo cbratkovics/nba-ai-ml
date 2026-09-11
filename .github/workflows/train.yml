@@ -1,0 +1,61 @@
+name: Train and evaluate
+
+# Manually triggered. Pulls the game-log Parquet from the Hugging Face dataset
+# repo, trains one LightGBM model per target, writes reports/metrics.json, and
+# uploads reports/ as a workflow artifact. Publishing to the HF model repo only
+# happens when the `publish` input is set to true.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Upload models and model card to the HF model repo"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Require HF_TOKEN
+        run: |
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "::error::The HF_TOKEN repository secret is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Install project
+        run: python -m pip install --quiet "."
+
+      - name: Pull game logs from the HF dataset repo
+        run: python -m nba.storage.hf pull-dataset --data-dir data/game_logs
+
+      - name: Train and evaluate (writes reports/metrics.json)
+        run: python -m nba.models.train --data-dir data/game_logs --models-dir models --metrics-path reports/metrics.json
+
+      - name: Show metrics
+        run: cat reports/metrics.json
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.sha }}
+          path: reports/
+          if-no-files-found: error
+
+      - name: Publish models and model card
+        if: ${{ inputs.publish }}
+        run: python -m nba.models.publish --models-dir models --metrics-path reports/metrics.json
