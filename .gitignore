@@ -50,7 +50,7 @@ htmlcov/
 mlruns/
 mlflow.db
 # Model artifacts are not committed; they live on Hugging Face.
-models/
+/models/
 models/*.pkl
 models/*.h5
 models/*.pt
@@ -116,6 +116,10 @@ Thumbs.db
 *.backup
 *~
 
-# Reports
-reports/
+# Reports: only the metrics report is tracked.
+reports/*
+!reports/metrics.json
 benchmark_results/frontend/.env.local
+
+# Game-log Parquet lives on Hugging Face, never in git.
+data/
