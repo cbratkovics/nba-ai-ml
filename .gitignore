@@ -49,6 +49,8 @@ htmlcov/
 # ML
 mlruns/
 mlflow.db
+# Model artifacts are not committed; they live on Hugging Face.
+models/
 models/*.pkl
 models/*.h5
 models/*.pt
