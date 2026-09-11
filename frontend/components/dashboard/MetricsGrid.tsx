@@ -5,6 +5,7 @@ import CountUp from 'react-countup'
 import { motion } from 'framer-motion'
 import { Activity, TrendingUp, Zap, Database, GitBranch, Shield, BarChart3, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import DemoDataBanner from '@/components/DemoDataBanner'
 
 interface MetricCardProps {
   title: string
@@ -84,75 +85,71 @@ const MetricCard: React.FC<MetricCardProps> = ({
 }
 
 export default function MetricsGrid() {
+  // No measured figures are published for this project. Each card shows
+  // neutral copy instead of a number; see DemoDataBanner above the grid.
   const metrics = [
     {
       title: 'Model Accuracy',
-      value: 94.2,
-      suffix: '%',
+      value: 'Not published',
       icon: <BarChart3 className="w-5 h-5" />,
-      trend: { value: 2.3, isPositive: true },
-      status: 'success' as const,
+      status: 'warning' as const,
     },
     {
       title: 'Predictions Served',
-      value: 1247893,
-      suffix: '',
+      value: 'Not tracked',
       icon: <Activity className="w-5 h-5" />,
-      trend: { value: 12.5, isPositive: true },
-      status: 'success' as const,
+      status: 'warning' as const,
     },
     {
       title: 'Avg Latency',
-      value: 87,
-      suffix: 'ms',
+      value: 'Not measured',
       icon: <Zap className="w-5 h-5" />,
-      trend: { value: 5.2, isPositive: false },
       status: 'warning' as const,
     },
     {
       title: 'Models in Production',
-      value: 5,
+      value: 'None yet',
       icon: <GitBranch className="w-5 h-5" />,
-      status: 'success' as const,
+      status: 'warning' as const,
     },
     {
       title: 'Active A/B Tests',
-      value: 3,
+      value: 'None',
       icon: <Shield className="w-5 h-5" />,
-      status: 'success' as const,
+      status: 'warning' as const,
     },
     {
       title: 'Data Pipeline',
-      value: 'Healthy',
+      value: 'Rebuilding',
       icon: <Database className="w-5 h-5" />,
-      status: 'success' as const,
+      status: 'warning' as const,
     },
     {
       title: 'Model Drift',
-      value: 0.03,
-      suffix: '',
+      value: 'Not monitored',
       icon: <TrendingUp className="w-5 h-5" />,
-      trend: { value: 1.2, isPositive: false },
-      status: 'success' as const,
+      status: 'warning' as const,
     },
     {
       title: 'API Uptime',
-      value: 99.99,
-      suffix: '%',
+      value: 'Not measured',
       icon: <Clock className="w-5 h-5" />,
-      status: 'success' as const,
+      status: 'warning' as const,
     },
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {metrics.map((metric, index) => (
-        <MetricCard
-          key={metric.title}
-          {...metric}
-          delay={index * 0.1}
-        />
-      ))}
+    <div>
+      <DemoDataBanner />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {metrics.map((metric, index) => (
+          <MetricCard
+            key={metric.title}
+            {...metric}
+            delay={index * 0.1}
+          />
+        ))}
+      </div>
     </div>
   )
 }

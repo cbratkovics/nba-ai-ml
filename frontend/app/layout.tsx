@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
   title: 'NBA ML Platform | Enterprise MLOps Dashboard',
-  description: 'Production-grade machine learning platform for NBA predictions with 94.2% accuracy',
+  description: 'Batch NBA player-stat prediction pipeline, currently being rebuilt',
 }
 
 export default function RootLayout({

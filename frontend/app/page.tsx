@@ -148,8 +148,8 @@ export default function Home() {
             <span className="gradient-text">Production ML Platform</span>
           </h2>
           <p className="text-xl text-text-secondary max-w-3xl mx-auto">
-            Enterprise-grade machine learning infrastructure serving 1.2M+ predictions 
-            with 94.2% accuracy and sub-100ms latency
+            Batch NBA player-stat prediction pipeline, currently being rebuilt.
+            Dashboard pages show sample data, not measured results.
           </p>
         </motion.div>
 
@@ -173,7 +173,7 @@ export default function Home() {
             </div>
             <h3 className="text-lg font-semibold text-text-primary mb-2">Feature Store</h3>
             <p className="text-sm text-text-secondary">
-              50+ engineered features with real-time computation
+              Rolling-window player features (sample interface)
             </p>
           </div>
 
