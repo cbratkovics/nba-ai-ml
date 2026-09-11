@@ -1,154 +1,103 @@
-# 🏀 NBA Performance Prediction System
+# NBA player-stat prediction pipeline
 
-<div align="center">
+A small batch pipeline that predicts a player's points, rebounds, and assists for
+a game from that player's history before the game. Personal, non-commercial
+portfolio project. Python 3.11, LightGBM, Parquet on Hugging Face.
 
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-14.2+-000000?style=for-the-badge&logo=next.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+The `frontend/` directory is an earlier Next.js dashboard and is not part of
+this pipeline. It is left untouched for now.
 
+## What it does
 
-**Machine learning platform for NBA player performance prediction with feature engineering, model serving, and monitoring**
+1. **Backfill** game logs from a Kaggle CC0 dump into a canonical schema, one
+   Parquet file per season (2021-22 through 2025-26).
+2. **Store** those files in a Hugging Face dataset repo. Parquet is never
+   committed to git.
+3. **Build features** as of each game: rolling means over the previous 5, 10,
+   and 20 games, season-to-date means, games played, days of rest, a
+   back-to-back flag, a home flag, and prior means against the opponent. Every
+   feature uses only games strictly before the target game; a unit test proves
+   this by construction.
+4. **Train** one LightGBM regressor per target on seasons through 2024-25 and
+   score it on all of 2025-26 against two baselines: the player's last-10-game
+   mean and the player's season-to-date mean.
+5. **Report** MAE, RMSE, and R² for the model and both baselines to
+   `reports/metrics.json`, together with the dataset version, split dates,
+   feature list, and git commit.
+6. **Publish** the model files and a model card to a Hugging Face model repo.
 
-</div>
+## Layout
 
----
-
-## Overview
-
-This is a batch NBA player-stat prediction pipeline (points, rebounds, assists) that is
-currently being rebuilt. The current tree contains earlier prototype code: a FastAPI service,
-a Next.js dashboard, data-collection scripts, and several training experiments. That code is
-not wired end to end, and the dashboard pages render sample data (see the demo banner on each
-page). Treat the repository as a work in progress rather than a deployed system.
-
-## Data source
-
-Game logs come from `nba_api`, an unofficial client for `stats.nba.com`. This is a
-non-commercial personal portfolio project. Requests are rate-limited politely (a fixed delay
-between calls, no parallel scraping), and no data is redistributed from this repository.
-
-## Model and System Notes
-
-### Trained Artifact
-
-Model artifacts are not committed to this repository; they live on Hugging Face. The local
-metadata file `models/features.json` (also not committed) describes the artifact layout:
-
-| Property | Value |
-|----------|-------|
-| Model type | RandomForestRegressor |
-| Feature count | 20 |
-| Targets | points, rebounds, assists |
-
-Feature names are listed in that file. They cover rolling averages over 5, 10, and 20 game windows
-for points, rebounds, and assists, shooting percentages, minutes, games played, age, home/away,
-rest days, back-to-back flags, matchup difficulty, and season game number.
-
-### Evaluation
-
-This repository does not publish model accuracy, latency, or dataset-size figures. Retrain on your
-own data pull and evaluate with the scripts in this repo to get numbers that describe your run.
-Model quality depends on the seasons you ingest, your train/test split, and how you handle
-injuries and rotation changes, so numbers copied from another environment would be misleading.
-
-## 🛠️ Installation
-
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- PostgreSQL 14+
-- Redis (optional, for caching)
-
-### Quick Start
-
-1. **Clone Repository**
-```bash
-git clone https://github.com/cbratkovics/nba-ai-ml.git
-cd nba-ai-ml
+```
+nba/
+  config.py                 seasons, windows, min minutes, HF repo ids, HF_TOKEN
+  schema.py                 canonical game-log schema + validate()
+  ingest/kaggle_backfill.py Kaggle dump -> schema -> Parquet per season
+  storage/local.py          per-season Parquet read/write, dataset fingerprint
+  storage/hf.py             push/pull Parquet and model files to Hugging Face
+  features/asof.py          point-in-time features
+  models/train.py           LightGBM per target + baselines on the holdout season
+  models/evaluate.py        reports/metrics.json and the metrics table
+  models/publish.py         model card + upload to the HF model repo
+tests/                      schema, leakage, backfill mapping, training smoke test
+.github/workflows/ci.yml    ruff + pytest on push and pull request
+.github/workflows/probe-nba-api.yml  manual check that stats.nba.com answers a runner
 ```
 
-2. **Backend Setup**
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-3. **Frontend Setup**
-```bash
-cd frontend
-npm install
-```
-
-4. **Environment Variables**
-```bash
-# Backend (.env)
-DATABASE_URL=postgresql://user:pass@localhost:5432/nba_ml
-REDIS_URL=redis://localhost:6379
-API_KEY=your-secret-key
-
-# Frontend (.env.local)
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-5. **Run Services**
-```bash
-# Backend
-uvicorn api.main:app --reload
-
-# Frontend
-cd frontend && npm run dev
-```
-
-## Docker Support
+## Setup
 
 ```bash
-# Build image
-docker build -t nba-ml:latest .
-
-# Run container (start.py listens on $PORT, default 8080)
-docker run -p 8080:8080 nba-ml:latest
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
 ```
 
-## Future Enhancements
+LightGBM needs OpenMP at runtime. On macOS with Homebrew: `brew install libomp`.
 
-- [ ] Real-time data streaming integration
-- [ ] Advanced time series models (LSTM)
-- [ ] Player injury impact modeling
-- [ ] Team chemistry factors
-- [ ] Playoff performance adjustments
+## Running the pipeline
 
-## Contributing
+```bash
+# 1. Backfill from the Kaggle dump (download it yourself; no credentials are stored here)
+python -m nba.ingest.kaggle_backfill --kaggle-dir /path/to/kaggle --out-dir data/game_logs
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create your feature branch
-3. Commit changes with clear messages
-4. Push to your branch
-5. Open a Pull Request
+# 2. Push to / pull from the Hugging Face dataset repo (needs HF_TOKEN to push)
+HF_TOKEN=... python -m nba.storage.hf push-dataset
+python -m nba.storage.hf pull-dataset
+
+# 3. Train, evaluate, and write reports/metrics.json
+python -m nba.models.train
+
+# 4. Publish models + model card
+HF_TOKEN=... python -m nba.models.publish
+```
+
+Hugging Face repos: dataset `cbratkovics/nba-game-logs`, model
+`cbratkovics/nba-stat-predictor` (both set in `nba/config.py`).
+
+## Evaluation
+
+The holdout is the whole 2025-26 season; nothing from it is used for fitting or
+for choosing settings. Rows are limited to games where the player logged at
+least 10 minutes (`MIN_MINUTES` in `nba/config.py`), so the model does not
+predict minutes or DNPs. Metrics are published only from `reports/metrics.json`,
+which is written by `python -m nba.models.train` on a real data pull. That file
+does not exist yet, so no numbers are listed here. When it does, the table from
+`nba.models.evaluate.metrics_table` will be pasted below verbatim.
+
+## Data provenance
+
+- **Backfill:** [Historical NBA Data and Player Box Scores](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores)
+  by Eoin Moore on Kaggle, released under CC0. Two files are read:
+  `PlayerStatistics.csv` (box scores) and `Games.csv` (schedule and game type).
+  Download it manually; the code takes a local path and stores no Kaggle
+  credentials.
+- **Daily updates:** `nba_api`, an unofficial client for `stats.nba.com`
+  (not yet wired in this phase; the probe workflow checks whether GitHub
+  runners can reach it).
+- Both sources are derived from NBA.com box scores. The data is used here for
+  non-commercial personal study only, requests are rate-limited politely, and
+  the repository does not redistribute the raw data.
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details
-
-## Acknowledgments
-
-- NBA Stats API for data access
-- XGBoost and LightGBM communities
-- FastAPI for excellent documentation
-- Open source ML community
-
----
-
-<div align="center">
-
-### Built by Christopher Bratkovics
-
-[![Portfolio](https://img.shields.io/badge/Portfolio-cbratkovics.dev-4A90E2?style=for-the-badge)](https://cbratkovics.dev)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/cbratkovics)
-[![GitHub](https://img.shields.io/badge/GitHub-Follow-181717?style=for-the-badge&logo=github)](https://github.com/cbratkovics)
-
-**⭐ Star this repository if you find it useful!**
-
-</div>
+MIT. See [LICENSE](LICENSE).
