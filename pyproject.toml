@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nba-stat-predictor"
+version = "2.0.0"
+description = "Batch NBA player-stat prediction pipeline (points, rebounds, assists)."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "pandas==3.0.5",
+    "pyarrow==25.0.1",
+    "scikit-learn==1.9.1",
+    "lightgbm==4.7.0",
+    "huggingface_hub==1.31.0",
+    "datasets==5.0.1",
+    "nba_api==1.11.4",
+    "pyyaml==6.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.7",
+]
+
+[tool.setuptools.packages.find]
+include = ["nba*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["frontend", "scratch", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
