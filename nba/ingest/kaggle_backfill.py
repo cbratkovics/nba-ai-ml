@@ -9,7 +9,11 @@ Two files are read:
   * Games.csv             (one row per game: the schedule, with date and game type)
 
 Rows are mapped into the canonical schema in `nba.schema` and written as one
-Parquet file per season.
+Parquet file per season. This module and `nba.storage` do not import
+`nba.models`, so the backfill and push run without LightGBM installed.
+
+Usage:
+    python -m nba.ingest.kaggle_backfill --kaggle-dir <path> [--out-dir data/game_logs] [--push]
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ import pandas as pd
 from nba_api.stats.static import teams as nba_teams
 
 from nba import config, schema
-from nba.storage import local
+from nba.storage import hf, local
 
 BOX_SCORE_FILE = "PlayerStatistics.csv"
 SCHEDULE_FILE = "Games.csv"
@@ -180,11 +184,21 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--out-dir", type=Path, default=config.DATA_DIR, help="where to write Parquet"
     )
+    parser.add_argument(
+        "--push",
+        action="store_true",
+        help=(
+            f"after writing, upload the Parquet files to {config.HF_DATASET_REPO} (needs HF_TOKEN)"
+        ),
+    )
     args = parser.parse_args(argv)
     written = backfill(args.kaggle_dir, args.out_dir)
     for season, path in written.items():
         rows = pd.read_parquet(path).shape[0]
         print(f"{season}: {rows} rows -> {path}")
+    if args.push:
+        sha = hf.push_dataset(args.out_dir)
+        print(f"pushed to https://huggingface.co/datasets/{config.HF_DATASET_REPO} at {sha}")
 
 
 if __name__ == "__main__":
