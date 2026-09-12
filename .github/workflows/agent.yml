@@ -11,7 +11,7 @@ on:
         description: "Comma-separated brief dates (YYYY-MM-DD)"
         required: true
       run_date:
-        description: "Run date used for freshness (default: today UTC)"
+        description: "Run date for freshness and the ingest report (default: the day after each brief date)"
         required: false
         default: ""
       push:
@@ -58,7 +58,11 @@ jobs:
           for d in "${DATES[@]}"; do
             d="$(echo "$d" | xargs)"
             args=(--date "$d" --no-pull)
-            if [ -n "${{ inputs.run_date }}" ]; then args+=(--run-date "${{ inputs.run_date }}"); fi
+            if [ -n "${{ inputs.run_date }}" ]; then
+              args+=(--run-date "${{ inputs.run_date }}")
+            else
+              args+=(--run-date "$(date -u -d "$d + 1 day" +%F)")
+            fi
             if [ "${{ inputs.push }}" = "true" ]; then args+=(--push); fi
             python -m nba.agent.loop "${args[@]}" 2>&1 | tee -a agent.log
           done

@@ -245,3 +245,33 @@ def test_run_and_write_applies_grounding_and_never_raises(
     monkeypatch.setattr(config, "GROQ_API_KEY", None)
     brief, _ = loop.run_and_write(ctx, date(2026, 1, 13), tmp_path / "brief2")
     assert brief["status"] == "agent_unavailable" and "GROQ_API_KEY" in brief["error"]
+
+
+def test_recover_brief_from_pseudo_tool_call() -> None:
+    body = {
+        "summary": "s",
+        "findings": [{"kind": "k", "severity": "info", "evidence": {}, "text": "t"}],
+    }
+
+    class Exc(Exception):
+        def __init__(self, body):
+            self.body = body
+
+    exc = Exc(
+        {
+            "error": {
+                "code": "tool_use_failed",
+                "failed_generation": json.dumps({"name": "json", "arguments": body}),
+            }
+        }
+    )
+    assert json.loads(loop.recover_brief_from_tool_error(exc)) == body
+    # String-encoded arguments are accepted too; anything else is left to raise.
+    exc.body["error"]["failed_generation"] = json.dumps(
+        {"name": "json", "arguments": json.dumps(body)}
+    )
+    assert json.loads(loop.recover_brief_from_tool_error(exc)) == body
+    assert loop.recover_brief_from_tool_error(Exc({"error": {"code": "other"}})) is None
+    assert loop.recover_brief_from_tool_error(Exc(None)) is None
+    exc.body["error"]["failed_generation"] = json.dumps({"name": "get_residuals", "arguments": {}})
+    assert loop.recover_brief_from_tool_error(exc) is None

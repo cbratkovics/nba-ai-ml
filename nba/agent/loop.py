@@ -61,7 +61,9 @@ SYSTEM_PROMPT = (
     "get_player_recent or get_team_context a few more times if a residual needs context; "
     "otherwise answer immediately. Put every number you mention, including window "
     "lengths and counts, in evidence.values. Round numbers to two decimals. A residual "
-    "finding must name the player and give predicted and actual values.\n\n"
+    "finding must name the player and give predicted and actual values.\n"
+    "8. The brief is your final message content, plain JSON with no code fence. Never "
+    "wrap it in a tool call; there is no tool named json.\n\n"
     "When you are done, respond with ONLY a JSON object (no markdown, no prose) with "
     "exactly these keys:\n"
     '{"summary": string, "findings": [{"kind": string, "severity": '
@@ -165,16 +167,24 @@ class GroqChat:
     def complete(
         self, messages: list[dict[str, Any]], tool_schemas: list[dict[str, Any]]
     ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        from groq import BadRequestError
+
         extra = {"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}
-        r = self.client.chat.completions.create(
-            model=self.model_id,
-            messages=messages,
-            tools=tool_schemas,
-            tool_choice="auto",
-            temperature=TEMPERATURE,
-            max_tokens=MAX_OUTPUT_TOKENS,
-            **extra,
-        )
+        try:
+            r = self.client.chat.completions.create(
+                model=self.model_id,
+                messages=messages,
+                tools=tool_schemas,
+                tool_choice="auto",
+                temperature=TEMPERATURE,
+                max_tokens=MAX_OUTPUT_TOKENS,
+                **extra,
+            )
+        except BadRequestError as exc:
+            recovered = recover_brief_from_tool_error(exc)
+            if recovered is None:
+                raise
+            return {"role": "assistant", "content": recovered}, None
         m = r.choices[0].message
         message: dict[str, Any] = {"role": "assistant", "content": m.content}
         if m.tool_calls:
@@ -188,6 +198,37 @@ class GroqChat:
             ]
         usage = r.usage.model_dump() if r.usage else None
         return message, usage
+
+
+def recover_brief_from_tool_error(exc: Exception) -> str | None:
+    """The brief when the model wrapped its final answer in a pseudo tool call.
+
+    gpt-oss models sometimes emit the JSON brief as a call to a tool named "json" (or
+    the name of the schema) instead of as message content. Groq rejects that with a 400
+    tool_use_failed error whose body carries the generated text. If that text is a
+    call whose arguments hold a brief, hand it back as content so the loop can parse it
+    like any other answer.
+    """
+    body = getattr(exc, "body", None)
+    err = body.get("error", body) if isinstance(body, dict) else None
+    if not isinstance(err, dict) or err.get("code") != "tool_use_failed":
+        return None
+    raw = err.get("failed_generation")
+    if not isinstance(raw, str):
+        return None
+    try:
+        gen = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    args = gen.get("arguments") if isinstance(gen, dict) else None
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except json.JSONDecodeError:
+            return None
+    if isinstance(args, dict) and "summary" in args and "findings" in args:
+        return json.dumps(args)
+    return None
 
 
 class ReplayChat:
