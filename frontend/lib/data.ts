@@ -31,6 +31,9 @@ export const DATASET_PATHS = {
   replaySummary: `replay/${REPLAY_SEASON}/replay.json`,
   replayDaily: `replay/${REPLAY_SEASON}/daily_mae.json`,
   replaySample: (date: string) => `replay/${REPLAY_SEASON}/sample_${date}.json`,
+  briefIndex: 'brief/index.json',
+  briefLatest: 'brief/latest.json',
+  brief: (date: string) => `brief/${date}.json`,
 }
 /** Path read from the model repo. */
 export const MODEL_PATHS = { metrics: 'metrics.json' }
@@ -165,6 +168,34 @@ export interface ReplaySample {
   rows: SampleRow[]
 }
 
+export interface BriefFinding {
+  kind: string
+  severity: 'info' | 'warning' | 'critical'
+  evidence: { tool: string; args: Record<string, unknown>; values: unknown }
+  text: string
+  ungrounded_numbers?: number[]
+}
+
+export interface Brief {
+  date: string
+  run_date: string
+  status: 'ok' | 'ungrounded' | 'agent_unavailable'
+  summary: string
+  findings: BriefFinding[]
+  dropped_findings?: BriefFinding[]
+  grounding?: { checked: number; dropped: number }
+  tool_calls_made: number
+  model_id: string
+  latency_ms: number
+  error?: string
+  generated_at: string
+}
+
+export interface BriefIndex {
+  dates: string[]
+  latest: string | null
+}
+
 // ---------- fetching ----------
 
 export interface Fetched<T> {
@@ -207,3 +238,6 @@ export const getReplayDaily = () => fetchJson<ReplayDaily>(`${DATASET_BASE}/${DA
 export const getReplaySample = (date: string) =>
   fetchJson<ReplaySample>(`${DATASET_BASE}/${DATASET_PATHS.replaySample(date)}`)
 export const getMetricsReport = () => fetchJson<MetricsReport>(`${MODEL_BASE}/${MODEL_PATHS.metrics}`)
+export const getBriefIndex = () => fetchJson<BriefIndex>(`${DATASET_BASE}/${DATASET_PATHS.briefIndex}`)
+export const getLatestBrief = () => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.briefLatest}`)
+export const getBrief = (date: string) => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.brief(date)}`)

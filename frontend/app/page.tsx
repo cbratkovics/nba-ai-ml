@@ -160,7 +160,11 @@ export default async function HomePage() {
               <Link href="/replay" className="text-secondary hover:underline">
                 Daily chart and a sample slate
               </Link>
-              .
+              . A tool-using analyst writes a nightly{' '}
+              <Link href="/brief" className="text-secondary hover:underline">
+                brief
+              </Link>{' '}
+              from these files.
             </p>
           </>
         ) : (
