@@ -1,46 +1,52 @@
 # nba-ai-ml
 
-A batch pipeline that predicts an NBA player's points, rebounds, and assists for a
-game from that player's history before the game, scores the predictions against box
-scores the next day, and writes a short tool-grounded brief about the results. It runs
-on free tiers only (GitHub Actions, Hugging Face, Groq, Vercel), stores every product
-as a file, and publishes numbers only from committed reports. Personal, non-commercial
-portfolio project. Python 3.11, LightGBM, Parquet, Next.js.
+Batch predictions of NBA player points, rebounds, and assists, scored against the next day's box scores and audited by a tool-grounded agent, all on free tiers.
 
-## Pipeline
+[![CI](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/ci.yml)
+[![Nightly](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/nightly.yml/badge.svg)](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/nightly.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-lightgrey)](pyproject.toml)
+[![Site](https://img.shields.io/badge/site-nba--ai--ml.vercel.app-lightgrey)](https://nba-ai-ml.vercel.app)
 
+| Live site | HF dataset | HF model | Reconciliation notes | Agent notes |
+|:---:|:---:|:---:|:---:|:---:|
+| [nba-ai-ml.vercel.app](https://nba-ai-ml.vercel.app) | [cbratkovics/nba-game-logs](https://huggingface.co/datasets/cbratkovics/nba-game-logs) | [cbratkovics/nba-stat-predictor](https://huggingface.co/cbratkovics/nba-stat-predictor) | [docs/reconciliation.md](docs/reconciliation.md) | [docs/agent.md](docs/agent.md) |
+
+## What it does
+
+- **Predict.** One LightGBM regressor per target from a player's games before the target game, evaluated on the full 2025-26 season against the player's last-10-game mean. Points MAE 4.764 versus 4.908 for that baseline.
+- **Validate.** A replay of the nightly slate path over all 164 game dates of 2025-26 reproduces the holdout metrics. Largest MAE difference on the same population: +0.0021 points.
+- **Audit.** A Groq-hosted agent reads the published files through seven read-only tools and writes a brief whose every number must match its cited tool output. Grounding on the committed traces: 6 of 6 briefs.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    K[Kaggle dump<br/>CC0 box scores] -->|nightly.yml| I[Nightly ingest]
+    I --> D[(HF dataset<br/>game_logs parquet)]
+    D -->|train.yml| T[Train on Actions]
+    T --> M[(HF model<br/>lgbm pts reb ast)]
+    D -->|nightly.yml| S[Slate + residuals]
+    M --> S
+    S --> P[(HF dataset<br/>predictions residuals)]
+    P -->|nightly.yml| A[Agent brief]
+    A --> B[(HF dataset<br/>brief json)]
+    P --> V[Vercel site]
+    B --> V
 ```
-Kaggle dump (CC0 box scores)
-   |  nightly ingest, 10:00 UTC (.github/workflows/nightly.yml -> nba/ingest/kaggle_daily.py)
-   v
-HF dataset  cbratkovics/nba-game-logs   game_logs/<season>.parquet
-   |  train on GitHub Actions (train.yml -> nba/models/train.py, features: nba/features/asof.py)
-   v
-HF model    cbratkovics/nba-stat-predictor   lgbm_{pts,reb,ast}.txt, pinned revision fb427de
-   |  nightly slate + residuals (nba/predict/slate.py, nba/predict/residuals.py)
-   v
-HF dataset  predictions/, residuals/, daily_reports/, replay/
-   |  Groq agent brief (nba/agent/loop.py, 7 read-only tools, nba/agent/evals.py)
-   v
-HF dataset  brief/<date>.json, brief/latest.json
-   |  fetch-only pages, revalidated hourly (frontend/)
-   v
-Next.js on Vercel   /  /predictions  /replay  /brief
-```
 
-Every stage reads and writes files; nothing needs a server. The nightly job exits 0
-whether or not the agent produced a brief.
+| Stage | Where it runs | Cost | Artifact |
+|---|---|---|---|
+| Ingest from the Kaggle dump | GitHub Actions, 10:00 UTC daily | $0 | `game_logs/<season>.parquet`, `daily_reports/<date>.json` |
+| Train and evaluate | GitHub Actions, on dispatch | $0 | `lgbm_{pts,reb,ast}.txt`, `reports/metrics.json` |
+| Slate and residuals | GitHub Actions, same nightly job | $0 | `predictions/<date>.parquet`, `residuals/<date>.parquet` |
+| Season replay | GitHub Actions, on dispatch | $0 | `reports/replay_2025-26.json`, `replay/2025-26/` |
+| Agent brief | GitHub Actions, Groq free tier | $0 | `brief/<date>.json`, `brief/latest.json`, trace |
+| Site | Vercel, fetch-only pages revalidated hourly | $0 | `/`, `/predictions`, `/replay`, `/brief` |
 
-## Holdout results
+## Results
 
-Source: [reports/metrics.json](reports/metrics.json), written by
-`python -m nba.models.train` on dataset revision `b20b560`.
-
-Split: train on 2021-22 through 2024-25 (88,257 rows, 2021-10-19 to 2025-04-13);
-holdout is all of 2025-26 (22,630 rows, 2025-10-21 to 2026-04-12). Rows are games where
-the player logged at least 10 minutes. Nothing from the holdout is used for fitting or
-for choosing settings. Each target is scored on the 22,244 holdout rows where both
-baselines exist. Baselines are the player's last-10-game mean and season-to-date mean.
+Source: [reports/metrics.json](reports/metrics.json). Train on 2021-22 through 2024-25 (88,257 rows), holdout is all of 2025-26 (22,630 rows, 2025-10-21 to 2026-04-12), rows with at least 10 minutes played, scored on the 22,244 rows where both baselines exist. Baselines are the player's last-10-game mean and season-to-date mean.
 
 | Target | Model MAE | Last-10 MAE | Season MAE | Model RMSE | Model R² |
 |---|---:|---:|---:|---:|---:|
@@ -48,17 +54,9 @@ baselines exist. Baselines are the player's last-10-game mean and season-to-date
 | reb | 1.942 | 2.009 | 2.008 | 2.527 | 0.402 |
 | ast | 1.431 | 1.460 | 1.456 | 1.909 | 0.461 |
 
-Replay equivalence: [reports/replay_2025-26.json](reports/replay_2025-26.json) replays
-the nightly slate path over all 164 game dates of 2025-26 with the same model and
-dataset revisions. On the same population its MAE differs from metrics.json by
-+0.0021 pts, +0.0008 reb, +0.0010 ast, within the 0.05 tolerance. Over every row with
-an actual (26,031 of 38,372 slated players) MAE is 4.864 pts, 2.023 reb, 1.403 ast.
+Replay equivalence ([reports/replay_2025-26.json](reports/replay_2025-26.json)): same population, MAE differs from metrics.json by +0.0021 pts, +0.0008 reb, +0.0010 ast, within the 0.05 tolerance.
 
-## Agent evals
-
-Source: [reports/agent_evals.json](reports/agent_evals.json), replayed from the
-committed traces in `tests/traces/` with the provider mocked. Model
-`openai/gpt-oss-120b` on Groq.
+Agent evals ([reports/agent_evals.json](reports/agent_evals.json), [reports/agent_pass_rates.json](reports/agent_pass_rates.json)), model `openai/gpt-oss-120b`:
 
 | Check | Result |
 |---|---|
@@ -66,60 +64,66 @@ committed traces in `tests/traces/` with the provider mocked. Model
 | Golden set: the finding names the day's largest-points-residual player | 5 of 5 dates |
 | Pass rates over repeated runs (`agent-eval.yml`, 5 per date) | incomplete: 10 of 25 briefs ran before the daily token cap, 9 grounded, 10 named the player; see [docs/agent.md](docs/agent.md#reliability) |
 
-## Links
-
-- Live site: <https://nba-ai-ml.vercel.app>
-- Dataset: <https://huggingface.co/datasets/cbratkovics/nba-game-logs>
-- Model: <https://huggingface.co/cbratkovics/nba-stat-predictor>
-- Data reconciliation notes: [docs/reconciliation.md](docs/reconciliation.md)
-- Agent design, limits, evals, cost: [docs/agent.md](docs/agent.md)
-
-## What this does not do
-
-- **No live collection from nba.com.** The probe workflow
-  (`.github/workflows/probe-nba-api.yml`) timed out on stats.nba.com and got HTTP 403
-  from cdn.nba.com when run from a GitHub Actions runner, so the nightly job reads the
-  Kaggle dump instead and lags it by however long the dump takes to update.
-- **Seven 2024-25 games are missing.** The dump has box scores for 1,223 of that
-  season's 1,230 games; the missing ids are listed in docs/reconciliation.md and
-  reported by the agent's `list_data_gaps` tool. They are not filled in from anywhere.
-- **Offseason behaviour.** When the dump has no schedule file for the next season, or
-  the schedule lists no games for the date, the nightly job logs that and exits 0. No
-  predictions, residuals, or brief are produced for that date.
-- **Model limitations.** One LightGBM regressor per target on 23 rolling and
-  situational features. It does not predict minutes or whether a player plays; a
-  player with no game in their team's previous ten is not slated. There is no injury,
-  lineup, or betting-market input.
-- **The agent brief is not deterministic.** At temperature 0 the model's output still
-  varies between runs. A single run can drop a finding as ungrounded or miss the golden
-  player, and one of the six recorded runs did. Pass rates over repeated runs are the
-  measure to read; the first attempt at them ran out of daily token quota after 10 of
-  25 briefs ([reports/agent_pass_rates.json](reports/agent_pass_rates.json)).
-
-## Data-source terms
-
-- Backfill and daily updates come from
-  [Historical NBA Data and Player Box Scores](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores)
-  by Eoin Moore on Kaggle, released under CC0. The code takes a local path or the
-  Kaggle single-file download with your own credentials; none are stored here.
-- The dump is derived from NBA.com box scores. This project uses it for non-commercial
-  personal study, publishes derived per-season Parquet and prediction files on Hugging
-  Face, and does not redistribute the raw CSVs.
-- The agent sends Groq only the outputs of its tools, which are aggregates of the
-  published files. No credentials or request headers are recorded in the traces.
-
-## Setup
+<details>
+<summary>Running it locally</summary>
 
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
+
+python -m nba.storage.hf pull-dataset          # game logs from the HF dataset repo
+python -m nba.models.train                     # writes reports/metrics.json
+python -m nba.nightly --date 2026-04-12        # ingest, slate, residuals, brief for one date
+python -m nba.agent.loop --date 2026-04-12     # brief only; needs GROQ_API_KEY
 ```
 
-LightGBM needs OpenMP at runtime (`brew install libomp` on macOS). Secrets used by the
-workflows: `HF_TOKEN`, `KAGGLE_USERNAME`, `KAGGLE_KEY`, `GROQ_API_KEY`. Repo ids, the
-model revision, and thresholds live in `nba/config.py`.
+LightGBM needs OpenMP at runtime (`brew install libomp` on macOS). Secrets used by the workflows: `HF_TOKEN`, `KAGGLE_USERNAME`, `KAGGLE_KEY`, `GROQ_API_KEY`. Repo ids, the model revision, and thresholds live in `nba/config.py`.
 
-## License
+</details>
 
-MIT. See [LICENSE](LICENSE).
+<details>
+<summary>What this does not do</summary>
+
+- **No live collection from nba.com.** The probe workflow (`.github/workflows/probe-nba-api.yml`) timed out on stats.nba.com and got HTTP 403 from cdn.nba.com when run from a GitHub Actions runner, so the nightly job reads the Kaggle dump instead and lags it by however long the dump takes to update.
+- **Seven 2024-25 games are missing.** The dump has box scores for 1,223 of that season's 1,230 games; the missing ids are listed in docs/reconciliation.md and reported by the agent's `list_data_gaps` tool. They are not filled in from anywhere.
+- **Offseason behaviour.** When the dump has no schedule file for the next season, or the schedule lists no games for the date, the nightly job logs that and exits 0. No predictions, residuals, or brief are produced for that date.
+- **Model limitations.** One LightGBM regressor per target on 23 rolling and situational features. It does not predict minutes or whether a player plays; a player with no game in their team's previous ten is not slated. There is no injury, lineup, or betting-market input.
+- **The agent brief is not deterministic.** At temperature 0 the model's output still varies between runs. A single run can drop a finding as ungrounded or miss the golden player, and one of the six recorded runs did. Pass rates over repeated runs are the measure to read; the first attempt at them ran out of daily token quota after 10 of 25 briefs.
+
+</details>
+
+<details>
+<summary>Data-source terms</summary>
+
+- Backfill and daily updates come from [Historical NBA Data and Player Box Scores](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores) by Eoin Moore on Kaggle, released under CC0. The code takes a local path or the Kaggle single-file download with your own credentials; none are stored here.
+- The dump is derived from NBA.com box scores. This project uses it for non-commercial personal study, publishes derived per-season Parquet and prediction files on Hugging Face, and does not redistribute the raw CSVs.
+- The agent sends Groq only the outputs of its tools, which are aggregates of the published files. No credentials or request headers are recorded in the traces.
+
+</details>
+
+<details>
+<summary>Repository layout</summary>
+
+```
+nba/
+  config.py          seasons, thresholds, HF repo ids, model revision, secrets
+  schema.py          canonical game-log schema
+  ingest/            kaggle_backfill, kaggle_daily, kaggle_dump rules, schedule
+  features/asof.py   point-in-time features
+  models/            train, evaluate, publish
+  predict/           model loading, slate, residuals, replay
+  agent/             tools, loop, evals, pass_rates
+  nightly.py         ingest -> slate -> residuals -> brief for one date
+frontend/            Next.js pages over the published files
+docs/                reconciliation.md, agent.md
+reports/             metrics, replay, agent evals, golden set, pass rates
+tests/               unit tests and recorded agent traces
+.github/workflows/   ci, nightly, train, replay, agent, agent-eval, probe-nba-api
+```
+
+</details>
+
+---
+
+Built by Christopher Bratkovics. [Portfolio](https://cbratkovics.dev) · [LinkedIn](https://www.linkedin.com/in/cbratkovics/) · [GitHub](https://github.com/cbratkovics)
