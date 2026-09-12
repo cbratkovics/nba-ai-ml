@@ -1,0 +1,131 @@
+{
+  "generated_at": "2026-09-12T02:00:06+00:00",
+  "git_sha": "50a3b2e33b443d1db19274cea27467072ebfb3f8",
+  "dataset": {
+    "repo": "cbratkovics/nba-game-logs",
+    "version": "hf:b20b5601de213fa8e704ebffaafd18f182ea68c3"
+  },
+  "split": {
+    "train_seasons": [
+      "2021-22",
+      "2022-23",
+      "2023-24",
+      "2024-25"
+    ],
+    "holdout_season": "2025-26",
+    "train_dates": {
+      "start": "2021-10-19",
+      "end": "2025-04-13"
+    },
+    "holdout_dates": {
+      "start": "2025-10-21",
+      "end": "2026-04-12"
+    },
+    "n_train_rows": 88257,
+    "n_holdout_rows": 22630,
+    "min_minutes": 10.0
+  },
+  "features": [
+    "pts_mean_last5",
+    "pts_mean_last10",
+    "pts_mean_last20",
+    "reb_mean_last5",
+    "reb_mean_last10",
+    "reb_mean_last20",
+    "ast_mean_last5",
+    "ast_mean_last10",
+    "ast_mean_last20",
+    "minutes_mean_last5",
+    "minutes_mean_last10",
+    "minutes_mean_last20",
+    "pts_mean_season",
+    "reb_mean_season",
+    "ast_mean_season",
+    "minutes_mean_season",
+    "games_played_season",
+    "days_rest",
+    "back_to_back",
+    "home",
+    "pts_mean_vs_opp",
+    "reb_mean_vs_opp",
+    "ast_mean_vs_opp"
+  ],
+  "lgbm_params": {
+    "n_estimators": 600,
+    "learning_rate": 0.03,
+    "num_leaves": 31,
+    "min_child_samples": 50,
+    "subsample": 0.8,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 1.0,
+    "random_state": 42
+  },
+  "model_files": {
+    "pts": "lgbm_pts.txt",
+    "reb": "lgbm_reb.txt",
+    "ast": "lgbm_ast.txt"
+  },
+  "metrics": {
+    "pts": {
+      "model": {
+        "mae": 4.7643690561830265,
+        "rmse": 6.159831866929985,
+        "r2": 0.4565409330967882,
+        "n": 22244
+      },
+      "baseline_last10": {
+        "mae": 4.907974220977727,
+        "rmse": 6.3932243095837915,
+        "r2": 0.41457804373375984,
+        "n": 22244
+      },
+      "baseline_season": {
+        "mae": 4.946283186230257,
+        "rmse": 6.46748300840617,
+        "r2": 0.4008994543652029,
+        "n": 22244
+      }
+    },
+    "reb": {
+      "model": {
+        "mae": 1.9420997887256806,
+        "rmse": 2.52710958927069,
+        "r2": 0.4021357198880344,
+        "n": 22244
+      },
+      "baseline_last10": {
+        "mae": 2.0094194475128657,
+        "rmse": 2.6440674198902907,
+        "r2": 0.3455152898399724,
+        "n": 22244
+      },
+      "baseline_season": {
+        "mae": 2.007607543144493,
+        "rmse": 2.659190361458849,
+        "r2": 0.33800713072874455,
+        "n": 22244
+      }
+    },
+    "ast": {
+      "model": {
+        "mae": 1.4309920131482945,
+        "rmse": 1.9086391196648185,
+        "r2": 0.4606219402722789,
+        "n": 22244
+      },
+      "baseline_last10": {
+        "mae": 1.4600330604578942,
+        "rmse": 1.967106086628269,
+        "r2": 0.42707048066120157,
+        "n": 22244
+      },
+      "baseline_season": {
+        "mae": 1.455842451179198,
+        "rmse": 1.9725291648518994,
+        "r2": 0.423907128675478,
+        "n": 22244
+      }
+    }
+  }
+}

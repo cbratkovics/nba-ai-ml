@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -308,7 +307,7 @@ def main(argv: list[str] | None = None) -> None:
         schedule_file = sched.name if sched else None
         print(f"DAILY using local dump {dump_dir} (no download)")
     else:
-        dump_dir = Path(tempfile.mkdtemp(prefix="kaggle_daily_"))
+        dump_dir = config.DUMP_DIR
         fetched = download_dump_subset(dump_dir, today)
         schedule_file = fetched["schedule"]
         print(f"DAILY downloaded: {fetched}")

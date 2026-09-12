@@ -62,6 +62,18 @@ KAGGLE_DAILY_SOURCE: str = "kaggle_daily"
 # The daily ingest re-reads rows from this many days before the newest stored game.
 DAILY_LOOKBACK_DAYS: int = 7
 DAILY_REPORT_PATH: Path = Path("data") / "daily_report.json"
+# Where the daily ingest puts the downloaded dump files (the slate reads the schedule here).
+DUMP_DIR: Path = Path("data") / "dump"
+
+# Published model used for scoring, pinned to a commit of HF_MODEL_REPO.
+MODEL_REVISION: str = "fb427de136e1d6c4b591ae30cf30488f44935182"
+# A player is on a team's slate if they appeared in any of the team's last N games.
+ROSTER_LOOKBACK_GAMES: int = 10
+# Prediction and residual products (local dirs and folders in the dataset repo).
+PREDICTIONS_DIR: Path = Path("predictions")
+RESIDUALS_DIR: Path = Path("residuals")
+HF_PREDICTIONS_PREFIX: str = "predictions"
+HF_RESIDUALS_PREFIX: str = "residuals"
 
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"

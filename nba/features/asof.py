@@ -90,3 +90,46 @@ def build_features(
         out[f"{stat}_mean_vs_opp"] = by_player_opp[stat].transform(_prior_expanding_mean)
 
     return out[list(ID_COLUMNS) + list(TARGET_COLUMNS) + feature_columns(windows)]
+
+
+PENDING_COLUMNS: tuple[str, ...] = (
+    "player_id",
+    "player_name",
+    "game_id",
+    "game_date",
+    "season",
+    "team",
+    "opponent",
+    "home",
+)
+
+
+def features_for_pending(game_logs: pd.DataFrame, pending: pd.DataFrame) -> pd.DataFrame:
+    """As-of features for games that have not been played yet.
+
+    `pending` has one row per (player_id, game_id) with PENDING_COLUMNS. Each pending
+    row is appended to the history with zeroed statistics so `build_features` can run;
+    because every feature is shifted by one game, a pending row's own (zero) stats never
+    reach its features, and pending rows for different players cannot see each other.
+    Returns ID_COLUMNS + FEATURE_COLUMNS for the pending rows only.
+    """
+    missing = [c for c in PENDING_COLUMNS if c not in pending.columns]
+    if missing:
+        raise KeyError(f"pending rows are missing columns: {missing}")
+    history = schema.validate(game_logs)
+    keys = list(schema.KEY_COLUMNS)
+    clash = pending.merge(history[keys], on=keys, how="inner")
+    if not clash.empty:
+        raise ValueError(f"{len(clash)} pending rows already exist in the game logs")
+
+    filler = pd.DataFrame({c: pending[c] for c in PENDING_COLUMNS})
+    for col, dtype in schema.COLUMNS.items():
+        if col in filler.columns:
+            continue
+        filler[col] = 0.0 if dtype == "float64" else 0 if dtype == "int64" else "pending"
+    filler = schema.coerce(filler)
+    combined = pd.concat([history, filler], ignore_index=True)
+    features = build_features(combined)
+    pending_keys = pending[keys].drop_duplicates()
+    out = features.merge(pending_keys, on=keys, how="inner")
+    return out[list(ID_COLUMNS) + FEATURE_COLUMNS].reset_index(drop=True)
