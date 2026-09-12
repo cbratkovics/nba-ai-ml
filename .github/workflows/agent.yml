@@ -1,0 +1,79 @@
+name: Analyst brief
+
+# Manually triggered: run the analyst agent for one or more dates (replay dates work
+# because the tools fall back to replay/<season>/residuals/<date>.parquet), push the
+# briefs to the HF dataset repo, and upload them as an artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dates:
+        description: "Comma-separated brief dates (YYYY-MM-DD)"
+        required: true
+      run_date:
+        description: "Run date used for freshness (default: today UTC)"
+        required: false
+        default: ""
+      push:
+        description: "Push briefs to the HF dataset repo"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Require secrets
+        run: |
+          for v in HF_TOKEN GROQ_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing repository secret $v"; exit 1; fi
+          done
+
+      - name: Install project
+        run: python -m pip install --quiet "."
+
+      - name: Pull dataset and products
+        run: |
+          python -m nba.storage.hf pull-dataset
+          python -m nba.storage.hf pull-products
+
+      - name: Run the agent for each date
+        run: |
+          set -o pipefail
+          IFS=',' read -ra DATES <<< "${{ inputs.dates }}"
+          for d in "${DATES[@]}"; do
+            d="$(echo "$d" | xargs)"
+            args=(--date "$d" --no-pull)
+            if [ -n "${{ inputs.run_date }}" ]; then args+=(--run-date "${{ inputs.run_date }}"); fi
+            if [ "${{ inputs.push }}" = "true" ]; then args+=(--push); fi
+            python -m nba.agent.loop "${args[@]}" 2>&1 | tee -a agent.log
+          done
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "## Analyst briefs"; grep -E "^AGENT " agent.log || true; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload briefs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: briefs-${{ github.run_id }}
+          path: |
+            brief/
+            agent.log
+          if-no-files-found: warn

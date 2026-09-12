@@ -1,7 +1,8 @@
 """Nightly orchestration: ingest -> residuals for yesterday -> slate for today -> push.
 
 One process so the files written by each step are known exactly and only those are
-uploaded. Outcomes that are not errors exit 0 with one explicit line each:
+uploaded. Steps: ingest -> residuals for yesterday -> analyst brief for yesterday ->
+slate for today -> push. Outcomes that are not errors exit 0 with one explicit line each:
 
     SLATE <date>: no schedule file for season <season> (...)   the dump has no schedule yet
     SLATE <date>: no games on this date (...)                   schedule exists, nothing today
@@ -26,6 +27,8 @@ from typing import Any
 import pandas as pd
 
 from nba import config
+from nba.agent import loop as agent_loop
+from nba.agent import tools as agent_tools
 from nba.ingest import kaggle_daily, schedule
 from nba.predict import model, residuals, slate
 from nba.storage import hf, local
@@ -40,6 +43,7 @@ class NightlySummary:
     dataset_revision: str | None = None
     ingest: dict[str, Any] = field(default_factory=dict)
     residuals: dict[str, Any] = field(default_factory=dict)
+    agent: dict[str, Any] = field(default_factory=dict)
     slate: dict[str, Any] = field(default_factory=dict)
     products_pushed: list[str] = field(default_factory=list)
     products_revision: str | None = None
@@ -97,9 +101,14 @@ def run(
     )
     game_logs = local.read_game_logs(data_dir)
     dataset_revision = summary.dataset_revision or local.dataset_fingerprint(data_dir)
+    # The daily report is a product too, so the analyst tools can read any past date.
+    daily_reports_dir = root / config.DAILY_REPORTS_DIR
+    daily_reports_dir.mkdir(parents=True, exist_ok=True)
+    report_copy = daily_reports_dir / f"{d.isoformat()}.json"
+    report_copy.write_text(json.dumps(report, indent=2) + "\n")
+    written: list[Path] = [report_copy]
 
     # 2. Residuals for yesterday (needs prior products for the rolling window).
-    written: list[Path] = []
     if push:
         hf.pull_products(root)
     yesterday = d - timedelta(days=1)
@@ -115,6 +124,33 @@ def run(
     else:
         summary.residuals = {"status": "no_predictions"}
         summary.log(f"RESIDUALS {yesterday}: no predictions file {pred_path}; nothing to score")
+
+    # 2b. Analyst brief for yesterday. Never allowed to fail the job: the loop catches
+    # every Groq/limit error and writes an agent_unavailable brief; anything else that
+    # escapes is caught here and logged.
+    try:
+        ctx = agent_tools.ToolContext(
+            root=root,
+            data_dir=data_dir,
+            run_date=d,
+            dump_dir=dump_dir if dump_dir.exists() else None,
+        )
+        brief, brief_files = agent_loop.run_and_write(ctx, yesterday, root / config.BRIEF_DIR)
+        written += brief_files
+        summary.agent = {
+            "status": brief["status"],
+            "tool_calls_made": brief["tool_calls_made"],
+            "findings": len(brief["findings"]),
+            "model_id": brief["model_id"],
+            "latency_ms": brief["latency_ms"],
+        }
+        summary.log(
+            f"AGENT {yesterday}: status={brief['status']} tool_calls={brief['tool_calls_made']} "
+            f"findings={len(brief['findings'])} latency_ms={brief['latency_ms']}"
+        )
+    except Exception as exc:  # noqa: BLE001 - the agent must never fail the nightly job
+        summary.agent = {"status": "agent_unavailable", "error": f"{type(exc).__name__}: {exc}"}
+        summary.log(f"AGENT {yesterday}: agent_unavailable ({type(exc).__name__}: {exc})")
 
     # 3. Slate for today.
     outcome = slate.run_slate(d, game_logs, dump_dir, load_models, dataset_revision)
