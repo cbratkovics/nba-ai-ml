@@ -19,9 +19,10 @@ import argparse
 import json
 import time
 from collections import Counter
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from nba import config
 from nba.agent import evals, loop, tools

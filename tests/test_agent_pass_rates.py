@@ -23,12 +23,13 @@ def test_measure_counts_grounding_and_golden_per_date(tmp_path: Path, game_logs)
         "text": "Test Player missed by 12.5.",
     }
     ungrounded = dict(good, text="Test Player missed by 99.")
-    # Date 1: pass, ungrounded (finding dropped, so golden fails too). Date 2: never named.
+    # Dates run in sorted order. 2026-01-13: grounded but never names its player.
+    # 2026-01-14: one pass, one ungrounded (finding dropped, so golden fails too).
     scripts = [
+        _final([dict(good, text="Nobody in particular: 12.5.")]),
+        _final([dict(good, text="Nobody in particular: 12.5.")]),
         _final([good]),
         _final([ungrounded]),
-        _final([dict(good, text="Nobody in particular: 12.5.")]),
-        _final([dict(good, text="Nobody in particular: 12.5.")]),
     ]
 
     def chat_factory():
