@@ -154,6 +154,7 @@ class GroqChat:
         api_key: str | None = None,
         model_id: str = config.GROQ_MODEL,
         reasoning_effort: str | None = config.GROQ_REASONING_EFFORT,
+        fallback_model_id: str | None = config.GROQ_MODEL_FALLBACK,
     ):
         from groq import Groq
 
@@ -163,15 +164,18 @@ class GroqChat:
         self.client = Groq(api_key=key)
         self.model_id = model_id
         self.reasoning_effort = reasoning_effort
+        self.fallback_model_id = fallback_model_id
+        self.fell_back = False
 
     def complete(
         self, messages: list[dict[str, Any]], tool_schemas: list[dict[str, Any]]
     ) -> tuple[dict[str, Any], dict[str, Any] | None]:
-        from groq import BadRequestError
+        from groq import BadRequestError, RateLimitError
 
         extra = {"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}
-        try:
-            r = self.client.chat.completions.create(
+
+        def create():
+            return self.client.chat.completions.create(
                 model=self.model_id,
                 messages=messages,
                 tools=tool_schemas,
@@ -180,6 +184,18 @@ class GroqChat:
                 max_tokens=MAX_OUTPUT_TOKENS,
                 **extra,
             )
+
+        try:
+            try:
+                r = create()
+            except RateLimitError:
+                # Free-tier quotas are per model per day. Switch to the fallback for the
+                # rest of this brief; the brief records the model that answered.
+                if not self.fallback_model_id or self.fallback_model_id == self.model_id:
+                    raise
+                self.model_id = self.fallback_model_id
+                self.fell_back = True
+                r = create()
         except BadRequestError as exc:
             recovered = recover_brief_from_tool_error(exc)
             if recovered is None:

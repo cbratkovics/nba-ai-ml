@@ -275,3 +275,48 @@ def test_recover_brief_from_pseudo_tool_call() -> None:
     assert loop.recover_brief_from_tool_error(Exc(None)) is None
     exc.body["error"]["failed_generation"] = json.dumps({"name": "get_residuals", "arguments": {}})
     assert loop.recover_brief_from_tool_error(exc) is None
+
+
+def test_groq_chat_falls_back_once_on_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+    from groq import RateLimitError
+
+    chat = loop.GroqChat(api_key="test-key", model_id="primary", fallback_model_id="backup")
+    seen = []
+
+    class Completions:
+        def create(self, **kw):
+            seen.append(kw["model"])
+            if kw["model"] == "primary":
+                resp = httpx.Response(429, request=httpx.Request("POST", "http://groq.test"))
+                raise RateLimitError("tokens per day", response=resp, body=None)
+
+            class Msg:
+                content = json.dumps({"summary": "s", "findings": []})
+                tool_calls = None
+
+            class Choice:
+                message = Msg()
+
+            class R:
+                choices = [Choice()]
+                usage = None
+
+            return R()
+
+    class Chat:
+        completions = Completions()
+
+    class Client:
+        chat = Chat()
+
+    chat.client = Client()
+    message, usage = chat.complete([], [])
+    assert seen == ["primary", "backup"] and chat.model_id == "backup" and chat.fell_back
+    assert json.loads(message["content"])["summary"] == "s"
+    # Already on the fallback: a second limit propagates.
+    chat.client.chat.completions = Completions()
+    chat.model_id = "primary"
+    chat.fallback_model_id = "primary"
+    with pytest.raises(RateLimitError):
+        chat.complete([], [])
