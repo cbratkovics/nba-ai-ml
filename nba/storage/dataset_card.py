@@ -75,6 +75,7 @@ def render_dataset_card(
     card: str,
     summary: pd.DataFrame,
     missing_games: Sequence[Mapping[str, str]] = (),
+    update_dnp: bool = True,
 ) -> str:
     """Return `card` with the season table, DNP bullet, excluded-games bullet, files line,
     and (when given) the missing-games bullet filled in."""
@@ -94,7 +95,8 @@ def render_dataset_card(
     replaced_dnp = replaced_files = replaced_excluded = False
     for i, ln in enumerate(lines):
         if DNP_LINE.match(ln):
-            lines[i] = dnp_line(summary)
+            if update_dnp:
+                lines[i] = dnp_line(summary)
             replaced_dnp = True
         elif FILES_LINE.match(ln):
             lines[i] = files_line()
@@ -115,6 +117,6 @@ def render_dataset_card(
         if existing:
             lines[existing[0]] = bullet
         else:
-            dnp_at = next(i for i, ln in enumerate(lines) if ln == dnp_line(summary))
+            dnp_at = next(i for i, ln in enumerate(lines) if DNP_LINE.match(ln))
             lines.insert(dnp_at + 1, bullet)
     return "\n".join(lines)

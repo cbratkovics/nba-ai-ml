@@ -44,12 +44,14 @@ def push_dataset(
     repo_id: str = config.HF_DATASET_REPO,
     message: str = "Update game logs",
     card_path: Path | None = None,
+    files: list[Path] | None = None,
 ) -> str:
-    """Upload every per-season Parquet file (and the dataset card, if given) in one commit.
+    """Upload the per-season Parquet files (and the dataset card, if given) in one commit.
 
-    Returns the new commit sha.
+    `files` restricts the upload to those Parquet files (default: every per-season file
+    in data_dir). Returns the new commit sha.
     """
-    files = local.list_parquet(data_dir)
+    files = local.list_parquet(data_dir) if files is None else list(files)
     if not files:
         raise FileNotFoundError(f"nothing to push: no Parquet files in {data_dir}")
     api = _api(require_token=True)

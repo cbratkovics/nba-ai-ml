@@ -55,6 +55,14 @@ HF_MODEL_REPO: str = "cbratkovics/nba-stat-predictor"
 # Folder inside the dataset repo that holds the per-season Parquet files.
 HF_DATASET_PREFIX: str = "game_logs"
 
+# Kaggle dump used for the backfill and the daily incremental ingest.
+KAGGLE_DATASET: str = "eoinamoore/historical-nba-data-and-player-box-scores"
+# Value written to the `source` column by the daily ingest.
+KAGGLE_DAILY_SOURCE: str = "kaggle_daily"
+# The daily ingest re-reads rows from this many days before the newest stored game.
+DAILY_LOOKBACK_DAYS: int = 7
+DAILY_REPORT_PATH: Path = Path("data") / "daily_report.json"
+
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"
 MODELS_DIR: Path = Path("models")
@@ -83,6 +91,9 @@ LGBM_PARAMS: dict[str, object] = {
 
 # Hugging Face write token from the environment or the repo-root .env file.
 HF_TOKEN: str | None = os.environ.get("HF_TOKEN") or None
+# Kaggle API credentials (same sources). Only the daily ingest's download uses them.
+KAGGLE_USERNAME: str | None = os.environ.get("KAGGLE_USERNAME") or None
+KAGGLE_KEY: str | None = os.environ.get("KAGGLE_KEY") or None
 
 
 def hf_token() -> str | None:
