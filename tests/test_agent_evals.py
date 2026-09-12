@@ -29,6 +29,9 @@ def test_is_grounded_with_tolerance_and_nested_values() -> None:
     f["text"] = "Predicted 24.5, actual 41."
     ok, missing = evals.is_grounded(f)
     assert not ok and missing == [41.0]
+    # The cited call's arguments count as evidence: a 30-day window named in the text.
+    f = {"text": "MAE over 30 days: 4.9", "evidence": {"args": {"days": 30}, "values": {"m": 4.9}}}
+    assert evals.is_grounded(f) == (True, [])
     # Sign-insensitive: "32 days ahead" is grounded by days_stale = -32.
     assert evals.is_grounded({"text": "32 days ahead", "evidence": {"values": {"d": -32}}})[0]
 

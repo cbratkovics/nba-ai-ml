@@ -156,7 +156,7 @@ def test_rolling_metrics_from_residual_files_then_daily_mae(agent_root) -> None:
     ctx, info = agent_root
     out = _roundtrip(tools.get_rolling_metrics(ctx, days=30))
     assert out["available"] and out["source"] == "residual files"
-    assert len(out["dates_covered"]) == 3
+    assert out["n_dates_covered"] == 3
     assert out["model"]["pts"] == pytest.approx(2.0) and out["baseline_last10"]["pts"] is not None
     # A window before any residual file falls back to the replay daily MAE.
     early = tools.ToolContext(

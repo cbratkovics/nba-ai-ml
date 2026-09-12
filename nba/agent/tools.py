@@ -224,7 +224,7 @@ def get_rolling_metrics(ctx: ToolContext, days: int = ROLLING_DEFAULT_DAYS) -> d
                 "source": "residual files",
                 "days_requested": days,
                 "window": {"start": start.isoformat(), "end": end.isoformat()},
-                "dates_covered": [d.isoformat() for d, _ in frames],
+                "n_dates_covered": len(frames),
                 "n": int(len(rows)),
                 "population": "rows with actuals and a last-10 baseline for every target",
                 "model": model,
@@ -247,7 +247,7 @@ def get_rolling_metrics(ctx: ToolContext, days: int = ROLLING_DEFAULT_DAYS) -> d
                 "source": "replay daily_mae.json",
                 "days_requested": days,
                 "window": {"start": start.isoformat(), "end": end.isoformat()},
-                "dates_covered": [x["date"] for x in days_in],
+                "n_dates_covered": len(days_in),
                 "n": int(n),
                 "population": daily.get("population"),
                 "model": model,
@@ -334,6 +334,7 @@ def list_data_gaps(ctx: ToolContext) -> dict[str, Any]:
         if g < config.FULL_SEASON_GAMES
     ]
     return {
+        "known_missing_count": len(kaggle_dump.KNOWN_MISSING_GAMES),
         "known_missing_games": list(kaggle_dump.KNOWN_MISSING_GAMES),
         "seasons_below_full": short,
         "full_season_games": config.FULL_SEASON_GAMES,

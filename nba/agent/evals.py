@@ -1,7 +1,8 @@
 """Deterministic checks on agent briefs. No LLM involved.
 
 (a) Grounding: every number that appears in a finding's text must also appear among the
-    numeric leaves of that finding's evidence.values (tolerance 0.01). A brief with any
+    numeric leaves of that finding's evidence.values or evidence.args (tolerance 0.01;
+    the args of the cited tool call are evidence too, e.g. a 30-day window). A brief with any
     failing finding is marked status="ungrounded" and the failing findings are dropped
     from what latest.json shows; the dropped findings are kept under "dropped_findings"
     for inspection.
@@ -78,9 +79,13 @@ def numeric_leaves(value: Any) -> list[float]:
 def is_grounded(finding: dict[str, Any], tolerance: float = TOLERANCE) -> tuple[bool, list[float]]:
     """True when every number in the text is within tolerance of an evidence value.
 
-    Signs are ignored so that "32 days ahead" is grounded by days_stale = -32.
+    Evidence is the cited tool call's returned values plus its arguments, so a window
+    length the finding names ("over 30 days") is grounded by args {"days": 30}. Signs
+    are ignored so that "32 days ahead" is grounded by days_stale = -32.
     """
-    evidence = [abs(v) for v in numeric_leaves(finding.get("evidence", {}).get("values", {}))]
+    ev = finding.get("evidence", {})
+    evidence = [abs(v) for v in numeric_leaves(ev.get("values", {}))]
+    evidence += [abs(v) for v in numeric_leaves(ev.get("args", {}))]
     missing = []
     for n in numbers_in_text(finding.get("text", "")):
         if not any(abs(abs(n) - e) <= tolerance for e in evidence):
