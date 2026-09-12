@@ -1,8 +1,15 @@
-name: Probe stats.nba.com from a GitHub runner
+name: Probe NBA data sources from a GitHub runner
 
-# Manually triggered connectivity check. It answers one question: does
-# stats.nba.com serve requests coming from a GitHub Actions runner?
-# It makes two read-only HTTP calls and prints the results. It writes nothing.
+# Manually triggered connectivity check. It answers: do stats.nba.com, the nba.com
+# live/CDN endpoints, and kaggle.com serve requests from a GitHub Actions runner?
+# It makes a handful of read-only HTTP calls and prints one "PROBE <name>: ..." line
+# per call. It writes nothing and uses no credentials.
+#
+# Steps:
+#   1. stats.nba.com via nba_api (LeagueGameFinder for yesterday, PlayerGameLog)
+#   2. live endpoints: nba_api live ScoreBoard, the cdn.nba.com liveData boxscore JSON
+#      fetched directly, and nba_api live BoxScore for a 2025-26 game
+#   3. kaggle.com dataset API without credentials (status only; 401/403 is fine)
 
 on:
   workflow_dispatch:
@@ -20,7 +27,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install nba_api
-        run: python -m pip install --quiet "nba_api==1.4.1" pandas
+        run: python -m pip install --quiet "nba_api==1.4.1" pandas requests
 
       - name: Probe two endpoints
         run: |
@@ -57,10 +64,10 @@ jobs:
                   elapsed = time.perf_counter() - start
                   frames = endpoint.get_data_frames()
                   rows = sum(len(f) for f in frames)
-                  print(f"{label}: http_status={status_of(endpoint)} rows={rows} frames={len(frames)} elapsed={elapsed:.2f}s")
+                  print(f"PROBE {label}: http_status={status_of(endpoint)} rows={rows} frames={len(frames)} elapsed={elapsed:.2f}s")
               except Exception as exc:
                   elapsed = time.perf_counter() - start
-                  print(f"{label}: FAILED {type(exc).__name__}: {exc} elapsed={elapsed:.2f}s")
+                  print(f"PROBE {label}: FAILED {type(exc).__name__}: {exc} elapsed={elapsed:.2f}s")
 
           yesterday = (date.today() - timedelta(days=1)).strftime("%m/%d/%Y")
           print(f"probe date (yesterday): {yesterday}")
@@ -84,4 +91,88 @@ jobs:
                   timeout=TIMEOUT,
               ),
           )
+          EOF
+
+      - name: Probe live endpoints (scoreboard, cdn boxscore, live boxscore)
+        run: |
+          python - <<'EOF'
+          import time
+
+          import requests
+          from nba_api.live.nba.endpoints import boxscore, scoreboard
+
+          TIMEOUT = 10  # seconds per request
+          HEADERS = {
+              "User-Agent": "nba-ai-ml-probe/1.0 (personal portfolio project; +https://github.com/cbratkovics/nba-ai-ml)",
+              "Accept": "application/json, text/plain, */*",
+              "Accept-Language": "en-US,en;q=0.9",
+              "Referer": "https://www.nba.com/",
+              "Origin": "https://www.nba.com",
+          }
+          GAME_ID = "0022500001"  # first regular-season game id of 2025-26
+          CDN_URL = f"https://cdn.nba.com/static/json/liveData/boxscore/boxscore_{GAME_ID}.json"
+
+          def status_of(endpoint):
+              resp = getattr(endpoint, "nba_response", None)
+              if resp is None:
+                  return None
+              for attr in ("_status_code", "status_code"):
+                  if hasattr(resp, attr):
+                      return getattr(resp, attr)
+              return None
+
+          # A1. nba_api live ScoreBoard (today's games)
+          start = time.perf_counter()
+          try:
+              sb = scoreboard.ScoreBoard(headers=HEADERS, timeout=TIMEOUT)
+              games = sb.get_dict().get("scoreboard", {}).get("games", [])
+              first = games[0].get("gameId") if games else None
+              print(f"PROBE scoreboard: http_status={status_of(sb)} games={len(games)} first_game_id={first} elapsed={time.perf_counter() - start:.2f}s")
+          except Exception as exc:
+              print(f"PROBE scoreboard: FAILED {type(exc).__name__}: {exc} elapsed={time.perf_counter() - start:.2f}s")
+
+          # A2. cdn.nba.com liveData boxscore, fetched directly
+          start = time.perf_counter()
+          try:
+              r = requests.get(CDN_URL, headers=HEADERS, timeout=TIMEOUT)
+              has_game = False
+              players = None
+              if r.headers.get("content-type", "").startswith("application/json"):
+                  body = r.json()
+                  has_game = "game" in body
+                  if has_game:
+                      g = body["game"]
+                      players = len(g.get("homeTeam", {}).get("players", [])) + len(g.get("awayTeam", {}).get("players", []))
+              print(f"PROBE cdn_boxscore: http_status={r.status_code} bytes={len(r.content)} has_game_key={has_game} players={players} elapsed={time.perf_counter() - start:.2f}s")
+          except Exception as exc:
+              print(f"PROBE cdn_boxscore: FAILED {type(exc).__name__}: {exc} elapsed={time.perf_counter() - start:.2f}s")
+
+          # A3. nba_api live BoxScore for the same game
+          start = time.perf_counter()
+          try:
+              bs = boxscore.BoxScore(game_id=GAME_ID, headers=HEADERS, timeout=TIMEOUT)
+              g = bs.get_dict().get("game", {})
+              players = len(g.get("homeTeam", {}).get("players", [])) + len(g.get("awayTeam", {}).get("players", []))
+              print(f"PROBE live_boxscore: http_status={status_of(bs)} game_id={g.get('gameId')} players={players} elapsed={time.perf_counter() - start:.2f}s")
+          except Exception as exc:
+              print(f"PROBE live_boxscore: FAILED {type(exc).__name__}: {exc} elapsed={time.perf_counter() - start:.2f}s")
+          EOF
+
+      - name: Probe kaggle.com reachability (no credentials)
+        run: |
+          python - <<'EOF'
+          import time
+
+          import requests
+
+          TIMEOUT = 10
+          URL = "https://www.kaggle.com/api/v1/datasets/view/eoinamoore/historical-nba-data-and-player-box-scores"
+          HEADERS = {"User-Agent": "nba-ai-ml-probe/1.0 (personal portfolio project; +https://github.com/cbratkovics/nba-ai-ml)"}
+
+          start = time.perf_counter()
+          try:
+              r = requests.get(URL, headers=HEADERS, timeout=TIMEOUT)
+              print(f"PROBE kaggle: http_status={r.status_code} elapsed={time.perf_counter() - start:.2f}s (401/403 expected without credentials; any status means the host is reachable)")
+          except Exception as exc:
+              print(f"PROBE kaggle: FAILED {type(exc).__name__}: {exc} elapsed={time.perf_counter() - start:.2f}s")
           EOF
