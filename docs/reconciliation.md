@@ -79,17 +79,18 @@ Cup games for the `cup_games` count. Before this rule 2023-24 had only 1,164 gam
 ### 7. Seven 2024-25 games have no box-score rows
 
 `LeagueSchedule24_25.csv` lists 1,230 regular-season game ids (prefix `002`); seven
-of them have no rows in `PlayerStatistics.csv`, leaving 2024-25 at 1,223 games:
+of them have no rows in `PlayerStatistics.csv`, leaving 2024-25 at 1,223 games
+(abbreviations as stored in the dataset, so San Antonio is `SAN`):
 
 | Game id | Scheduled | Home | Away |
 |---|---|---|---|
 | 0022400524 | 2025-01-09 | LAL | CHA |
 | 0022400532 | 2025-01-11 | ATL | HOU |
-| 0022400537 | 2025-01-11 | LAL | SAS |
+| 0022400537 | 2025-01-11 | LAL | SAN |
 | 0022400538 | 2025-01-11 | LAC | CHA |
 | 0022400617 | 2025-01-22 | NOP | MIL |
 | 0022400627 | 2025-01-23 | UTA | WAS |
-| 0022400988 | 2025-03-17 | SAS | ORL |
+| 0022400988 | 2025-03-17 | SAN | ORL |
 
 `Games.csv` carries two of them (`0022400627` on 2025-03-19, `0022400988` on
 2025-04-01) with 0–0 scores, consistent with postponed games whose rescheduled
@@ -119,8 +120,13 @@ counted per season (table above); 29,585 in total across the five seasons.
 - Rows per team in 2025-26 range from 813 to 935, i.e. roughly 10 to 11 players per
   game after DNP removal.
 
-## Open items for nba_api reconciliation
+## Open items for the nba_api path (Phase 1b acceptance checklist)
 
-- Map `SAS` to `SAN` (finding 4).
-- Decide whether to fetch the seven missing 2024-25 games from nba_api (finding 7).
-- Confirm nba_api box scores use the same `minutes` convention (decimal minutes).
+- (a) Fetch the seven missing 2024-25 games (finding 7) from nba_api, map them into the
+  canonical schema with `source` set to the nba_api pipeline, and confirm 2024-25 reaches
+  1,230 distinct games.
+- (b) Add a `SAS` -> `SAN` alias (or re-map the backfill to `SAS`) so nba_api rows and
+  backfill rows agree on `team`/`opponent` (finding 4).
+- (c) Before trusting daily rows, fetch one week of 2025-26 games that the dump already
+  covers and reconcile them against the backfill row by row on (player_id, game_id):
+  same row set, same minutes to two decimals, same counting stats. Record the result here.
