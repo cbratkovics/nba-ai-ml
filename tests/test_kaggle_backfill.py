@@ -6,7 +6,15 @@ import pytest
 from nba import config, schema
 from nba.ingest import kaggle_backfill
 from nba.storage import local
-from tests.conftest import GAMES_PER_SEASON, PLAYERS_PER_TEAM, SEASON_STARTS, TEAMS
+from tests.conftest import (
+    CLOCK_MINUTES,
+    CLOCK_PLAYER_ID,
+    DNP_PLAYER_IDS,
+    GAMES_PER_SEASON,
+    PLAYERS_PER_TEAM,
+    SEASON_STARTS,
+    TEAMS,
+)
 
 
 def test_season_from_date() -> None:
@@ -45,7 +53,7 @@ def test_mapping_matches_schema(game_logs: pd.DataFrame) -> None:
     regular_games = (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2)
     assert game_logs["game_id"].nunique() == regular_games * len(SEASON_STARTS)
     assert len(game_logs) == game_logs["game_id"].nunique() * 2 * PLAYERS_PER_TEAM
-    assert 9999 not in set(game_logs["player_id"])
+    assert not set(DNP_PLAYER_IDS) & set(game_logs["player_id"])
     # Game ids are zero-padded strings, teams are abbreviations, home is boolean.
     assert game_logs["game_id"].str.len().eq(kaggle_backfill.GAME_ID_WIDTH).all()
     assert set(game_logs["team"]) == {"LAL", "BOS", "GSW", "MIA", "DEN", "OLD", "NEW"}
@@ -112,6 +120,44 @@ def test_cli_prints_summary(
     kaggle_backfill.main(args + ["--show-player", str(pid)])
     out = capsys.readouterr().out
     assert "distinct gameType values" in out and "Preseason" in out
+    assert "dnp_dropped" in out
     for season in SEASON_STARTS:
         assert season in out
     assert f"last five rows for player_id {pid}" in out
+
+
+def test_minutes_parse_decimal_and_clock() -> None:
+    parsed = kaggle_backfill.parse_minutes(
+        pd.Series(["39.166666", "23:21", "12:30", "", None, "0", " 7.5 "])
+    )
+    expected = [39.166666, 23 + 21 / 60, 12.5, float("nan"), float("nan"), 0.0, 7.5]
+    assert parsed.dtype == "float64"
+    for got, want in zip(parsed.tolist(), expected, strict=True):
+        assert (pd.isna(got) and pd.isna(want)) or got == pytest.approx(want)
+
+
+def test_clock_minutes_row_is_kept_and_parsed(game_logs: pd.DataFrame) -> None:
+    rows = game_logs[(game_logs["player_id"] == CLOCK_PLAYER_ID)]
+    assert CLOCK_MINUTES in set(rows["minutes"].round(6))
+
+
+def test_dnp_rows_dropped_and_counted_per_season(kaggle_dir: Path) -> None:
+    prepared = kaggle_backfill.prepare(
+        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_team_histories(kaggle_dir)
+    )
+    # One no-minutes row per season; the second season also has a 0-minute row and a
+    # played-but-commented row.
+    assert prepared.dnp_per_season.to_dict() == {"2023-24": 1, "2024-25": 3, "2025-26": 1}
+    assert not set(DNP_PLAYER_IDS) & set(prepared.game_logs["player_id"])
+    assert (prepared.game_logs["minutes"] > 0).all()
+
+    summary = kaggle_backfill.season_summary(prepared)
+    assert list(summary.columns) == ["rows", "games", "first_game", "last_game", "dnp_dropped"]
+    assert summary["dnp_dropped"].to_dict() == {"2023-24": 1, "2024-25": 3, "2025-26": 1}
+    assert (summary["games"] == (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2)).all()
+
+
+def test_is_dnp_rules() -> None:
+    minutes = pd.Series([None, 0.0, 12.0, 30.0, 5.0])
+    comment = pd.Series([None, "", "", "DNP - Coach's Decision", "  "])
+    assert kaggle_backfill.is_dnp(minutes, comment).tolist() == [True, True, False, True, False]

@@ -40,6 +40,12 @@ GAMES_PER_SEASON = 12
 PLAYERS_PER_TEAM = 2
 # A pre-cutoff row that the streamed reader must drop.
 OLD_GAME_DATE = "2019-11-05 19:30:00"
+# Player ids used only for DNP rows (never in the output).
+DNP_PLAYER_IDS = (9990, 9991, 9992)
+# One played row for this player has numMinutes written as "MM:SS".
+CLOCK_PLAYER_ID = 1000
+CLOCK_MINUTES_TEXT = "12:30"
+CLOCK_MINUTES = 12.5
 
 
 def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
@@ -77,6 +83,7 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
             "gameType": game_type,
             "home": is_home,
             "numMinutes": minutes,
+            "comment": "",
             "points": pts,
             "assists": int(rng.poisson(minutes * 0.12)),
             "blocks": int(rng.integers(0, 3)),
@@ -132,13 +139,38 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
                     for pid, pname in players[tid]:
                         box.append(box_row(pid, pname, tid, opp, is_home, gid, when, game_type))
 
-    # One did-not-play row (no minutes) that must be dropped.
-    dnp = dict(box[-1])
-    dnp["personId"] = 9999
-    dnp["firstName"], dnp["lastName"] = "Did", "NotPlay"
-    for col in ("numMinutes", "points", "assists", "reboundsTotal"):
-        dnp[col] = np.nan
-    box.append(dnp)
+    # Did-not-play rows inside regular-season games, all of which must be dropped:
+    # per season one row with no minutes and a comment; in the second season also a
+    # row with 0 minutes and no comment, and a row with minutes but a comment.
+    regular = [
+        r for r in box if r["gameType"] == "Regular Season" and r["gameDate"] != OLD_GAME_DATE
+    ]
+    by_season: dict[str, dict] = {}
+    for r in regular:
+        by_season.setdefault(kaggle_backfill.season_from_date(pd.Timestamp(r["gameDate"])), r)
+    for i, (_season, template) in enumerate(sorted(by_season.items())):
+        dnp = dict(template)
+        dnp["personId"] = DNP_PLAYER_IDS[0]
+        dnp["firstName"], dnp["lastName"] = "Did", "NotPlay"
+        dnp["comment"] = "DNP - Coach's Decision"
+        for col in ("numMinutes", "points", "assists", "reboundsTotal"):
+            dnp[col] = np.nan
+        box.append(dnp)
+        if i == 1:
+            zero = dict(template)
+            zero["personId"] = DNP_PLAYER_IDS[1]
+            zero["firstName"], zero["lastName"] = "Zero", "Minutes"
+            zero["numMinutes"] = 0.0
+            box.append(zero)
+            noted = dict(template)
+            noted["personId"] = DNP_PLAYER_IDS[2]
+            noted["firstName"], noted["lastName"] = "Has", "Comment"
+            noted["comment"] = "NWT - Injury/Illness"
+            box.append(noted)
+
+    # One played row with minutes written as MM:SS, as the dump sometimes does.
+    clock = next(r for r in regular if r["personId"] == CLOCK_PLAYER_ID)
+    clock["numMinutes"] = CLOCK_MINUTES_TEXT
 
     directory.mkdir(parents=True, exist_ok=True)
     box_path = directory / kaggle_backfill.BOX_SCORE_FILE

@@ -13,6 +13,11 @@ Two files are read:
 
 Games.csv and the LeagueSchedule files are not used.
 
+Did-not-play rows: a row is treated as DNP when `numMinutes` is null or 0, or when
+`comment` is populated (the dump uses it for "DNP - Coach's Decision", injury notes,
+and similar). DNP rows are dropped, counted per season, and the counts are printed
+by the CLI. `numMinutes` is parsed from either a decimal ("39.1666") or "MM:SS".
+
 Rows are mapped into the canonical schema in `nba.schema` and written as one
 Parquet file per season. This module and `nba.storage` do not import
 `nba.models`, so the backfill and push run without LightGBM installed.
@@ -26,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
@@ -64,8 +70,8 @@ BOX_SCORE_COLUMNS: dict[str, str] = {
     "foulsPersonal": "pf",
     "plusMinusPoints": "plus_minus",
 }
-# PlayerStatistics.csv columns used to derive canonical columns.
-BOX_SCORE_DERIVED: tuple[str, ...] = ("firstName", "lastName", "gameType")
+# PlayerStatistics.csv columns used to derive canonical columns or to detect DNPs.
+BOX_SCORE_DERIVED: tuple[str, ...] = ("firstName", "lastName", "gameType", "comment")
 TEAM_HISTORY_COLUMNS: tuple[str, ...] = (
     "teamId",
     "teamAbbrev",
@@ -97,19 +103,39 @@ GAME_ID_WIDTH = 10  # nba.com game ids are zero-padded to 10 characters
 # First game date kept when streaming the box-score file: October of the first season.
 BACKFILL_START = pd.Timestamp(f"{config.SEASONS[0][:4]}-10-01")
 
-# pyarrow types for the streamed read. Stats are float64 because DNP rows are empty.
-_ID_COLUMNS: tuple[str, ...] = ("gameId", "gameDate", "personId", "playerteamId", "opponentteamId")
+# Format of gameDate in the dump ("2026-06-13 20:30:00"; empty for some non-NBA rows).
+GAME_DATE_FORMAT = "ISO8601"
+
+# pyarrow types for the streamed read. Text columns that need parsing stay strings;
+# stats are float64 because DNP rows are empty.
+_STRING_COLUMNS: tuple[str, ...] = (
+    "gameId",
+    "gameDate",
+    "numMinutes",
+    "firstName",
+    "lastName",
+    "gameType",
+    "comment",
+)
+_INT_COLUMNS: tuple[str, ...] = ("personId", "playerteamId", "opponentteamId")
 _BOX_SCORE_TYPES: dict[str, pa.DataType] = {
-    "gameId": pa.string(),
-    "gameDate": pa.string(),
-    "personId": pa.int64(),
-    "playerteamId": pa.int64(),
-    "opponentteamId": pa.int64(),
-    "firstName": pa.string(),
-    "lastName": pa.string(),
-    "gameType": pa.string(),
-    **{c: pa.float64() for c in BOX_SCORE_COLUMNS if c not in _ID_COLUMNS},
+    **{c: pa.string() for c in _STRING_COLUMNS},
+    **{c: pa.int64() for c in _INT_COLUMNS},
+    **{
+        c: pa.float64()
+        for c in BOX_SCORE_COLUMNS
+        if c not in _STRING_COLUMNS and c not in _INT_COLUMNS
+    },
 }
+
+
+@dataclass(frozen=True)
+class Prepared:
+    """Output of `prepare`: the validated game logs plus per-season bookkeeping."""
+
+    game_logs: pd.DataFrame
+    dnp_per_season: pd.Series  # season -> DNP rows dropped
+    game_type_counts: pd.Series  # gameType -> rows (before filtering)
 
 
 def season_from_date(ts: pd.Timestamp) -> str:
@@ -126,6 +152,21 @@ def normalize_game_id(s: pd.Series) -> pd.Series:
     return s.astype("string").str.strip().str.zfill(GAME_ID_WIDTH)
 
 
+def parse_minutes(s: pd.Series) -> pd.Series:
+    """Minutes as float from either "39.1666" or "MM:SS". Empty/null -> NaN."""
+    text = s.astype("string").str.strip()
+    text = text.mask(text == "", pd.NA)
+    clock = text.str.contains(":", na=False)
+    parts = text.where(clock).str.split(":", expand=True, n=1)
+    from_clock = pd.Series(pd.NA, index=s.index, dtype="Float64")
+    if clock.any():
+        mm = pd.to_numeric(parts[0], errors="coerce")
+        ss = pd.to_numeric(parts[1], errors="coerce")
+        from_clock = mm + ss / 60.0
+    from_decimal = pd.to_numeric(text.where(~clock), errors="coerce")
+    return from_clock.where(clock, from_decimal).astype("float64")
+
+
 def _require(columns: Iterable[str], needed: Iterable[str], what: str) -> None:
     have = set(columns)
     missing = [c for c in needed if c not in have]
@@ -134,7 +175,11 @@ def _require(columns: Iterable[str], needed: Iterable[str], what: str) -> None:
 
 
 def load_box_scores(kaggle_dir: Path, start: pd.Timestamp = BACKFILL_START) -> pd.DataFrame:
-    """Stream PlayerStatistics.csv and keep only rows with gameDate >= start."""
+    """Stream PlayerStatistics.csv and keep only rows with gameDate >= start.
+
+    `gameDate` is returned as datetime64 and `numMinutes` as float64 (parsed from
+    decimal or "MM:SS"). Nothing is dropped here except pre-cutoff rows.
+    """
     path = kaggle_dir / BOX_SCORE_FILE
     needed = list(BOX_SCORE_COLUMNS) + list(BOX_SCORE_DERIVED)
     # Open a streaming reader on a small first block just to inspect the header.
@@ -149,11 +194,12 @@ def load_box_scores(kaggle_dir: Path, start: pd.Timestamp = BACKFILL_START) -> p
     parts: list[pd.DataFrame] = []
     for batch in reader:
         df = batch.to_pandas()
-        dates = pd.to_datetime(df["gameDate"]).dt.tz_localize(None)
+        dates = pd.to_datetime(df["gameDate"], format=GAME_DATE_FORMAT, errors="coerce")
         keep = dates >= start
         if keep.any():
             df = df[keep].copy()
-            df["gameDate"] = dates[keep]
+            df["gameDate"] = dates[keep].dt.tz_localize(None)
+            df["numMinutes"] = parse_minutes(df["numMinutes"])
             parts.append(df)
     if not parts:
         raise ValueError(f"no rows in {path} with gameDate >= {start.date()}")
@@ -167,7 +213,7 @@ def load_team_histories(kaggle_dir: Path) -> pd.DataFrame:
     out["teamId"] = pd.to_numeric(out["teamId"]).astype("int64")
     out["teamAbbrev"] = out["teamAbbrev"].astype("string").str.strip()
     out["seasonFounded"] = pd.to_numeric(out["seasonFounded"]).astype("int64")
-    # Open-ended histories have no end season.
+    # Open-ended histories have no end season (the dump also uses 2100).
     out["seasonActiveTill"] = pd.to_numeric(out["seasonActiveTill"]).fillna(9999).astype("int64")
     return out
 
@@ -201,16 +247,23 @@ def game_type_counts(box: pd.DataFrame) -> pd.Series:
     return box["gameType"].astype("string").str.strip().value_counts(dropna=False)
 
 
-def map_to_schema(
+def is_dnp(minutes: pd.Series, comment: pd.Series) -> pd.Series:
+    """True for rows that did not play: no minutes, zero minutes, or a populated comment."""
+    has_comment = comment.astype("string").str.strip().fillna("") != ""
+    return minutes.isna() | (minutes <= 0) | has_comment
+
+
+def prepare(
     box: pd.DataFrame,
     histories: pd.DataFrame,
     seasons: tuple[str, ...] = config.SEASONS,
     game_types: tuple[str, ...] = config.GAME_TYPES,
-) -> pd.DataFrame:
-    """Map the raw box-score frame to the canonical schema and validate."""
+) -> Prepared:
+    """Filter, drop DNPs, map to the canonical schema, validate, and return bookkeeping."""
     _require(box.columns, list(BOX_SCORE_COLUMNS) + list(BOX_SCORE_DERIVED), BOX_SCORE_FILE)
 
-    present = set(game_type_counts(box).index.dropna())
+    type_counts = game_type_counts(box)
+    present = set(type_counts.index.dropna())
     absent = [t for t in game_types if t not in present]
     if absent:
         raise ValueError(f"gameType values {absent} not found; present values: {sorted(present)}")
@@ -222,8 +275,11 @@ def map_to_schema(
     df["season"] = df["game_date"].map(season_from_date)
     df = df[df["season"].isin(seasons)]
 
-    # Players who did not play have no minutes; they are not game logs.
-    df = df[df["minutes"].notna() & (df["minutes"] > 0)].copy()
+    dnp = is_dnp(df["minutes"], df["comment"])
+    dnp_per_season = (
+        df.loc[dnp].groupby("season").size().reindex(sorted(df["season"].unique()), fill_value=0)
+    )
+    df = df[~dnp].copy()
 
     first = df["firstName"].astype("string").str.strip()
     last = df["lastName"].astype("string").str.strip()
@@ -239,7 +295,17 @@ def map_to_schema(
 
     out = schema.coerce(df)
     out = out.sort_values(["game_date", "game_id", "player_id"]).reset_index(drop=True)
-    return schema.validate(out)
+    return Prepared(schema.validate(out), dnp_per_season.rename("dnp_dropped"), type_counts)
+
+
+def map_to_schema(
+    box: pd.DataFrame,
+    histories: pd.DataFrame,
+    seasons: tuple[str, ...] = config.SEASONS,
+    game_types: tuple[str, ...] = config.GAME_TYPES,
+) -> pd.DataFrame:
+    """Map the raw box-score frame to the canonical schema and validate."""
+    return prepare(box, histories, seasons, game_types).game_logs
 
 
 def backfill(kaggle_dir: Path, out_dir: Path) -> dict[str, Path]:
@@ -247,9 +313,19 @@ def backfill(kaggle_dir: Path, out_dir: Path) -> dict[str, Path]:
     return local.write_per_season(df, out_dir)
 
 
-def season_summary(df: pd.DataFrame) -> pd.DataFrame:
-    return df.groupby("season").agg(
-        rows=("game_id", "size"), first_game=("game_date", "min"), last_game=("game_date", "max")
+def season_summary(prepared: Prepared) -> pd.DataFrame:
+    """Per season: rows, distinct games, first/last game date, DNP rows dropped."""
+    df = prepared.game_logs
+    summary = df.groupby("season").agg(
+        rows=("game_id", "size"),
+        games=("game_id", "nunique"),
+        first_game=("game_date", "min"),
+        last_game=("game_date", "max"),
+    )
+    return (
+        summary.join(prepared.dnp_per_season)
+        .fillna({"dnp_dropped": 0})
+        .astype({"dnp_dropped": "int64"})
     )
 
 
@@ -281,13 +357,15 @@ def main(argv: list[str] | None = None) -> None:
     print(game_type_counts(box).to_string())
     print(f"keeping gameType in {list(config.GAME_TYPES)}")
 
-    df = map_to_schema(box, load_team_histories(args.kaggle_dir))
-    written = local.write_per_season(df, args.out_dir)
-    print(season_summary(df).to_string())
+    prepared = prepare(box, load_team_histories(args.kaggle_dir))
+    written = local.write_per_season(prepared.game_logs, args.out_dir)
+    print("DNP rows (no/zero minutes or populated comment) are dropped; counts per season:")
+    print(season_summary(prepared).to_string())
     for season, path in written.items():
         print(f"{season} -> {path}")
 
     if args.show_player is not None:
+        df = prepared.game_logs
         rows = df[df["player_id"] == args.show_player].sort_values("game_date").tail(5)
         print(f"\nlast five rows for player_id {args.show_player}:")
         print(rows.to_string(index=False) if not rows.empty else "(no rows)")
