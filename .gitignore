@@ -122,6 +122,7 @@ Thumbs.db
 # Reports: only the metrics report is tracked.
 reports/*
 !reports/metrics.json
+!reports/replay_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git.

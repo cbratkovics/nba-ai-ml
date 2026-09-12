@@ -1,0 +1,1032 @@
+{
+  "season": "2025-26",
+  "generated_at": "2026-09-12T03:19:56+00:00",
+  "git_sha": "e19a6d08496cf5bcd5c36e98fa95abbb813a5fde",
+  "model_revision": "fb427de136e1d6c4b591ae30cf30488f44935182",
+  "dataset_revision": "b20b5601de213fa8e704ebffaafd18f182ea68c3",
+  "reference": {
+    "metrics_json_git_sha": "50a3b2e33b443d1db19274cea27467072ebfb3f8",
+    "metrics_json_dataset": {
+      "repo": "cbratkovics/nba-game-logs",
+      "version": "hf:b20b5601de213fa8e704ebffaafd18f182ea68c3"
+    },
+    "model_mae": {
+      "pts": 4.7643690561830265,
+      "reb": 1.9420997887256806,
+      "ast": 1.4309920131482945
+    },
+    "n": 22244
+  },
+  "n_dates": 164,
+  "n_predicted": 38372,
+  "n_with_actuals": 26031,
+  "n_missing_actuals": 12341,
+  "n_restricted": 22075,
+  "mae_restricted": {
+    "pts": 4.766492450326701,
+    "reb": 1.9428932863927453,
+    "ast": 1.4320034789886493
+  },
+  "mae_unrestricted": {
+    "pts": 4.863882030766972,
+    "reb": 2.0227969576400886,
+    "ast": 1.4028979407568
+  },
+  "unpredicted_actual_rows": {
+    "all": 617,
+    "minutes_ge_min": 367
+  },
+  "diff_vs_metrics_json": {
+    "pts": 0.0021,
+    "reb": 0.0008,
+    "ast": 0.001
+  },
+  "tolerance": 0.05,
+  "passed": true,
+  "per_date": [
+    {
+      "date": "2025-10-21",
+      "n_games": 2,
+      "n_predicted": 66,
+      "n_with_actuals": 30
+    },
+    {
+      "date": "2025-10-22",
+      "n_games": 12,
+      "n_predicted": 365,
+      "n_with_actuals": 156
+    },
+    {
+      "date": "2025-10-23",
+      "n_games": 2,
+      "n_predicted": 65,
+      "n_with_actuals": 35
+    },
+    {
+      "date": "2025-10-24",
+      "n_games": 12,
+      "n_predicted": 431,
+      "n_with_actuals": 258
+    },
+    {
+      "date": "2025-10-25",
+      "n_games": 5,
+      "n_predicted": 180,
+      "n_with_actuals": 113
+    },
+    {
+      "date": "2025-10-26",
+      "n_games": 9,
+      "n_predicted": 337,
+      "n_with_actuals": 191
+    },
+    {
+      "date": "2025-10-27",
+      "n_games": 11,
+      "n_predicted": 396,
+      "n_with_actuals": 244
+    },
+    {
+      "date": "2025-10-28",
+      "n_games": 5,
+      "n_predicted": 199,
+      "n_with_actuals": 107
+    },
+    {
+      "date": "2025-10-29",
+      "n_games": 10,
+      "n_predicted": 366,
+      "n_with_actuals": 218
+    },
+    {
+      "date": "2025-10-30",
+      "n_games": 4,
+      "n_predicted": 147,
+      "n_with_actuals": 88
+    },
+    {
+      "date": "2025-10-31",
+      "n_games": 8,
+      "n_predicted": 306,
+      "n_with_actuals": 170
+    },
+    {
+      "date": "2025-11-01",
+      "n_games": 6,
+      "n_predicted": 221,
+      "n_with_actuals": 141
+    },
+    {
+      "date": "2025-11-02",
+      "n_games": 8,
+      "n_predicted": 306,
+      "n_with_actuals": 178
+    },
+    {
+      "date": "2025-11-03",
+      "n_games": 9,
+      "n_predicted": 338,
+      "n_with_actuals": 195
+    },
+    {
+      "date": "2025-11-04",
+      "n_games": 6,
+      "n_predicted": 230,
+      "n_with_actuals": 138
+    },
+    {
+      "date": "2025-11-05",
+      "n_games": 11,
+      "n_predicted": 413,
+      "n_with_actuals": 241
+    },
+    {
+      "date": "2025-11-06",
+      "n_games": 1,
+      "n_predicted": 39,
+      "n_with_actuals": 25
+    },
+    {
+      "date": "2025-11-07",
+      "n_games": 11,
+      "n_predicted": 391,
+      "n_with_actuals": 252
+    },
+    {
+      "date": "2025-11-08",
+      "n_games": 8,
+      "n_predicted": 291,
+      "n_with_actuals": 164
+    },
+    {
+      "date": "2025-11-09",
+      "n_games": 7,
+      "n_predicted": 246,
+      "n_with_actuals": 157
+    },
+    {
+      "date": "2025-11-10",
+      "n_games": 9,
+      "n_predicted": 295,
+      "n_with_actuals": 185
+    },
+    {
+      "date": "2025-11-11",
+      "n_games": 6,
+      "n_predicted": 189,
+      "n_with_actuals": 128
+    },
+    {
+      "date": "2025-11-12",
+      "n_games": 12,
+      "n_predicted": 361,
+      "n_with_actuals": 276
+    },
+    {
+      "date": "2025-11-13",
+      "n_games": 3,
+      "n_predicted": 94,
+      "n_with_actuals": 68
+    },
+    {
+      "date": "2025-11-14",
+      "n_games": 9,
+      "n_predicted": 274,
+      "n_with_actuals": 188
+    },
+    {
+      "date": "2025-11-15",
+      "n_games": 5,
+      "n_predicted": 150,
+      "n_with_actuals": 108
+    },
+    {
+      "date": "2025-11-16",
+      "n_games": 8,
+      "n_predicted": 245,
+      "n_with_actuals": 167
+    },
+    {
+      "date": "2025-11-17",
+      "n_games": 8,
+      "n_predicted": 239,
+      "n_with_actuals": 166
+    },
+    {
+      "date": "2025-11-18",
+      "n_games": 6,
+      "n_predicted": 184,
+      "n_with_actuals": 129
+    },
+    {
+      "date": "2025-11-19",
+      "n_games": 9,
+      "n_predicted": 263,
+      "n_with_actuals": 179
+    },
+    {
+      "date": "2025-11-20",
+      "n_games": 4,
+      "n_predicted": 128,
+      "n_with_actuals": 85
+    },
+    {
+      "date": "2025-11-21",
+      "n_games": 9,
+      "n_predicted": 265,
+      "n_with_actuals": 196
+    },
+    {
+      "date": "2025-11-22",
+      "n_games": 7,
+      "n_predicted": 211,
+      "n_with_actuals": 155
+    },
+    {
+      "date": "2025-11-23",
+      "n_games": 8,
+      "n_predicted": 242,
+      "n_with_actuals": 169
+    },
+    {
+      "date": "2025-11-24",
+      "n_games": 10,
+      "n_predicted": 298,
+      "n_with_actuals": 212
+    },
+    {
+      "date": "2025-11-25",
+      "n_games": 3,
+      "n_predicted": 94,
+      "n_with_actuals": 72
+    },
+    {
+      "date": "2025-11-26",
+      "n_games": 9,
+      "n_predicted": 268,
+      "n_with_actuals": 184
+    },
+    {
+      "date": "2025-11-28",
+      "n_games": 11,
+      "n_predicted": 341,
+      "n_with_actuals": 222
+    },
+    {
+      "date": "2025-11-29",
+      "n_games": 8,
+      "n_predicted": 238,
+      "n_with_actuals": 163
+    },
+    {
+      "date": "2025-11-30",
+      "n_games": 8,
+      "n_predicted": 237,
+      "n_with_actuals": 169
+    },
+    {
+      "date": "2025-12-01",
+      "n_games": 9,
+      "n_predicted": 278,
+      "n_with_actuals": 189
+    },
+    {
+      "date": "2025-12-02",
+      "n_games": 6,
+      "n_predicted": 184,
+      "n_with_actuals": 126
+    },
+    {
+      "date": "2025-12-03",
+      "n_games": 9,
+      "n_predicted": 276,
+      "n_with_actuals": 194
+    },
+    {
+      "date": "2025-12-04",
+      "n_games": 5,
+      "n_predicted": 154,
+      "n_with_actuals": 109
+    },
+    {
+      "date": "2025-12-05",
+      "n_games": 12,
+      "n_predicted": 367,
+      "n_with_actuals": 267
+    },
+    {
+      "date": "2025-12-06",
+      "n_games": 7,
+      "n_predicted": 210,
+      "n_with_actuals": 150
+    },
+    {
+      "date": "2025-12-07",
+      "n_games": 7,
+      "n_predicted": 213,
+      "n_with_actuals": 152
+    },
+    {
+      "date": "2025-12-08",
+      "n_games": 3,
+      "n_predicted": 87,
+      "n_with_actuals": 62
+    },
+    {
+      "date": "2025-12-09",
+      "n_games": 2,
+      "n_predicted": 63,
+      "n_with_actuals": 45
+    },
+    {
+      "date": "2025-12-10",
+      "n_games": 2,
+      "n_predicted": 62,
+      "n_with_actuals": 48
+    },
+    {
+      "date": "2025-12-11",
+      "n_games": 4,
+      "n_predicted": 110,
+      "n_with_actuals": 82
+    },
+    {
+      "date": "2025-12-12",
+      "n_games": 7,
+      "n_predicted": 212,
+      "n_with_actuals": 140
+    },
+    {
+      "date": "2025-12-13",
+      "n_games": 2,
+      "n_predicted": 63,
+      "n_with_actuals": 38
+    },
+    {
+      "date": "2025-12-14",
+      "n_games": 8,
+      "n_predicted": 246,
+      "n_with_actuals": 166
+    },
+    {
+      "date": "2025-12-15",
+      "n_games": 5,
+      "n_predicted": 144,
+      "n_with_actuals": 101
+    },
+    {
+      "date": "2025-12-17",
+      "n_games": 2,
+      "n_predicted": 61,
+      "n_with_actuals": 40
+    },
+    {
+      "date": "2025-12-18",
+      "n_games": 12,
+      "n_predicted": 358,
+      "n_with_actuals": 250
+    },
+    {
+      "date": "2025-12-19",
+      "n_games": 5,
+      "n_predicted": 155,
+      "n_with_actuals": 103
+    },
+    {
+      "date": "2025-12-20",
+      "n_games": 10,
+      "n_predicted": 298,
+      "n_with_actuals": 209
+    },
+    {
+      "date": "2025-12-21",
+      "n_games": 6,
+      "n_predicted": 184,
+      "n_with_actuals": 117
+    },
+    {
+      "date": "2025-12-22",
+      "n_games": 7,
+      "n_predicted": 205,
+      "n_with_actuals": 152
+    },
+    {
+      "date": "2025-12-23",
+      "n_games": 14,
+      "n_predicted": 424,
+      "n_with_actuals": 313
+    },
+    {
+      "date": "2025-12-25",
+      "n_games": 5,
+      "n_predicted": 149,
+      "n_with_actuals": 112
+    },
+    {
+      "date": "2025-12-26",
+      "n_games": 9,
+      "n_predicted": 274,
+      "n_with_actuals": 198
+    },
+    {
+      "date": "2025-12-27",
+      "n_games": 9,
+      "n_predicted": 268,
+      "n_with_actuals": 192
+    },
+    {
+      "date": "2025-12-28",
+      "n_games": 6,
+      "n_predicted": 186,
+      "n_with_actuals": 127
+    },
+    {
+      "date": "2025-12-29",
+      "n_games": 11,
+      "n_predicted": 336,
+      "n_with_actuals": 247
+    },
+    {
+      "date": "2025-12-30",
+      "n_games": 4,
+      "n_predicted": 121,
+      "n_with_actuals": 87
+    },
+    {
+      "date": "2025-12-31",
+      "n_games": 9,
+      "n_predicted": 274,
+      "n_with_actuals": 194
+    },
+    {
+      "date": "2026-01-01",
+      "n_games": 5,
+      "n_predicted": 145,
+      "n_with_actuals": 102
+    },
+    {
+      "date": "2026-01-02",
+      "n_games": 10,
+      "n_predicted": 303,
+      "n_with_actuals": 208
+    },
+    {
+      "date": "2026-01-03",
+      "n_games": 8,
+      "n_predicted": 232,
+      "n_with_actuals": 166
+    },
+    {
+      "date": "2026-01-04",
+      "n_games": 8,
+      "n_predicted": 240,
+      "n_with_actuals": 168
+    },
+    {
+      "date": "2026-01-05",
+      "n_games": 8,
+      "n_predicted": 232,
+      "n_with_actuals": 167
+    },
+    {
+      "date": "2026-01-06",
+      "n_games": 6,
+      "n_predicted": 182,
+      "n_with_actuals": 128
+    },
+    {
+      "date": "2026-01-07",
+      "n_games": 12,
+      "n_predicted": 353,
+      "n_with_actuals": 257
+    },
+    {
+      "date": "2026-01-08",
+      "n_games": 3,
+      "n_predicted": 90,
+      "n_with_actuals": 60
+    },
+    {
+      "date": "2026-01-09",
+      "n_games": 10,
+      "n_predicted": 294,
+      "n_with_actuals": 207
+    },
+    {
+      "date": "2026-01-10",
+      "n_games": 6,
+      "n_predicted": 174,
+      "n_with_actuals": 133
+    },
+    {
+      "date": "2026-01-11",
+      "n_games": 10,
+      "n_predicted": 295,
+      "n_with_actuals": 206
+    },
+    {
+      "date": "2026-01-12",
+      "n_games": 6,
+      "n_predicted": 177,
+      "n_with_actuals": 128
+    },
+    {
+      "date": "2026-01-13",
+      "n_games": 7,
+      "n_predicted": 208,
+      "n_with_actuals": 151
+    },
+    {
+      "date": "2026-01-14",
+      "n_games": 7,
+      "n_predicted": 203,
+      "n_with_actuals": 151
+    },
+    {
+      "date": "2026-01-15",
+      "n_games": 9,
+      "n_predicted": 265,
+      "n_with_actuals": 197
+    },
+    {
+      "date": "2026-01-16",
+      "n_games": 6,
+      "n_predicted": 172,
+      "n_with_actuals": 117
+    },
+    {
+      "date": "2026-01-17",
+      "n_games": 9,
+      "n_predicted": 264,
+      "n_with_actuals": 192
+    },
+    {
+      "date": "2026-01-18",
+      "n_games": 6,
+      "n_predicted": 178,
+      "n_with_actuals": 134
+    },
+    {
+      "date": "2026-01-19",
+      "n_games": 9,
+      "n_predicted": 264,
+      "n_with_actuals": 196
+    },
+    {
+      "date": "2026-01-20",
+      "n_games": 7,
+      "n_predicted": 202,
+      "n_with_actuals": 144
+    },
+    {
+      "date": "2026-01-21",
+      "n_games": 7,
+      "n_predicted": 210,
+      "n_with_actuals": 156
+    },
+    {
+      "date": "2026-01-22",
+      "n_games": 8,
+      "n_predicted": 232,
+      "n_with_actuals": 162
+    },
+    {
+      "date": "2026-01-23",
+      "n_games": 8,
+      "n_predicted": 234,
+      "n_with_actuals": 159
+    },
+    {
+      "date": "2026-01-24",
+      "n_games": 6,
+      "n_predicted": 174,
+      "n_with_actuals": 120
+    },
+    {
+      "date": "2026-01-25",
+      "n_games": 6,
+      "n_predicted": 176,
+      "n_with_actuals": 134
+    },
+    {
+      "date": "2026-01-26",
+      "n_games": 7,
+      "n_predicted": 206,
+      "n_with_actuals": 154
+    },
+    {
+      "date": "2026-01-27",
+      "n_games": 7,
+      "n_predicted": 203,
+      "n_with_actuals": 144
+    },
+    {
+      "date": "2026-01-28",
+      "n_games": 9,
+      "n_predicted": 267,
+      "n_with_actuals": 202
+    },
+    {
+      "date": "2026-01-29",
+      "n_games": 8,
+      "n_predicted": 235,
+      "n_with_actuals": 170
+    },
+    {
+      "date": "2026-01-30",
+      "n_games": 9,
+      "n_predicted": 261,
+      "n_with_actuals": 195
+    },
+    {
+      "date": "2026-01-31",
+      "n_games": 6,
+      "n_predicted": 175,
+      "n_with_actuals": 115
+    },
+    {
+      "date": "2026-02-01",
+      "n_games": 10,
+      "n_predicted": 295,
+      "n_with_actuals": 226
+    },
+    {
+      "date": "2026-02-02",
+      "n_games": 4,
+      "n_predicted": 116,
+      "n_with_actuals": 80
+    },
+    {
+      "date": "2026-02-03",
+      "n_games": 10,
+      "n_predicted": 301,
+      "n_with_actuals": 214
+    },
+    {
+      "date": "2026-02-04",
+      "n_games": 7,
+      "n_predicted": 212,
+      "n_with_actuals": 140
+    },
+    {
+      "date": "2026-02-05",
+      "n_games": 8,
+      "n_predicted": 240,
+      "n_with_actuals": 156
+    },
+    {
+      "date": "2026-02-06",
+      "n_games": 6,
+      "n_predicted": 181,
+      "n_with_actuals": 123
+    },
+    {
+      "date": "2026-02-07",
+      "n_games": 10,
+      "n_predicted": 306,
+      "n_with_actuals": 188
+    },
+    {
+      "date": "2026-02-08",
+      "n_games": 4,
+      "n_predicted": 120,
+      "n_with_actuals": 90
+    },
+    {
+      "date": "2026-02-09",
+      "n_games": 10,
+      "n_predicted": 301,
+      "n_with_actuals": 202
+    },
+    {
+      "date": "2026-02-10",
+      "n_games": 4,
+      "n_predicted": 126,
+      "n_with_actuals": 81
+    },
+    {
+      "date": "2026-02-11",
+      "n_games": 14,
+      "n_predicted": 426,
+      "n_with_actuals": 288
+    },
+    {
+      "date": "2026-02-12",
+      "n_games": 3,
+      "n_predicted": 96,
+      "n_with_actuals": 68
+    },
+    {
+      "date": "2026-02-19",
+      "n_games": 10,
+      "n_predicted": 313,
+      "n_with_actuals": 208
+    },
+    {
+      "date": "2026-02-20",
+      "n_games": 9,
+      "n_predicted": 277,
+      "n_with_actuals": 188
+    },
+    {
+      "date": "2026-02-21",
+      "n_games": 6,
+      "n_predicted": 192,
+      "n_with_actuals": 130
+    },
+    {
+      "date": "2026-02-22",
+      "n_games": 11,
+      "n_predicted": 352,
+      "n_with_actuals": 236
+    },
+    {
+      "date": "2026-02-23",
+      "n_games": 3,
+      "n_predicted": 94,
+      "n_with_actuals": 60
+    },
+    {
+      "date": "2026-02-24",
+      "n_games": 11,
+      "n_predicted": 349,
+      "n_with_actuals": 237
+    },
+    {
+      "date": "2026-02-25",
+      "n_games": 6,
+      "n_predicted": 190,
+      "n_with_actuals": 126
+    },
+    {
+      "date": "2026-02-26",
+      "n_games": 10,
+      "n_predicted": 318,
+      "n_with_actuals": 206
+    },
+    {
+      "date": "2026-02-27",
+      "n_games": 5,
+      "n_predicted": 159,
+      "n_with_actuals": 113
+    },
+    {
+      "date": "2026-02-28",
+      "n_games": 5,
+      "n_predicted": 158,
+      "n_with_actuals": 114
+    },
+    {
+      "date": "2026-03-01",
+      "n_games": 11,
+      "n_predicted": 351,
+      "n_with_actuals": 243
+    },
+    {
+      "date": "2026-03-02",
+      "n_games": 4,
+      "n_predicted": 116,
+      "n_with_actuals": 83
+    },
+    {
+      "date": "2026-03-03",
+      "n_games": 10,
+      "n_predicted": 325,
+      "n_with_actuals": 215
+    },
+    {
+      "date": "2026-03-04",
+      "n_games": 6,
+      "n_predicted": 189,
+      "n_with_actuals": 135
+    },
+    {
+      "date": "2026-03-05",
+      "n_games": 9,
+      "n_predicted": 283,
+      "n_with_actuals": 190
+    },
+    {
+      "date": "2026-03-06",
+      "n_games": 7,
+      "n_predicted": 218,
+      "n_with_actuals": 150
+    },
+    {
+      "date": "2026-03-07",
+      "n_games": 6,
+      "n_predicted": 189,
+      "n_with_actuals": 126
+    },
+    {
+      "date": "2026-03-08",
+      "n_games": 10,
+      "n_predicted": 314,
+      "n_with_actuals": 225
+    },
+    {
+      "date": "2026-03-09",
+      "n_games": 5,
+      "n_predicted": 158,
+      "n_with_actuals": 100
+    },
+    {
+      "date": "2026-03-10",
+      "n_games": 11,
+      "n_predicted": 347,
+      "n_with_actuals": 238
+    },
+    {
+      "date": "2026-03-11",
+      "n_games": 6,
+      "n_predicted": 185,
+      "n_with_actuals": 132
+    },
+    {
+      "date": "2026-03-12",
+      "n_games": 9,
+      "n_predicted": 284,
+      "n_with_actuals": 185
+    },
+    {
+      "date": "2026-03-13",
+      "n_games": 8,
+      "n_predicted": 246,
+      "n_with_actuals": 161
+    },
+    {
+      "date": "2026-03-14",
+      "n_games": 7,
+      "n_predicted": 221,
+      "n_with_actuals": 143
+    },
+    {
+      "date": "2026-03-15",
+      "n_games": 7,
+      "n_predicted": 223,
+      "n_with_actuals": 143
+    },
+    {
+      "date": "2026-03-16",
+      "n_games": 8,
+      "n_predicted": 248,
+      "n_with_actuals": 169
+    },
+    {
+      "date": "2026-03-17",
+      "n_games": 8,
+      "n_predicted": 251,
+      "n_with_actuals": 178
+    },
+    {
+      "date": "2026-03-18",
+      "n_games": 9,
+      "n_predicted": 280,
+      "n_with_actuals": 199
+    },
+    {
+      "date": "2026-03-19",
+      "n_games": 8,
+      "n_predicted": 243,
+      "n_with_actuals": 163
+    },
+    {
+      "date": "2026-03-20",
+      "n_games": 6,
+      "n_predicted": 190,
+      "n_with_actuals": 121
+    },
+    {
+      "date": "2026-03-21",
+      "n_games": 10,
+      "n_predicted": 310,
+      "n_with_actuals": 201
+    },
+    {
+      "date": "2026-03-22",
+      "n_games": 5,
+      "n_predicted": 152,
+      "n_with_actuals": 115
+    },
+    {
+      "date": "2026-03-23",
+      "n_games": 10,
+      "n_predicted": 310,
+      "n_with_actuals": 214
+    },
+    {
+      "date": "2026-03-24",
+      "n_games": 4,
+      "n_predicted": 122,
+      "n_with_actuals": 77
+    },
+    {
+      "date": "2026-03-25",
+      "n_games": 12,
+      "n_predicted": 376,
+      "n_with_actuals": 251
+    },
+    {
+      "date": "2026-03-26",
+      "n_games": 3,
+      "n_predicted": 90,
+      "n_with_actuals": 64
+    },
+    {
+      "date": "2026-03-27",
+      "n_games": 10,
+      "n_predicted": 306,
+      "n_with_actuals": 214
+    },
+    {
+      "date": "2026-03-28",
+      "n_games": 6,
+      "n_predicted": 183,
+      "n_with_actuals": 126
+    },
+    {
+      "date": "2026-03-29",
+      "n_games": 9,
+      "n_predicted": 277,
+      "n_with_actuals": 201
+    },
+    {
+      "date": "2026-03-30",
+      "n_games": 8,
+      "n_predicted": 252,
+      "n_with_actuals": 163
+    },
+    {
+      "date": "2026-03-31",
+      "n_games": 7,
+      "n_predicted": 221,
+      "n_with_actuals": 161
+    },
+    {
+      "date": "2026-04-01",
+      "n_games": 9,
+      "n_predicted": 277,
+      "n_with_actuals": 184
+    },
+    {
+      "date": "2026-04-02",
+      "n_games": 6,
+      "n_predicted": 190,
+      "n_with_actuals": 131
+    },
+    {
+      "date": "2026-04-03",
+      "n_games": 9,
+      "n_predicted": 279,
+      "n_with_actuals": 199
+    },
+    {
+      "date": "2026-04-04",
+      "n_games": 3,
+      "n_predicted": 97,
+      "n_with_actuals": 67
+    },
+    {
+      "date": "2026-04-05",
+      "n_games": 11,
+      "n_predicted": 342,
+      "n_with_actuals": 227
+    },
+    {
+      "date": "2026-04-06",
+      "n_games": 5,
+      "n_predicted": 164,
+      "n_with_actuals": 99
+    },
+    {
+      "date": "2026-04-07",
+      "n_games": 10,
+      "n_predicted": 309,
+      "n_with_actuals": 213
+    },
+    {
+      "date": "2026-04-08",
+      "n_games": 7,
+      "n_predicted": 231,
+      "n_with_actuals": 156
+    },
+    {
+      "date": "2026-04-09",
+      "n_games": 6,
+      "n_predicted": 190,
+      "n_with_actuals": 119
+    },
+    {
+      "date": "2026-04-10",
+      "n_games": 15,
+      "n_predicted": 477,
+      "n_with_actuals": 320
+    },
+    {
+      "date": "2026-04-12",
+      "n_games": 15,
+      "n_predicted": 477,
+      "n_with_actuals": 301
+    }
+  ]
+}
