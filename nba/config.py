@@ -2,12 +2,20 @@
 
 This is the only module in the package that reads the process environment.
 Everything else imports the constants and helpers defined here.
+
+A `.env` file at the repository root is loaded first (it is git-ignored).
+Variables already present in the environment win over values in the file.
 """
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+REPO_ROOT: Path = Path(__file__).resolve().parent.parent
+load_dotenv(REPO_ROOT / ".env", override=False)
 
 # Seasons in the dataset. The last one is held out for evaluation.
 SEASONS: tuple[str, ...] = ("2021-22", "2022-23", "2023-24", "2024-25", "2025-26")
@@ -58,6 +66,10 @@ LGBM_PARAMS: dict[str, object] = {
 }
 
 
+# Hugging Face write token from the environment or the repo-root .env file.
+HF_TOKEN: str | None = os.environ.get("HF_TOKEN") or None
+
+
 def hf_token() -> str | None:
     """Hugging Face write token, or None when unset."""
-    return os.environ.get("HF_TOKEN")
+    return HF_TOKEN

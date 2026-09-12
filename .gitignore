@@ -26,6 +26,9 @@ venv/
 ENV/
 env/
 .venv
+.env
+# Local copy of the Kaggle dump used for the backfill.
+data_dump/
 
 # IDE
 .vscode/
