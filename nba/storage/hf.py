@@ -6,11 +6,15 @@ The write token is read once, in `nba.config.hf_token()`.
 Layout in the dataset repo:
     README.md                              dataset card
     game_logs/game_logs_<season>.parquet   one file per season
+    predictions/<date>.parquet, latest.json, rolling_metrics.json
+    residuals/<date>.parquet
 
 Usage:
     python -m nba.storage.hf push-dataset [--data-dir data/game_logs] \\
         [--card data/game_logs/README.md]
     python -m nba.storage.hf pull-dataset [--data-dir data/game_logs] [--revision SHA]
+    python -m nba.storage.hf push-products [--root .]
+    python -m nba.storage.hf pull-products [--root .]
 """
 
 from __future__ import annotations
@@ -109,6 +113,65 @@ def pull_dataset(
     return sha
 
 
+PRODUCT_PREFIXES: tuple[str, ...] = (config.HF_PREDICTIONS_PREFIX, config.HF_RESIDUALS_PREFIX)
+PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/*" for p in PRODUCT_PREFIXES)
+
+
+def push_products(
+    root: Path = Path("."),
+    repo_id: str = config.HF_DATASET_REPO,
+    message: str = "Update predictions and residuals",
+) -> str | None:
+    """Upload every file under <root>/predictions and <root>/residuals in one commit.
+
+    Returns the commit sha, or None when there is nothing to upload.
+    """
+    operations = []
+    for prefix in PRODUCT_PREFIXES:
+        folder = root / prefix
+        if not folder.is_dir():
+            continue
+        for path in sorted(p for p in folder.iterdir() if p.is_file()):
+            operations.append(
+                CommitOperationAdd(path_in_repo=f"{prefix}/{path.name}", path_or_fileobj=str(path))
+            )
+    if not operations:
+        return None
+    api = _api(require_token=True)
+    info = api.create_commit(
+        repo_id=repo_id, repo_type="dataset", operations=operations, commit_message=message
+    )
+    return info.oid
+
+
+def pull_products(
+    root: Path = Path("."),
+    repo_id: str = config.HF_DATASET_REPO,
+    revision: str | None = None,
+) -> str:
+    """Download predictions/ and residuals/ from the dataset repo into <root>. Returns the sha."""
+    api = _api(require_token=False)
+    sha = api.dataset_info(repo_id, revision=revision).sha
+    with tempfile.TemporaryDirectory() as tmp:
+        snapshot_download(
+            repo_id,
+            repo_type="dataset",
+            revision=sha,
+            allow_patterns=list(PRODUCT_PATTERNS),
+            local_dir=tmp,
+            token=config.hf_token(),
+        )
+        for prefix in PRODUCT_PREFIXES:
+            src_dir = Path(tmp) / prefix
+            if not src_dir.is_dir():
+                continue
+            (root / prefix).mkdir(parents=True, exist_ok=True)
+            for src in src_dir.iterdir():
+                if src.is_file():
+                    shutil.copyfile(src, root / prefix / src.name)
+    return sha
+
+
 def push_model(
     files: list[Path],
     repo_id: str = config.HF_MODEL_REPO,
@@ -138,6 +201,11 @@ def main(argv: list[str] | None = None) -> None:
     p_pull = sub.add_parser("pull-dataset")
     p_pull.add_argument("--data-dir", type=Path, default=config.DATA_DIR)
     p_pull.add_argument("--revision", default=None)
+    p_pushp = sub.add_parser("push-products", help="upload predictions/ and residuals/")
+    p_pushp.add_argument("--root", type=Path, default=Path("."))
+    p_pushp.add_argument("--message", default="Update predictions and residuals")
+    p_pullp = sub.add_parser("pull-products", help="download predictions/ and residuals/")
+    p_pullp.add_argument("--root", type=Path, default=Path("."))
     args = parser.parse_args(argv)
 
     if args.command == "push-dataset":
@@ -145,6 +213,11 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "pull-dataset":
         sha = pull_dataset(args.data_dir, revision=args.revision)
         print(f"pulled {repo_files(args.data_dir)} at {sha}")
+    elif args.command == "push-products":
+        sha = push_products(args.root, message=args.message)
+        print(f"pushed products at {sha}" if sha else "no product files to push")
+    elif args.command == "pull-products":
+        print(f"pulled products at {pull_products(args.root)}")
 
 
 def repo_files(data_dir: Path) -> list[str]:
