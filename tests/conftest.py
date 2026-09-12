@@ -118,6 +118,12 @@ SEASON_STARTS = {"2023-24": "2023-10-24", "2024-25": "2024-10-22", "2025-26": "2
 NO_ID_SEASON = "2023-24"
 GAMES_PER_SEASON = 12
 PLAYERS_PER_TEAM = 2
+# NBA Cup games added per season: group/knockout games that must be kept, plus one
+# final that must be dropped. The second season labels its final "Regular Season"
+# with gameSubLabel "Championship" (as the 2024-25 dump does); the others label it
+# "NBA Cup" with a 006-prefixed game id (as 2023-24 does).
+CUP_GAMES_PER_SEASON = 2
+CUP_FINAL_SEASON_LABELLED_REGULAR = "2024-25"
 # A pre-cutoff row that the streamed reader must drop.
 OLD_GAME_DATE = "2019-11-05 19:30:00"
 # Player ids used only for DNP rows (never in the output).
@@ -165,6 +171,8 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
             "personId": pid,
             "gameId": gid,
             "gameDate": when,
+            "gameLabel": np.nan,
+            "gameSubLabel": np.nan,
             "playerteamCity": city_of[tid],
             "playerteamName": name_of[tid],
             "opponentteamCity": city_of[opp],
@@ -230,8 +238,33 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
                     for pid, pname in players[tid]:
                         box.append(box_row(pid, pname, tid, opp, is_home, gid, when, game_type))
 
+    # NBA Cup games: group games (kept) and one final per season (dropped).
+    for season_no, (season, start) in enumerate(SEASON_STARTS.items()):
+        day = pd.Timestamp(start) + pd.Timedelta(days=40)
+        for c in range(CUP_GAMES_PER_SEASON + 1):
+            game_no += 1
+            when = f"{(day + pd.Timedelta(days=c)).date()} 19:30:00"
+            home_tid, away_tid = TEAMS[c % len(TEAMS)][0], TEAMS[(c + 1) % len(TEAMS)][0]
+            is_final = c == CUP_GAMES_PER_SEASON
+            if not is_final:
+                gid, game_type, sub = 22300000 + game_no, "NBA Emirates Cup", "East Group A"
+            elif season == CUP_FINAL_SEASON_LABELLED_REGULAR:
+                gid, game_type, sub = 22300000 + game_no, "Regular Season", "Championship"
+            else:
+                gid, game_type, sub = 62300001 + season_no, "NBA Cup", np.nan
+            for tid, opp, is_home in ((home_tid, away_tid, 1), (away_tid, home_tid, 0)):
+                for pid, pname in players[tid]:
+                    row = box_row(pid, pname, tid, opp, is_home, gid, when, game_type)
+                    row["gameLabel"] = "Emirates NBA Cup"
+                    row["gameSubLabel"] = sub
+                    box.append(row)
+
     regular = [
-        r for r in box if r["gameType"] == "Regular Season" and r["gameDate"] != OLD_GAME_DATE
+        r
+        for r in box
+        if r["gameType"] == "Regular Season"
+        and r["gameDate"] != OLD_GAME_DATE
+        and pd.isna(r["gameSubLabel"])
     ]
 
     # Did-not-play rows inside regular-season games, all of which must be dropped:

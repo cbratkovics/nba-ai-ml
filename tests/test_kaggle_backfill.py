@@ -10,6 +10,7 @@ from tests.conftest import (
     ALT_CITY_PLAYER_ID,
     CLOCK_MINUTES,
     CLOCK_PLAYER_ID,
+    CUP_GAMES_PER_SEASON,
     DNP_PLAYER_IDS,
     GAMES_PER_SEASON,
     NO_ID_SEASON,
@@ -37,7 +38,13 @@ def test_streamed_read_drops_rows_before_cutoff(kaggle_dir: Path) -> None:
 
 def test_game_type_counts_lists_distinct_values(kaggle_dir: Path) -> None:
     counts = kaggle_backfill.game_type_counts(kaggle_backfill.load_box_scores(kaggle_dir))
-    assert set(counts.index) == {"Regular Season", "Preseason", "Playoffs"}
+    assert set(counts.index) == {
+        "Regular Season",
+        "Preseason",
+        "Playoffs",
+        "NBA Emirates Cup",
+        "NBA Cup",
+    }
     assert counts["Regular Season"] > counts["Preseason"]
 
 
@@ -46,13 +53,15 @@ def test_configured_game_type_must_exist(kaggle_dir: Path) -> None:
     hist = kaggle_backfill.load_team_histories(kaggle_dir)
     with pytest.raises(ValueError, match="Regular season"):
         kaggle_backfill.map_to_schema(box, hist, game_types=("Regular season",))
+    # Secondary (Cup) labels may be absent from a given file without failing.
+    kaggle_backfill.map_to_schema(box, hist, game_types=("Regular Season", "Not A Label"))
 
 
 def test_mapping_matches_schema(game_logs: pd.DataFrame) -> None:
     schema.validate(game_logs)
     assert set(game_logs["season"]) == set(SEASON_STARTS)
-    # Preseason and playoff games are filtered out; the DNP row is dropped.
-    regular_games = (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2)
+    # Preseason, playoff, and Cup-final games are filtered out; Cup group games are kept.
+    regular_games = (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2) + CUP_GAMES_PER_SEASON
     assert game_logs["game_id"].nunique() == regular_games * len(SEASON_STARTS)
     assert len(game_logs) == game_logs["game_id"].nunique() * 2 * PLAYERS_PER_TEAM
     assert not set(DNP_PLAYER_IDS) & set(game_logs["player_id"])
@@ -162,9 +171,12 @@ def test_dnp_rows_dropped_and_counted_per_season(kaggle_dir: Path) -> None:
         "last_game",
         "dnp_dropped",
         "team_by_name",
+        "cup_games",
+        "cup_final_dropped",
     ]
     assert summary["dnp_dropped"].to_dict() == {"2023-24": 1, "2024-25": 3, "2025-26": 1}
-    assert (summary["games"] == (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2)).all()
+    expected_games = (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2) + CUP_GAMES_PER_SEASON
+    assert (summary["games"] == expected_games).all()
 
 
 def test_is_dnp_rules() -> None:
@@ -203,3 +215,33 @@ def test_unresolvable_team_is_an_error(kaggle_dir: Path) -> None:
     box.loc[lakers, "playerteamName"] = "Sonics"
     with pytest.raises(KeyError, match="could not resolve teams"):
         kaggle_backfill.map_to_schema(box, kaggle_backfill.load_team_histories(kaggle_dir))
+
+
+def test_cup_group_games_kept_and_finals_dropped(kaggle_dir: Path) -> None:
+    prepared = kaggle_backfill.prepare(
+        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_team_histories(kaggle_dir)
+    )
+    logs = prepared.game_logs
+    # Every season keeps its Cup group games and drops exactly one final, whether the
+    # final was labelled "NBA Cup" with a 006 game id or "Regular Season"/"Championship".
+    assert prepared.cup_games_per_season.to_dict() == dict.fromkeys(
+        SEASON_STARTS, CUP_GAMES_PER_SEASON
+    )
+    assert prepared.cup_final_per_season.to_dict() == dict.fromkeys(SEASON_STARTS, 1)
+    assert not logs["game_id"].str.startswith("006").any()
+    box = kaggle_backfill.load_box_scores(kaggle_dir)
+    finals = box[kaggle_backfill.is_cup_final(box["gameId"].str.zfill(10), box["gameSubLabel"])]
+    assert finals["gameId"].nunique() == len(SEASON_STARTS)
+    assert not set(finals["gameId"].str.zfill(10)) & set(logs["game_id"])
+    group = box[box["gameType"] == "NBA Emirates Cup"]
+    assert set(group["gameId"].str.zfill(10)) <= set(logs["game_id"])
+
+
+def test_cup_final_rules() -> None:
+    ids = pd.Series(["0062300001", "0022400999", "0022300010", "0062500001"])
+    subs = pd.Series([None, "Championship", "East Group A", "Championship"])
+    assert kaggle_backfill.is_cup_final(ids, subs).tolist() == [True, True, False, True]
+    assert config.GAME_TYPES[0] == "Regular Season"
+    assert {"NBA Emirates Cup", "Emirates NBA Cup", "NBA Cup", "in-season-knockout"} <= set(
+        config.GAME_TYPES
+    )

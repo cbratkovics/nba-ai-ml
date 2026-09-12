@@ -59,11 +59,12 @@ def test_render_fills_table_dnp_and_files_only() -> None:
         "(2021-22: 5,495; 2025-26: 5,611)."
     ) in out
     assert "`game_logs/game_logs_YYYY-YY.parquet`, one per season." in out
+    assert dataset_card.EXCLUDED_TEXT in out
+    assert "- Playoffs, play-in, and preseason games are excluded." not in out
     # Everything else is untouched.
     for line in (
         "license: cc0-1.0",
         "# NBA Player Game Logs",
-        "- Playoffs, play-in, and preseason games are excluded.",
         "- Team abbreviations follow `TeamHistories.csv` for the season in which the game was played.",
         "| Season | Rows | First game | Last game |",
         "|---|---|---|---|",

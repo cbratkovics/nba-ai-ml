@@ -20,6 +20,10 @@ resolved by (city, name) against TeamHistories, then by name alone when the city
 spelling differs (e.g. "LA" vs "Los Angeles" Clippers). Rows resolved by name are
 counted per season.
 
+NBA Cup: group and knockout games are kept (they count as regular-season games);
+the Cup final is excluded. The final is recognised by gameSubLabel "Championship"
+or a game id with season-type code 006 (e.g. 0062300001), whichever the dump used.
+
 Did-not-play rows: a row is treated as DNP when `numMinutes` is null or 0, or when
 `comment` is populated (the dump uses it for "DNP - Coach's Decision", injury notes,
 and similar). DNP rows are dropped, counted per season, and the counts are printed
@@ -83,6 +87,8 @@ BOX_SCORE_DERIVED: tuple[str, ...] = (
     "firstName",
     "lastName",
     "gameType",
+    "gameLabel",
+    "gameSubLabel",
     "comment",
     "playerteamCity",
     "playerteamName",
@@ -121,6 +127,11 @@ COUNTING_STATS: tuple[str, ...] = (
 
 GAME_ID_WIDTH = 10  # nba.com game ids are zero-padded to 10 characters
 
+# NBA Cup (in-season tournament) markers in the dump.
+CUP_LABEL = "Emirates NBA Cup"  # gameLabel on every Cup game, whatever its gameType
+CUP_FINAL_SUBLABEL = "Championship"  # gameSubLabel on the final (2024-25, 2025-26)
+CUP_FINAL_GAME_ID_PREFIX = "006"  # season-type code of the final's game id (2023-24 onward)
+
 # First game date kept when streaming the box-score file: October of the first season.
 BACKFILL_START = pd.Timestamp(f"{config.SEASONS[0][:4]}-10-01")
 
@@ -136,6 +147,8 @@ _STRING_COLUMNS: tuple[str, ...] = (
     "firstName",
     "lastName",
     "gameType",
+    "gameLabel",
+    "gameSubLabel",
     "comment",
     "playerteamCity",
     "playerteamName",
@@ -157,6 +170,8 @@ class Prepared:
     game_logs: pd.DataFrame
     dnp_per_season: pd.Series  # season -> DNP rows dropped
     name_resolved_per_season: pd.Series  # season -> kept rows whose team came from name lookup
+    cup_games_per_season: pd.Series  # season -> distinct NBA Cup games kept (group + knockout)
+    cup_final_per_season: pd.Series  # season -> distinct NBA Cup finals dropped
     game_type_counts: pd.Series  # gameType -> rows (before filtering)
 
 
@@ -313,6 +328,18 @@ def game_type_counts(box: pd.DataFrame) -> pd.Series:
     return box["gameType"].astype("string").str.strip().value_counts(dropna=False)
 
 
+def is_cup_game(game_label: pd.Series) -> pd.Series:
+    """True for any NBA Cup game (group, knockout, or final)."""
+    return (game_label.astype("string").str.strip() == CUP_LABEL).fillna(False)
+
+
+def is_cup_final(game_id: pd.Series, game_sub_label: pd.Series) -> pd.Series:
+    """True for the NBA Cup championship game, which does not count as a regular-season game."""
+    by_sublabel = game_sub_label.astype("string").str.strip() == CUP_FINAL_SUBLABEL
+    by_id = game_id.astype("string").str.startswith(CUP_FINAL_GAME_ID_PREFIX)
+    return by_sublabel.fillna(False) | by_id.fillna(False)
+
+
 def is_dnp(minutes: pd.Series, comment: pd.Series) -> pd.Series:
     """True for rows that did not play: no minutes, zero minutes, or a populated comment."""
     has_comment = comment.astype("string").str.strip().fillna("") != ""
@@ -330,9 +357,11 @@ def prepare(
 
     type_counts = game_type_counts(box)
     present = set(type_counts.index.dropna())
-    absent = [t for t in game_types if t not in present]
-    if absent:
-        raise ValueError(f"gameType values {absent} not found; present values: {sorted(present)}")
+    # The primary label must exist; the Cup labels vary by season and may be absent.
+    if game_types[0] not in present:
+        raise ValueError(
+            f"gameType value {game_types[0]!r} not found; present values: {sorted(present)}"
+        )
 
     kept = box["gameType"].astype("string").str.strip().isin(game_types)
     df = box[kept].rename(columns=BOX_SCORE_COLUMNS).copy()
@@ -341,6 +370,14 @@ def prepare(
     df["season"] = df["game_date"].map(season_from_date)
     df = df[df["season"].isin(seasons)]
     season_index = sorted(df["season"].unique())
+
+    final = is_cup_final(df["game_id"], df["gameSubLabel"])
+    cup_final = df.loc[final].groupby("season")["game_id"].nunique()
+    cup_final = cup_final.reindex(season_index, fill_value=0)
+    df = df[~final]
+    cup = is_cup_game(df["gameLabel"])
+    cup_games = df.loc[cup].groupby("season")["game_id"].nunique()
+    cup_games = cup_games.reindex(season_index, fill_value=0)
 
     dnp = is_dnp(df["minutes"], df["comment"])
     dnp_per_season = df.loc[dnp].groupby("season").size().reindex(season_index, fill_value=0)
@@ -370,6 +407,8 @@ def prepare(
         schema.validate(out),
         dnp_per_season.rename("dnp_dropped"),
         name_resolved.rename("team_by_name"),
+        cup_games.rename("cup_games"),
+        cup_final.rename("cup_final_dropped"),
         type_counts,
     )
 
@@ -390,7 +429,7 @@ def backfill(kaggle_dir: Path, out_dir: Path) -> dict[str, Path]:
 
 
 def season_summary(prepared: Prepared) -> pd.DataFrame:
-    """Per season: rows, distinct games, first/last game date, DNP dropped, name-resolved."""
+    """Per season: rows, games, first/last date, DNP dropped, name-resolved, Cup games/finals."""
     df = prepared.game_logs
     summary = df.groupby("season").agg(
         rows=("game_id", "size"),
@@ -398,10 +437,16 @@ def season_summary(prepared: Prepared) -> pd.DataFrame:
         first_game=("game_date", "min"),
         last_game=("game_date", "max"),
     )
-    summary = summary.join(prepared.dnp_per_season).join(prepared.name_resolved_per_season)
-    return summary.fillna({"dnp_dropped": 0, "team_by_name": 0}).astype(
-        {"dnp_dropped": "int64", "team_by_name": "int64"}
-    )
+    extras = [
+        prepared.dnp_per_season,
+        prepared.name_resolved_per_season,
+        prepared.cup_games_per_season,
+        prepared.cup_final_per_season,
+    ]
+    for extra in extras:
+        summary = summary.join(extra)
+    counts = {str(e.name): "int64" for e in extras}
+    return summary.fillna(dict.fromkeys(counts, 0)).astype(counts)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -435,8 +480,9 @@ def main(argv: list[str] | None = None) -> None:
     prepared = prepare(box, load_team_histories(args.kaggle_dir))
     written = local.write_per_season(prepared.game_logs, args.out_dir)
     print(
-        "DNP rows (no/zero minutes or populated comment) are dropped; "
-        "team_by_name counts kept rows whose team id was empty in the dump:"
+        "DNP rows (no/zero minutes or populated comment) are dropped; team_by_name counts kept "
+        "rows whose team id was empty in the dump; cup_games are NBA Cup group/knockout games "
+        "kept; cup_final_dropped are Cup finals excluded:"
     )
     print(season_summary(prepared).to_string())
     for season, path in written.items():

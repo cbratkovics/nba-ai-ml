@@ -22,8 +22,17 @@ SEASONS: tuple[str, ...] = ("2021-22", "2022-23", "2023-24", "2024-25", "2025-26
 HOLDOUT_SEASON: str = "2025-26"
 TRAIN_SEASONS: tuple[str, ...] = tuple(s for s in SEASONS if s != HOLDOUT_SEASON)
 
-# Only these game types are kept during backfill (Kaggle `gameType` values).
-GAME_TYPES: tuple[str, ...] = ("Regular Season",)
+# Kaggle `gameType` values kept during backfill. NBA Cup (in-season tournament)
+# group and knockout games count as regular-season games in official accounting;
+# the dump labels them inconsistently by season, so every Cup label is kept and the
+# Cup final is excluded separately in nba.ingest.kaggle_backfill.
+GAME_TYPES: tuple[str, ...] = (
+    "Regular Season",
+    "NBA Emirates Cup",
+    "Emirates NBA Cup",
+    "NBA Cup",
+    "in-season-knockout",
+)
 
 # Feature settings.
 ROLLING_WINDOWS: tuple[int, ...] = (5, 10, 20)

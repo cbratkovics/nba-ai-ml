@@ -1,9 +1,9 @@
 """Fill the per-season table and the DNP note in the Hugging Face dataset card.
 
-The card (README.md in the dataset repo) is maintained by hand. Only three places
+The card (README.md in the dataset repo) is maintained by hand. Only four places
 are rewritten from backfill output: the rows of the season table, the "did not
-play" bullet under Known limitations, and the file-layout line under Files.
-Everything else is left exactly as it was.
+play" bullet and the excluded-games bullet under Known limitations, and the
+file-layout line under Files. Everything else is left exactly as it was.
 """
 
 from __future__ import annotations
@@ -19,6 +19,12 @@ TABLE_HEADER = "| Season | Rows | First game | Last game |"
 SEASON_ROW = re.compile(r"^\| (20\d\d-\d\d) \|.*\|\s*$")
 DNP_LINE = re.compile(r"^- Rows for players who did not play \(DNP\) are .*$")
 FILES_LINE = re.compile(r"^`game_logs/[^`]*`, one per season\.\s*$")
+EXCLUDED_LINE = re.compile(r"^- Playoffs, play-in, (and )?preseason.*excluded\..*$")
+EXCLUDED_TEXT = (
+    "- Playoffs, play-in, preseason, and All-Star games are excluded. NBA Cup (in-season "
+    "tournament) group and knockout games are included and the Cup final is excluded, "
+    "matching official regular-season accounting."
+)
 
 
 def season_rows(summary: pd.DataFrame) -> list[str]:
@@ -61,7 +67,7 @@ def render_dataset_card(card: str, summary: pd.DataFrame) -> str:
         raise ValueError("dataset card season table has no rows to replace")
     lines[start:end] = season_rows(summary)
 
-    replaced_dnp = replaced_files = False
+    replaced_dnp = replaced_files = replaced_excluded = False
     for i, ln in enumerate(lines):
         if DNP_LINE.match(ln):
             lines[i] = dnp_line(summary)
@@ -69,8 +75,13 @@ def render_dataset_card(card: str, summary: pd.DataFrame) -> str:
         elif FILES_LINE.match(ln):
             lines[i] = files_line()
             replaced_files = True
+        elif EXCLUDED_LINE.match(ln):
+            lines[i] = EXCLUDED_TEXT
+            replaced_excluded = True
     if not replaced_dnp:
         raise ValueError("dataset card has no DNP bullet to replace")
     if not replaced_files:
         raise ValueError("dataset card has no files line to replace")
+    if not replaced_excluded:
+        raise ValueError("dataset card has no excluded-games bullet to replace")
     return "\n".join(lines)
