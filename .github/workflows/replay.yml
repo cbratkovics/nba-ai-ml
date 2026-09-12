@@ -1,0 +1,69 @@
+name: Replay a season
+
+# Manually triggered backtest: replays the nightly slate for every game date of a
+# season using only data available as of each date, scores it against actuals, and
+# checks the restricted MAE against reports/metrics.json within the tolerance.
+# Uploads reports/replay_<season>.json as an artifact; the file is committed by hand.
+
+on:
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "Season to replay"
+        required: false
+        default: "2025-26"
+      tolerance:
+        description: "Max |replay MAE - metrics.json MAE| per target"
+        required: false
+        default: "0.05"
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Require secrets
+        run: |
+          for v in HF_TOKEN KAGGLE_USERNAME KAGGLE_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing repository secret $v"; exit 1; fi
+          done
+
+      - name: Install project
+        run: python -m pip install --quiet "."
+
+      - name: Replay
+        run: |
+          set -o pipefail
+          python -m nba.predict.replay \
+            --season "${{ inputs.season }}" \
+            --download-schedule \
+            --tolerance "${{ inputs.tolerance }}" 2>&1 | tee replay.log
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "## Replay ${{ inputs.season }}"; grep -E "^REPLAY " replay.log || true; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-${{ inputs.season }}-${{ github.run_id }}
+          path: |
+            reports/replay_*.json
+            replay.log
+          if-no-files-found: error
