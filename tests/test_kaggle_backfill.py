@@ -6,46 +6,85 @@ import pytest
 from nba import config, schema
 from nba.ingest import kaggle_backfill
 from nba.storage import local
-from tests.conftest import GAMES_PER_SEASON, NICKNAMES, PLAYERS_PER_TEAM, SEASON_STARTS
+from tests.conftest import GAMES_PER_SEASON, PLAYERS_PER_TEAM, SEASON_STARTS, TEAMS
 
 
 def test_season_from_date() -> None:
     assert kaggle_backfill.season_from_date(pd.Timestamp("2024-10-22")) == "2024-25"
+    assert kaggle_backfill.season_from_date(pd.Timestamp("2024-09-30")) == "2023-24"
     assert kaggle_backfill.season_from_date(pd.Timestamp("2025-04-13")) == "2024-25"
     assert kaggle_backfill.season_from_date(pd.Timestamp("2026-06-15")) == "2025-26"
+    assert kaggle_backfill.BACKFILL_START == pd.Timestamp("2021-10-01")
+
+
+def test_streamed_read_drops_rows_before_cutoff(kaggle_dir: Path) -> None:
+    box = kaggle_backfill.load_box_scores(kaggle_dir)
+    assert (box["gameDate"] >= kaggle_backfill.BACKFILL_START).all()
+    assert 2019 not in set(box["gameDate"].dt.year)
+    raw = pd.read_csv(kaggle_dir / kaggle_backfill.BOX_SCORE_FILE)
+    assert len(box) == len(raw) - 2 * PLAYERS_PER_TEAM
+
+
+def test_game_type_counts_lists_distinct_values(kaggle_dir: Path) -> None:
+    counts = kaggle_backfill.game_type_counts(kaggle_backfill.load_box_scores(kaggle_dir))
+    assert set(counts.index) == {"Regular Season", "Preseason", "Playoffs"}
+    assert counts["Regular Season"] > counts["Preseason"]
+
+
+def test_configured_game_type_must_exist(kaggle_dir: Path) -> None:
+    box = kaggle_backfill.load_box_scores(kaggle_dir)
+    hist = kaggle_backfill.load_team_histories(kaggle_dir)
+    with pytest.raises(ValueError, match="Regular season"):
+        kaggle_backfill.map_to_schema(box, hist, game_types=("Regular season",))
 
 
 def test_mapping_matches_schema(game_logs: pd.DataFrame) -> None:
     schema.validate(game_logs)
     assert set(game_logs["season"]) == set(SEASON_STARTS)
     # Preseason and playoff games are filtered out; the DNP row is dropped.
-    regular_games = (GAMES_PER_SEASON - 2) * (len(NICKNAMES) // 2)
+    regular_games = (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2)
     assert game_logs["game_id"].nunique() == regular_games * len(SEASON_STARTS)
     assert len(game_logs) == game_logs["game_id"].nunique() * 2 * PLAYERS_PER_TEAM
     assert 9999 not in set(game_logs["player_id"])
     # Game ids are zero-padded strings, teams are abbreviations, home is boolean.
     assert game_logs["game_id"].str.len().eq(kaggle_backfill.GAME_ID_WIDTH).all()
-    assert set(game_logs["team"]) == {"LAL", "BOS", "GSW", "MIA", "DEN", "MIL"}
+    assert set(game_logs["team"]) == {"LAL", "BOS", "GSW", "MIA", "DEN", "OLD", "NEW"}
     assert (game_logs["team"] != game_logs["opponent"]).all()
     assert game_logs["home"].dtype == bool
+    assert (game_logs["source"] == "kaggle_v515").all()
     assert (game_logs["source"] == config.KAGGLE_SOURCE).all()
     # Every game has exactly one home team's players and one away team's players.
     per_game = game_logs.groupby("game_id")["home"].agg(["sum", "count"])
     assert (per_game["sum"] * 2 == per_game["count"]).all()
 
 
-def test_unknown_team_is_an_error(kaggle_dir: Path) -> None:
+def test_team_abbreviation_follows_season(game_logs: pd.DataFrame) -> None:
+    renamed = game_logs[game_logs["player_name"].str.endswith("Renamed")]
+    assert set(renamed.loc[renamed["season"] == "2023-24", "team"]) == {"OLD"}
+    assert set(renamed.loc[renamed["season"] == "2024-25", "team"]) == {"NEW"}
+    assert set(renamed.loc[renamed["season"] == "2025-26", "team"]) == {"NEW"}
+    assert "GONE" not in set(game_logs["team"]) | set(game_logs["opponent"])
+
+
+def test_unknown_team_id_is_an_error(kaggle_dir: Path) -> None:
     box = kaggle_backfill.load_box_scores(kaggle_dir)
-    # Rename a team that appears in regular-season games (row 0 is preseason and gets filtered).
-    box.loc[box["playerteamName"] == "Lakers", "playerteamName"] = "Sonics"
-    with pytest.raises(KeyError, match="Sonics"):
-        kaggle_backfill.map_to_schema(box, kaggle_backfill.load_schedule(kaggle_dir))
+    box.loc[box["playerteamId"] == TEAMS[0][0], "playerteamId"] = 424242
+    with pytest.raises(KeyError, match="424242"):
+        kaggle_backfill.map_to_schema(box, kaggle_backfill.load_team_histories(kaggle_dir))
+
+
+def test_ambiguous_team_history_is_an_error(kaggle_dir: Path) -> None:
+    hist = kaggle_backfill.load_team_histories(kaggle_dir)
+    dup = pd.concat([hist, hist.iloc[[0]]], ignore_index=True)
+    with pytest.raises(KeyError, match="multiple active"):
+        kaggle_backfill.map_to_schema(kaggle_backfill.load_box_scores(kaggle_dir), dup)
 
 
 def test_missing_kaggle_column_is_an_error(kaggle_dir: Path) -> None:
-    box = kaggle_backfill.load_box_scores(kaggle_dir).drop(columns=["reboundsTotal"])
+    path = kaggle_dir / kaggle_backfill.BOX_SCORE_FILE
+    pd.read_csv(path).drop(columns=["reboundsTotal"]).to_csv(path, index=False)
     with pytest.raises(KeyError, match="reboundsTotal"):
-        kaggle_backfill.map_to_schema(box, kaggle_backfill.load_schedule(kaggle_dir))
+        kaggle_backfill.load_box_scores(kaggle_dir)
 
 
 def test_backfill_writes_one_parquet_per_season(kaggle_dir: Path, tmp_path: Path) -> None:
@@ -56,7 +95,7 @@ def test_backfill_writes_one_parquet_per_season(kaggle_dir: Path, tmp_path: Path
 
     round_trip = local.read_game_logs(out_dir)
     expected = kaggle_backfill.map_to_schema(
-        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_schedule(kaggle_dir)
+        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_team_histories(kaggle_dir)
     )
     pd.testing.assert_frame_equal(
         round_trip.sort_values(["game_date", "game_id", "player_id"]).reset_index(drop=True),
@@ -65,10 +104,14 @@ def test_backfill_writes_one_parquet_per_season(kaggle_dir: Path, tmp_path: Path
     assert local.dataset_fingerprint(out_dir).startswith("local:")
 
 
-def test_cli_prints_row_counts(
+def test_cli_prints_summary(
     kaggle_dir: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    kaggle_backfill.main(["--kaggle-dir", str(kaggle_dir), "--out-dir", str(tmp_path / "out")])
+    pid = 1000
+    args = ["--kaggle-dir", str(kaggle_dir), "--out-dir", str(tmp_path / "out")]
+    kaggle_backfill.main(args + ["--show-player", str(pid)])
     out = capsys.readouterr().out
+    assert "distinct gameType values" in out and "Preseason" in out
     for season in SEASON_STARTS:
         assert season in out
+    assert f"last five rows for player_id {pid}" in out

@@ -1,4 +1,8 @@
-"""Deterministic fixtures in the layout of the Kaggle dump (PlayerStatistics.csv, Games.csv)."""
+"""Deterministic fixtures in the layout of the Kaggle dump, version 515.
+
+Files: PlayerStatistics.csv (box scores, with gameDate and gameType on every row)
+and TeamHistories.csv (teamId, teamAbbrev, seasonFounded, seasonActiveTill).
+"""
 
 from __future__ import annotations
 
@@ -10,88 +14,124 @@ import pytest
 
 from nba.ingest import kaggle_backfill
 
-# Real nicknames so the nickname -> abbreviation map resolves.
-NICKNAMES = ["Lakers", "Celtics", "Warriors", "Heat", "Nuggets", "Bucks"]
+# (teamId, lastName used for its fixture players). Team 6 is renamed between seasons.
+TEAMS: list[tuple[int, str]] = [
+    (1610612747, "Lakers"),
+    (1610612738, "Celtics"),
+    (1610612744, "Warriors"),
+    (1610612748, "Heat"),
+    (1610612743, "Nuggets"),
+    (6, "Renamed"),
+]
+TEAM_HISTORIES: list[dict] = [
+    {"teamId": 1610612747, "teamAbbrev": "LAL", "seasonFounded": 1948, "seasonActiveTill": np.nan},
+    {"teamId": 1610612738, "teamAbbrev": "BOS", "seasonFounded": 1946, "seasonActiveTill": np.nan},
+    {"teamId": 1610612744, "teamAbbrev": "GSW", "seasonFounded": 1971, "seasonActiveTill": np.nan},
+    {"teamId": 1610612748, "teamAbbrev": "MIA", "seasonFounded": 1988, "seasonActiveTill": np.nan},
+    {"teamId": 1610612743, "teamAbbrev": "DEN", "seasonFounded": 1976, "seasonActiveTill": np.nan},
+    # Abbreviation changes after the 2023-24 season.
+    {"teamId": 6, "teamAbbrev": "OLD", "seasonFounded": 2000, "seasonActiveTill": 2023},
+    {"teamId": 6, "teamAbbrev": "NEW", "seasonFounded": 2024, "seasonActiveTill": np.nan},
+    # A defunct team that must never match.
+    {"teamId": 7, "teamAbbrev": "GONE", "seasonFounded": 1990, "seasonActiveTill": 2001},
+]
 SEASON_STARTS = {"2023-24": "2023-10-24", "2024-25": "2024-10-22", "2025-26": "2025-10-21"}
 GAMES_PER_SEASON = 12
 PLAYERS_PER_TEAM = 2
+# A pre-cutoff row that the streamed reader must drop.
+OLD_GAME_DATE = "2019-11-05 19:30:00"
 
 
 def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
-    """Write a tiny PlayerStatistics.csv and Games.csv and return their paths."""
+    """Write a tiny PlayerStatistics.csv and TeamHistories.csv and return their paths."""
     rng = np.random.default_rng(seed)
-    games: list[dict] = []
     box: list[dict] = []
     game_no = 0
     players = {
-        nick: [(1000 + 10 * i + j, f"P{i}{j}") for j in range(PLAYERS_PER_TEAM)]
-        for i, nick in enumerate(NICKNAMES)
+        tid: [(1000 + 10 * i + j, f"P{i}{j}") for j in range(PLAYERS_PER_TEAM)]
+        for i, (tid, _) in enumerate(TEAMS)
     }
+    last_names = dict(TEAMS)
 
-    for _season, start in SEASON_STARTS.items():
+    def box_row(
+        pid: int, pname: str, tid: int, opp: int, is_home: int, gid: int, when: str, game_type: str
+    ) -> dict:
+        minutes = float(rng.uniform(4, 38))
+        pts = int(rng.poisson(minutes * 0.6))
+        fga = pts // 2 + int(rng.integers(0, 6))
+        fgm = min(fga, pts // 3)
+        fg3a = int(rng.integers(0, 8))
+        fg3m = int(rng.integers(0, fg3a + 1))
+        fta = int(rng.integers(0, 8))
+        ftm = int(rng.integers(0, fta + 1))
+        oreb = int(rng.integers(0, 4))
+        dreb = int(rng.integers(0, 9))
+        return {
+            "firstName": pname,
+            "lastName": last_names[tid],
+            "personId": pid,
+            "gameId": gid,
+            "gameDate": when,
+            "playerteamId": tid,
+            "opponentteamId": opp,
+            "gameType": game_type,
+            "home": is_home,
+            "numMinutes": minutes,
+            "points": pts,
+            "assists": int(rng.poisson(minutes * 0.12)),
+            "blocks": int(rng.integers(0, 3)),
+            "steals": int(rng.integers(0, 3)),
+            "fieldGoalsAttempted": fga,
+            "fieldGoalsMade": fgm,
+            "threePointersAttempted": fg3a,
+            "threePointersMade": fg3m,
+            "freeThrowsAttempted": fta,
+            "freeThrowsMade": ftm,
+            "reboundsOffensive": oreb,
+            "reboundsDefensive": dreb,
+            "reboundsTotal": oreb + dreb,
+            "foulsPersonal": int(rng.integers(0, 6)),
+            "turnovers": int(rng.integers(0, 5)),
+            "plusMinusPoints": int(rng.integers(-15, 16)),
+        }
+
+    # One old game that precedes BACKFILL_START.
+    game_no += 1
+    for tid, opp, is_home in ((TEAMS[0][0], TEAMS[1][0], 1), (TEAMS[1][0], TEAMS[0][0], 0)):
+        for pid, pname in players[tid]:
+            box.append(
+                box_row(
+                    pid,
+                    pname,
+                    tid,
+                    opp,
+                    is_home,
+                    21900000 + game_no,
+                    OLD_GAME_DATE,
+                    "Regular Season",
+                )
+            )
+
+    for start in SEASON_STARTS.values():
         day = pd.Timestamp(start)
         for k in range(GAMES_PER_SEASON):
             # Mostly 2-day gaps with an occasional back-to-back.
             day = day + pd.Timedelta(days=1 if k % 5 == 4 else 2)
-            order = rng.permutation(len(NICKNAMES))
+            order = rng.permutation(len(TEAMS))
             game_type = "Regular Season"
             if k == 0:
                 game_type = "Preseason"  # must be filtered out
             if k == GAMES_PER_SEASON - 1:
                 game_type = "Playoffs"  # must be filtered out
-            for h in range(0, len(NICKNAMES), 2):
+            for h in range(0, len(TEAMS), 2):
                 game_no += 1
                 gid = 22300000 + game_no  # int like the Kaggle dump (no leading zeros)
-                home_nick, away_nick = NICKNAMES[order[h]], NICKNAMES[order[h + 1]]
-                games.append(
-                    {
-                        "gameId": gid,
-                        "gameDate": f"{day.date()} 19:30:00",
-                        "hometeamName": home_nick,
-                        "awayteamName": away_nick,
-                        "gameType": game_type,
-                    }
-                )
-                for nick, opp, is_home in ((home_nick, away_nick, 1), (away_nick, home_nick, 0)):
-                    for pid, pname in players[nick]:
-                        minutes = float(rng.uniform(4, 38))
-                        pts = int(rng.poisson(minutes * 0.6))
-                        fga = pts // 2 + int(rng.integers(0, 6))
-                        fgm = min(fga, pts // 3)
-                        fg3a = int(rng.integers(0, 8))
-                        fg3m = int(rng.integers(0, fg3a + 1))
-                        fta = int(rng.integers(0, 8))
-                        ftm = int(rng.integers(0, fta + 1))
-                        oreb = int(rng.integers(0, 4))
-                        dreb = int(rng.integers(0, 9))
-                        box.append(
-                            {
-                                "firstName": pname,
-                                "lastName": nick,
-                                "personId": pid,
-                                "gameId": gid,
-                                "playerteamName": nick,
-                                "opponentteamName": opp,
-                                "home": is_home,
-                                "numMinutes": minutes,
-                                "points": pts,
-                                "assists": int(rng.poisson(minutes * 0.12)),
-                                "blocks": int(rng.integers(0, 3)),
-                                "steals": int(rng.integers(0, 3)),
-                                "fieldGoalsAttempted": fga,
-                                "fieldGoalsMade": fgm,
-                                "threePointersAttempted": fg3a,
-                                "threePointersMade": fg3m,
-                                "freeThrowsAttempted": fta,
-                                "freeThrowsMade": ftm,
-                                "reboundsOffensive": oreb,
-                                "reboundsDefensive": dreb,
-                                "reboundsTotal": oreb + dreb,
-                                "foulsPersonal": int(rng.integers(0, 6)),
-                                "turnovers": int(rng.integers(0, 5)),
-                                "plusMinusPoints": int(rng.integers(-15, 16)),
-                            }
-                        )
+                home_tid, away_tid = TEAMS[order[h]][0], TEAMS[order[h + 1]][0]
+                when = f"{day.date()} 19:30:00"
+                for tid, opp, is_home in ((home_tid, away_tid, 1), (away_tid, home_tid, 0)):
+                    for pid, pname in players[tid]:
+                        box.append(box_row(pid, pname, tid, opp, is_home, gid, when, game_type))
+
     # One did-not-play row (no minutes) that must be dropped.
     dnp = dict(box[-1])
     dnp["personId"] = 9999
@@ -102,10 +142,10 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
 
     directory.mkdir(parents=True, exist_ok=True)
     box_path = directory / kaggle_backfill.BOX_SCORE_FILE
-    sched_path = directory / kaggle_backfill.SCHEDULE_FILE
+    hist_path = directory / kaggle_backfill.TEAM_HISTORY_FILE
     pd.DataFrame(box).to_csv(box_path, index=False)
-    pd.DataFrame(games).to_csv(sched_path, index=False)
-    return box_path, sched_path
+    pd.DataFrame(TEAM_HISTORIES).to_csv(hist_path, index=False)
+    return box_path, hist_path
 
 
 @pytest.fixture
@@ -117,5 +157,5 @@ def kaggle_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def game_logs(kaggle_dir: Path) -> pd.DataFrame:
     return kaggle_backfill.map_to_schema(
-        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_schedule(kaggle_dir)
+        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_team_histories(kaggle_dir)
     )

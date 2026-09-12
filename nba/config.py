@@ -39,7 +39,7 @@ REPORTS_DIR: Path = Path("reports")
 METRICS_PATH: Path = REPORTS_DIR / "metrics.json"
 
 # Value written to the `source` column by the Kaggle backfill.
-KAGGLE_SOURCE: str = "kaggle:eoinamoore/historical-nba-data-and-player-box-scores"
+KAGGLE_SOURCE: str = "kaggle_v515"
 
 RANDOM_SEED: int = 42
 

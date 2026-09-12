@@ -32,7 +32,7 @@ this pipeline. It is left untouched for now.
 nba/
   config.py                 seasons, windows, min minutes, HF repo ids, HF_TOKEN
   schema.py                 canonical game-log schema + validate()
-  ingest/kaggle_backfill.py Kaggle dump -> schema -> Parquet per season
+  ingest/kaggle_backfill.py Kaggle dump (v515) -> schema -> Parquet per season, optional --push
   storage/local.py          per-season Parquet read/write, dataset fingerprint
   storage/hf.py             push/pull Parquet and model files to Hugging Face
   features/asof.py          point-in-time features
@@ -87,10 +87,10 @@ does not exist yet, so no numbers are listed here. When it does, the table from
 ## Data provenance
 
 - **Backfill:** [Historical NBA Data and Player Box Scores](https://www.kaggle.com/datasets/eoinamoore/historical-nba-data-and-player-box-scores)
-  by Eoin Moore on Kaggle, released under CC0. Two files are read:
-  `PlayerStatistics.csv` (box scores) and `Games.csv` (schedule and game type).
-  Download it manually; the code takes a local path and stores no Kaggle
-  credentials.
+  by Eoin Moore on Kaggle (version 515), released under CC0. Two files are
+  read: `PlayerStatistics.csv` (box scores, streamed and cut to October 2021
+  onward) and `TeamHistories.csv` (team abbreviations by season). Download it
+  manually; the code takes a local path and stores no Kaggle credentials.
 - **Daily updates:** `nba_api`, an unofficial client for `stats.nba.com`
   (not yet wired in this phase; the probe workflow checks whether GitHub
   runners can reach it).
