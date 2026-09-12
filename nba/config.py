@@ -67,6 +67,12 @@ DUMP_DIR: Path = Path("data") / "dump"
 
 # Published model used for scoring, pinned to a commit of HF_MODEL_REPO.
 MODEL_REVISION: str = "fb427de136e1d6c4b591ae30cf30488f44935182"
+# Analyst-agent model on Groq, pinned from the catalogue queried on 2026-09-12: no Llama
+# chat model was listed; openai/gpt-oss-120b was the largest model with verified native
+# tool calls (0.53 s on a one-tool probe). Fallback if rate-limited: openai/gpt-oss-20b.
+GROQ_MODEL: str = "openai/gpt-oss-120b"
+GROQ_MODEL_FALLBACK: str = "openai/gpt-oss-20b"
+
 # A player is on a team's slate if they appeared in any of the team's last N games.
 ROSTER_LOOKBACK_GAMES: int = 10
 # Prediction and residual products (local dirs and folders in the dataset repo).
@@ -74,9 +80,16 @@ PREDICTIONS_DIR: Path = Path("predictions")
 RESIDUALS_DIR: Path = Path("residuals")
 HF_PREDICTIONS_PREFIX: str = "predictions"
 HF_RESIDUALS_PREFIX: str = "residuals"
-# Replay products: replay/<season>/{replay.json, daily_mae.json, sample_<date>.json}.
+# Replay products: replay/<season>/{replay.json, daily_mae.json, sample_<date>.json,
+# residuals/<date>.parquet}.
 REPLAY_DIR: Path = Path("replay")
 HF_REPLAY_PREFIX: str = "replay"
+# Daily ingest reports pushed as products so later runs can read any date.
+DAILY_REPORTS_DIR: Path = Path("daily_reports")
+HF_DAILY_REPORTS_PREFIX: str = "daily_reports"
+# Analyst-agent briefs: brief/<date>.json, brief/<date>.trace.json, latest.json, index.json.
+BRIEF_DIR: Path = Path("brief")
+HF_BRIEF_PREFIX: str = "brief"
 
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"
@@ -109,6 +122,12 @@ HF_TOKEN: str | None = os.environ.get("HF_TOKEN") or None
 # Kaggle API credentials (same sources). Only the daily ingest's download uses them.
 KAGGLE_USERNAME: str | None = os.environ.get("KAGGLE_USERNAME") or None
 KAGGLE_KEY: str | None = os.environ.get("KAGGLE_KEY") or None
+# Groq API key for the analyst agent (free tier). Read here only.
+GROQ_API_KEY: str | None = os.environ.get("GROQ_API_KEY") or None
+
+
+def groq_api_key() -> str | None:
+    return GROQ_API_KEY
 
 
 def hf_token() -> str | None:

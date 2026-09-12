@@ -162,7 +162,7 @@ def test_push_and_pull_products(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert hf.push_products(tmp_path / "empty") is None
 
     def fake_snapshot(repo_id, repo_type, revision, allow_patterns, local_dir, token):
-        assert allow_patterns == ["predictions/**", "residuals/**", "replay/**"]
+        assert allow_patterns == list(hf.PRODUCT_PATTERNS)
         import shutil
 
         for prefix in ("predictions", "residuals"):
