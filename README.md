@@ -64,7 +64,7 @@ committed traces in `tests/traces/` with the provider mocked. Model
 |---|---|
 | Grounding: every number in a finding matches its cited tool output within 0.01 | 6 of 6 briefs |
 | Golden set: the finding names the day's largest-points-residual player | 5 of 5 dates |
-| Pass rates over repeated runs (`agent-eval.yml`) | pending |
+| Pass rates over repeated runs (`agent-eval.yml`, 5 per date) | incomplete: 10 of 25 briefs ran before the daily token cap, 9 grounded, 10 named the player; see [docs/agent.md](docs/agent.md#reliability) |
 
 ## Links
 
@@ -93,7 +93,8 @@ committed traces in `tests/traces/` with the provider mocked. Model
 - **The agent brief is not deterministic.** At temperature 0 the model's output still
   varies between runs. A single run can drop a finding as ungrounded or miss the golden
   player, and one of the six recorded runs did. Pass rates over repeated runs are the
-  measure to read, and they are not published yet.
+  measure to read; the first attempt at them ran out of daily token quota after 10 of
+  25 briefs ([reports/agent_pass_rates.json](reports/agent_pass_rates.json)).
 
 ## Data-source terms
 

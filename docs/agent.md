@@ -165,6 +165,47 @@ What it took to get there, so the numbers above are not read as a first try:
   one. Read the golden result as "passes when the residual finding survives grounding",
   not as a guarantee: at temperature 0 the model's output still varies between runs.
 
+## Reliability
+
+`agent-eval.yml` runs every golden date N times against the provider with no fallback
+model (`python -m nba.agent.pass_rates --no-fallback`), applies the nightly grounding
+check, and writes `reports/agent_pass_rates.json`. A 429 on the pinned model is recorded
+as `rate_limited` and fails both checks, so a capped run reads as incomplete rather than
+as a lower pass rate.
+
+First run, 2026-09-12 (GitHub Actions run 34701742530), N = 5, 30 s between briefs,
+`openai/gpt-oss-120b` only:
+
+| Date | Player | Completed | Grounding pass | Golden pass | Rate limited | Latency |
+|---|---|---:|---:|---:|---:|---|
+| 2025-10-23 | Aaron Gordon | 5 | 4/5 | 5/5 | 0 | 2.1 to 2.4 s |
+| 2025-12-03 | Giannis Antetokounmpo | 5 | 5/5 | 5/5 | 0 | 1.8 to 2.5 s |
+| 2026-01-14 | Brice Sensabaugh | 0 | 0/5 | 0/5 | 5 | |
+| 2026-03-10 | Bam Adebayo | 0 | 0/5 | 0/5 | 5 | |
+| 2026-04-03 | Cooper Flagg | 0 | 0/5 | 0/5 | 5 | |
+| **Overall** | | **10 of 25** | **9/25** | **10/25** | **15** | |
+
+**This run is incomplete.** After 10 briefs the pinned model hit the free tier's
+200,000 tokens-per-day cap (the error reported 198,955 used, 3,830 requested), a
+rolling window that the same day's six-date dispatches and local smoke runs had
+already mostly consumed. The 15 remaining briefs were refused within 0.5 s each and
+are recorded as `rate_limited`; none was answered by the fallback model. Over the 10
+briefs that ran: grounding 9 of 10, golden 10 of 10. That is too few runs, on two of
+five dates, to quote a pass rate. The workflow needs to be re-run on a day with no
+other agent traffic; the rows above will be replaced by that run.
+
+**The single-run failure mode, plainly.** At temperature 0 the model's output still
+varies between runs. The failure seen in every set of runs so far is the same one: a
+residual finding names two or more players and their residuals, but `evidence.values`
+carries only some of those numbers, so the grounding check drops the whole finding.
+The brief is then marked `ungrounded`, and if the dropped finding was the one naming
+the golden player, the golden check fails too. It happened on 1 of 10 briefs in this
+run (2025-10-23, run 2, one finding dropped, golden still passed because a kept
+finding named Aaron Gordon) and on 1 of 7 dispatch briefs earlier the same day
+(2025-12-03, where the golden check failed). A single nightly brief can therefore
+arrive with a finding missing, and the site shows that as status `ungrounded` with the
+dropped finding listed. Nothing ungrounded is published as a finding.
+
 ## Cost
 
 Groq free tier; no paid plan. Limits observed on 2026-09-12 for this key and
@@ -174,7 +215,8 @@ per day, each per model. One nightly brief is normally a single chat completion 
 including reasoning), and at most 4 completions if the model spends its three remaining
 tool calls (1 + 3 tool turns, then up to 3 answer turns, but the wall clock ends it first).
 That is about 2 percent of the daily token cap per night, so one nightly brief plus an
-occasional manual dispatch stays free. The per-minute cap is the tight one: a second
+occasional manual dispatch stays free. A pass-rate run of 25 briefs is about half the
+cap by itself and cannot share a day with other dispatches (see Reliability). The per-minute cap is the tight one: a second
 model turn in the same minute can exceed it, which is why the loop aims for a single
 turn and falls back to the second model on 429. Nothing else in the pipeline calls a
 paid or metered API.
