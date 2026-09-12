@@ -120,6 +120,116 @@ counted per season (table above); 29,585 in total across the five seasons.
 - Rows per team in 2025-26 range from 813 to 935, i.e. roughly 10 to 11 players per
   game after DNP removal.
 
+## Daily-vs-backfill reconciliation (design)
+
+The nightly job (`nba/nightly.py`, `.github/workflows/nightly.yml`, 10:00 UTC) keeps the
+Hugging Face dataset in step with the Kaggle dump without ever re-running the backfill:
+
+1. **Same rules, one implementation.** Every parsing and mapping rule lives in
+   `nba/ingest/kaggle_dump.py` and is used by both the one-off backfill and the daily
+   ingest, so a row produced on a given day is byte-for-byte what the backfill would
+   have produced for it (except `source`).
+2. **Window.** The daily ingest downloads only `PlayerStatistics.csv`,
+   `TeamHistories.csv`, and the season's `LeagueScheduleYY_YY.csv` with the Kaggle
+   single-file API, streams the box scores, and keeps rows with
+   `game_date > max(stored game_date) - 7 days`. Seven days covers late corrections
+   the dump author applies to recent games; an empty window (off-season) is a normal
+   zero-count run.
+3. **Classification.** Each incoming `(player_id, game_id)` is compared with the stored
+   row on every schema column except `source`: **new** (not stored), **unchanged**
+   (all columns equal; floats to 4 decimals), or **changed**. New and changed rows are
+   written with `source = kaggle_daily`; unchanged rows keep `kaggle_v515`.
+4. **Write and push.** Only the affected season Parquet files are rewritten and pushed,
+   together with a refreshed dataset card whose season table (rows, games, dates) is
+   recomputed and whose DNP bullet is left as the backfill wrote it. Nothing is pushed
+   on a day with zero new or changed rows.
+5. **Report.** `data/daily_report.json` records the stored revision, the window, row
+   counts at each stage, new/changed/unchanged counts, up to 20 changed examples with
+   the differing fields, the seasons written, and the revision after the push. The
+   nightly workflow uploads it (with `data/nightly_summary.json` and the log) as an
+   artifact, and `predictions/rolling_metrics.json` in the dataset repo accumulates
+   the residual lines.
+6. **No-schedule and no-games days.** Until the dump author publishes
+   `LeagueSchedule26_27.csv`, every run from 2026-10-01 logs
+   `SLATE <date>: no schedule file for season 2026-27 (...)`; before then (season
+   2025-26 by the October rule) it logs `SLATE <date>: no games on this date (...)`.
+   Both exit 0 and are distinguishable in the job summary; schema errors fail the job.
+
+## First nightly run (workflow_dispatch, 2026-09-12)
+
+GitHub Actions run `34668092730` performed the first real Kaggle single-file download
+(`PlayerStatistics.csv`, `TeamHistories.csv`, `LeagueSchedule25_26.csv`) and produced
+this `data/daily_report.json`:
+
+```json
+{
+  "date": "2026-09-12",
+  "dataset_revision_before": "b20b5601de213fa8e704ebffaafd18f182ea68c3",
+  "stored_rows": 130414,
+  "stored_max_game_date": "2026-04-12",
+  "window_start_exclusive": "2026-04-05",
+  "window_rows_in_dump": 4139,
+  "window_rows_after_rules": 1234,
+  "dnp_dropped_in_window": 327,
+  "counts": {
+    "new": 0,
+    "changed": 0,
+    "unchanged": 1234
+  },
+  "changed_examples": [],
+  "seasons_written": [],
+  "schedule_file": "LeagueSchedule25_26.csv",
+  "pushed": false,
+  "dataset_revision_after": "b20b5601de213fa8e704ebffaafd18f182ea68c3"
+}
+```
+
+Reading: the stored data ends 2026-04-12, so the window began 2026-04-06; the dump had
+4,139 rows there, 1,234 survived the game-type, Cup-final, and DNP rules (327 DNP rows
+dropped in the window), and every one of them matched the stored row exactly. Nothing
+was written or pushed. The same run logged `RESIDUALS 2026-09-11: no predictions file`
+and `SLATE 2026-09-12: no games on this date (LeagueSchedule25_26.csv lists 1230
+regular-season games, none on 2026-09-12)`, which is the expected off-season outcome
+until 2026-10-01, after which the message becomes `no schedule file for season 2026-27`
+until the dump author publishes `LeagueSchedule26_27.csv`.
+
+## Season replay 2025-26 (backtest of the nightly path)
+
+GitHub Actions run `34668262142` (`.github/workflows/replay.yml`) replayed the slate for
+all 164 game dates of 2025-26, truncating the game logs to games before each
+date, scoring with model `fb427de` on dataset `b20b560`, and
+joining actuals. Output committed as `reports/replay_2025-26.json`.
+
+| Target | metrics.json MAE | replay MAE (same population) | diff | replay MAE (all rows with actuals) |
+|---|---:|---:|---:|---:|
+| pts | 4.7644 | 4.7665 | +0.0021 | 4.8639 |
+| reb | 1.9421 | 1.9429 | +0.0008 | 2.0228 |
+| ast | 1.4310 | 1.4320 | +0.0010 | 1.4029 |
+
+Tolerance 0.05 per target: **passed**. The restricted population (minutes >= 10, both
+baselines present) has 22,075 replayed rows against 22,244 in
+`metrics.json`; the small gap is the 367 rows
+(of 617 actual rows in total) the roster rule never
+predicted, chiefly post-trade debuts and players with no appearance in their team's
+previous ten games. Of 38,372 slated players, 12,341 did not
+play (no box-score row), which is what the nightly residuals report as
+"player did not play". One replay bug was found and fixed on the way: a player traded
+inside the ten-game window was slated for both teams; the roster rule now keeps a
+player only on the team of their most recent game.
+
+## What remains manual
+
+- The seven 2024-25 games missing from the dump (finding 7) still need box scores; the
+  dump cannot supply them and nba.com is unreachable from GitHub runners (the probe
+  timed out on stats.nba.com and got 403 from cdn.nba.com), so they must be fetched
+  from `nba_api` on a machine that can reach it, mapped with the same rules, and pushed.
+- `nba_api` checks in general (the `SAS`/`SAN` alias, and the one-week overlap
+  reconciliation below) can only run locally for the same reason.
+- LightGBM does not load on the development Mac without `libomp`; training, scoring,
+  and the replay run in Actions.
+- The 2026-27 schedule file appears only when the dump author publishes it; until then
+  every nightly run ends at the no-schedule line.
+
 ## Open items for the nba_api path (Phase 1b acceptance checklist)
 
 - (a) Fetch the seven missing 2024-25 games (finding 7) from nba_api, map them into the
