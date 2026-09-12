@@ -1,0 +1,73 @@
+name: Agent pass rates
+
+# Manually triggered: run the analyst agent N times on each golden date against the
+# provider and record grounding and golden pass rates in reports/agent_pass_rates.json.
+# Nothing is pushed to the HF dataset repo; the report is uploaded as an artifact and
+# committed by hand. Cost: 5 dates x N briefs, about 4-5k tokens each, so N=5 is roughly
+# half of the free tier's 200k tokens-per-day cap for the pinned model.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Runs per golden date"
+        required: false
+        default: "5"
+      pause:
+        description: "Seconds to wait between briefs (per-minute token cap)"
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+
+jobs:
+  pass-rates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Require secrets
+        run: |
+          for v in HF_TOKEN GROQ_API_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing repository secret $v"; exit 1; fi
+          done
+
+      - name: Install project
+        run: python -m pip install --quiet "."
+
+      - name: Pull dataset and products
+        run: |
+          python -m nba.storage.hf pull-dataset
+          python -m nba.storage.hf pull-products
+
+      - name: Run each golden date N times
+        run: |
+          set -o pipefail
+          python -m nba.agent.pass_rates \
+            --runs "${{ inputs.runs }}" --pause "${{ inputs.pause }}" \
+            --out reports/agent_pass_rates.json 2>&1 | tee pass_rates.log
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "## Agent pass rates"; grep -E "^PASSRATE " pass_rates.log || true; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-pass-rates-${{ github.run_id }}
+          path: |
+            reports/agent_pass_rates.json
+            pass_rates.log
+          if-no-files-found: warn
