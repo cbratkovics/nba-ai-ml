@@ -21,18 +21,28 @@ Batch predictions of NBA player points, rebounds, and assists, scored against th
 ## Architecture
 
 ```mermaid
-flowchart LR
-    K[Kaggle dump<br/>CC0 box scores] -->|nightly.yml| I[Nightly ingest]
-    I --> D[(HF dataset<br/>game_logs parquet)]
-    D -->|train.yml| T[Train on Actions]
-    T --> M[(HF model<br/>lgbm pts reb ast)]
-    D -->|nightly.yml| S[Slate + residuals]
-    M --> S
-    S --> P[(HF dataset<br/>predictions residuals)]
-    P -->|nightly.yml| A[Agent brief]
-    A --> B[(HF dataset<br/>brief json)]
-    P --> V[Vercel site]
-    B --> V
+flowchart TB
+    subgraph Data
+        direction LR
+        K[Kaggle dump<br/>CC0 box scores] -->|nightly.yml| I[Nightly ingest]
+        I --> D[(HF dataset<br/>game_logs parquet)]
+    end
+    subgraph Model
+        direction LR
+        T[Train on Actions] --> M[(HF model<br/>lgbm pts reb ast)]
+    end
+    subgraph Nightly
+        direction LR
+        S[Slate + residuals] -->|nightly.yml| A[Agent brief]
+    end
+    subgraph Serve
+        direction LR
+        P[(HF dataset<br/>predictions residuals brief)] --> V[Vercel site]
+    end
+    Data -->|train.yml| Model
+    Data -->|nightly.yml| Nightly
+    Model --> Nightly
+    Nightly --> Serve
 ```
 
 | Stage | Where it runs | Cost | Artifact |
