@@ -50,8 +50,11 @@ def _summary() -> pd.DataFrame:
 
 def test_render_fills_table_dnp_and_files_only() -> None:
     out = dataset_card.render_dataset_card(PLACEHOLDER_CARD, _summary())
-    assert "| 2021-22 | 25,826 | 2021-10-19 | 2022-04-10 |" in out
-    assert "| 2025-26 | 26,648 | 2025-10-21 | 2026-04-12 |" in out
+    assert "| Season | Rows | Games | First game | Last game |" in out
+    assert "| Season | Rows | First game | Last game |" not in out
+    assert "| 2021-22 | 25,826 | 1,230 | 2021-10-19 | 2022-04-10 |" in out
+    assert "| 2025-26 | 26,648 | 1,230 | 2025-10-21 | 2026-04-12 |" in out
+    assert "Games missing from the dump" not in out  # no missing games given
     assert "[n]" not in out and "[date]" not in out
     assert "| 2022-23 |" not in out  # only seasons in the summary remain
     assert (
@@ -66,8 +69,6 @@ def test_render_fills_table_dnp_and_files_only() -> None:
         "license: cc0-1.0",
         "# NBA Player Game Logs",
         "- Team abbreviations follow `TeamHistories.csv` for the season in which the game was played.",
-        "| Season | Rows | First game | Last game |",
-        "|---|---|---|---|",
     ):
         assert line in out
     assert out.endswith("\n")
@@ -84,3 +85,43 @@ def test_render_requires_expected_anchors() -> None:
     no_dnp = PLACEHOLDER_CARD.replace("- Rows for players who did not play (DNP) are", "- DNP:")
     with pytest.raises(ValueError, match="DNP bullet"):
         dataset_card.render_dataset_card(no_dnp, _summary())
+
+
+MISSING = (
+    {
+        "season": "2024-25",
+        "game_id": "0022400524",
+        "scheduled": "2025-01-09",
+        "home": "LAL",
+        "away": "CHA",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400988",
+        "scheduled": "2025-03-17",
+        "home": "SAN",
+        "away": "ORL",
+    },
+)
+
+
+def test_render_adds_missing_games_bullet_after_dnp_and_keeps_true_game_count() -> None:
+    summary = _summary()
+    summary.loc["2025-26", "games"] = 1223  # must not be rounded up
+    out = dataset_card.render_dataset_card(PLACEHOLDER_CARD, summary, missing_games=MISSING)
+    assert "| 2025-26 | 26,648 | 1,223 | 2025-10-21 | 2026-04-12 |" in out
+    lines = out.split("\n")
+    dnp_at = next(
+        i for i, ln in enumerate(lines) if ln.startswith("- Rows for players who did not play")
+    )
+    bullet = lines[dnp_at + 1]
+    assert bullet.startswith("- Games missing from the dump: 2 regular-season games were postponed")
+    assert "never re-captured upstream" in bullet and "backfilled from nba_api" in bullet
+    assert (
+        "2024-25: 0022400524 (2025-01-09, LAL vs CHA), 0022400988 (2025-03-17, SAN vs ORL)."
+        in bullet
+    )
+    # Idempotent: rendering the rendered card replaces, not duplicates, the bullet.
+    again = dataset_card.render_dataset_card(out, summary, missing_games=MISSING)
+    assert again == out
+    assert again.count("Games missing from the dump") == 1

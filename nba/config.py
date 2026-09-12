@@ -43,6 +43,12 @@ MIN_MINUTES: float = 10.0
 
 TARGETS: tuple[str, ...] = ("pts", "reb", "ast")
 
+# Backfill sanity thresholds per season. Below the minimums the backfill stops;
+# a season with fewer than FULL_SEASON_GAMES games only warns (known upstream gaps).
+MIN_ROWS_PER_SEASON: int = 20_000
+MIN_GAMES_PER_SEASON: int = 1_200
+FULL_SEASON_GAMES: int = 1_230  # 30 teams x 82 games / 2
+
 # Hugging Face repositories.
 HF_DATASET_REPO: str = "cbratkovics/nba-game-logs"
 HF_MODEL_REPO: str = "cbratkovics/nba-stat-predictor"

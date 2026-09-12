@@ -127,6 +127,61 @@ COUNTING_STATS: tuple[str, ...] = (
 
 GAME_ID_WIDTH = 10  # nba.com game ids are zero-padded to 10 characters
 
+# Regular-season games listed in the dump's schedule files but absent from
+# PlayerStatistics.csv (postponed and never re-captured upstream). Reported in the
+# dataset card; to be backfilled from nba_api.
+KNOWN_MISSING_GAMES: tuple[dict[str, str], ...] = (
+    {
+        "season": "2024-25",
+        "game_id": "0022400524",
+        "scheduled": "2025-01-09",
+        "home": "LAL",
+        "away": "CHA",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400532",
+        "scheduled": "2025-01-11",
+        "home": "ATL",
+        "away": "HOU",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400537",
+        "scheduled": "2025-01-11",
+        "home": "LAL",
+        "away": "SAN",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400538",
+        "scheduled": "2025-01-11",
+        "home": "LAC",
+        "away": "CHA",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400617",
+        "scheduled": "2025-01-22",
+        "home": "NOP",
+        "away": "MIL",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400627",
+        "scheduled": "2025-01-23",
+        "home": "UTA",
+        "away": "WAS",
+    },
+    {
+        "season": "2024-25",
+        "game_id": "0022400988",
+        "scheduled": "2025-03-17",
+        "home": "SAN",
+        "away": "ORL",
+    },
+)
+
 # NBA Cup (in-season tournament) markers in the dump.
 CUP_LABEL = "Emirates NBA Cup"  # gameLabel on every Cup game, whatever its gameType
 CUP_FINAL_SUBLABEL = "Championship"  # gameSubLabel on the final (2024-25, 2025-26)
@@ -173,6 +228,35 @@ class Prepared:
     cup_games_per_season: pd.Series  # season -> distinct NBA Cup games kept (group + knockout)
     cup_final_per_season: pd.Series  # season -> distinct NBA Cup finals dropped
     game_type_counts: pd.Series  # gameType -> rows (before filtering)
+
+
+class ThresholdError(ValueError):
+    """A season is below the hard minimum row or game count."""
+
+
+def check_thresholds(
+    summary: pd.DataFrame,
+    min_rows: int | None = None,
+    min_games: int | None = None,
+    full_games: int | None = None,
+) -> list[str]:
+    """Raise ThresholdError below the hard minimums; return warnings for incomplete seasons."""
+    min_rows = config.MIN_ROWS_PER_SEASON if min_rows is None else min_rows
+    min_games = config.MIN_GAMES_PER_SEASON if min_games is None else min_games
+    full_games = config.FULL_SEASON_GAMES if full_games is None else full_games
+    hard: list[str] = []
+    warnings: list[str] = []
+    for season, r in summary.iterrows():
+        rows, games = int(r["rows"]), int(r["games"])
+        if rows < min_rows:
+            hard.append(f"{season}: {rows} rows < {min_rows}")
+        if games < min_games:
+            hard.append(f"{season}: {games} games < {min_games}")
+        elif games != full_games:
+            warnings.append(f"{season}: {games} games, expected {full_games}")
+    if hard:
+        raise ThresholdError("backfill below hard thresholds: " + "; ".join(hard))
+    return warnings
 
 
 def season_from_date(ts: pd.Timestamp) -> str:
@@ -478,13 +562,16 @@ def main(argv: list[str] | None = None) -> None:
     print(f"keeping gameType in {list(config.GAME_TYPES)}")
 
     prepared = prepare(box, load_team_histories(args.kaggle_dir))
+    summary = season_summary(prepared)
+    for warning in check_thresholds(summary):
+        print(f"WARNING: {warning} (known gaps are listed in docs/reconciliation.md)")
     written = local.write_per_season(prepared.game_logs, args.out_dir)
     print(
         "DNP rows (no/zero minutes or populated comment) are dropped; team_by_name counts kept "
         "rows whose team id was empty in the dump; cup_games are NBA Cup group/knockout games "
         "kept; cup_final_dropped are Cup finals excluded:"
     )
-    print(season_summary(prepared).to_string())
+    print(summary.to_string())
     for season, path in written.items():
         print(f"{season} -> {path}")
 
@@ -496,7 +583,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.push:
         card_text = dataset_card.render_dataset_card(
-            hf.fetch_dataset_card(), season_summary(prepared)
+            hf.fetch_dataset_card(), summary, missing_games=KNOWN_MISSING_GAMES
         )
         card_path = args.out_dir / hf.DATASET_CARD_FILE
         card_path.write_text(card_text)

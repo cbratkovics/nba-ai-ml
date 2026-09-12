@@ -12,6 +12,7 @@ from tests.conftest import (
     CLOCK_PLAYER_ID,
     CUP_GAMES_PER_SEASON,
     DNP_PLAYER_IDS,
+    FIXTURE_GAMES_PER_SEASON,
     GAMES_PER_SEASON,
     NO_ID_SEASON,
     PLAYERS_PER_TEAM,
@@ -245,3 +246,65 @@ def test_cup_final_rules() -> None:
     assert {"NBA Emirates Cup", "Emirates NBA Cup", "NBA Cup", "in-season-knockout"} <= set(
         config.GAME_TYPES
     )
+
+
+def _summary(rows: dict[str, int], games: dict[str, int]) -> pd.DataFrame:
+    return pd.DataFrame(
+        {"rows": rows, "games": games},
+        index=pd.Index(sorted(rows), name="season"),
+    )
+
+
+def test_thresholds_hard_stop_below_minimums() -> None:
+    summary = _summary({"2021-22": 25_000, "2022-23": 19_999}, {"2021-22": 1230, "2022-23": 1230})
+    with pytest.raises(kaggle_backfill.ThresholdError, match="2022-23: 19999 rows < 20000"):
+        kaggle_backfill.check_thresholds(summary, min_rows=20_000, min_games=1_200, full_games=1230)
+    summary = _summary({"2021-22": 25_000, "2022-23": 25_000}, {"2021-22": 1230, "2022-23": 1199})
+    with pytest.raises(kaggle_backfill.ThresholdError, match="2022-23: 1199 games < 1200"):
+        kaggle_backfill.check_thresholds(summary, min_rows=20_000, min_games=1_200, full_games=1230)
+
+
+def test_thresholds_warn_on_incomplete_but_acceptable_season() -> None:
+    summary = _summary({"2023-24": 26_095, "2024-25": 26_158}, {"2023-24": 1230, "2024-25": 1223})
+    warnings = kaggle_backfill.check_thresholds(
+        summary, min_rows=20_000, min_games=1_200, full_games=1230
+    )
+    assert warnings == ["2024-25: 1223 games, expected 1230"]
+
+
+def test_thresholds_use_config_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config, "MIN_ROWS_PER_SEASON", 5)
+    monkeypatch.setattr(config, "MIN_GAMES_PER_SEASON", 1)
+    monkeypatch.setattr(config, "FULL_SEASON_GAMES", 3)
+    summary = _summary({"2021-22": 10}, {"2021-22": 2})
+    assert kaggle_backfill.check_thresholds(summary) == ["2021-22: 2 games, expected 3"]
+    monkeypatch.setattr(config, "MIN_ROWS_PER_SEASON", 11)
+    with pytest.raises(kaggle_backfill.ThresholdError):
+        kaggle_backfill.check_thresholds(summary)
+
+
+def test_cli_hard_stops_and_warns(
+    kaggle_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    args = ["--kaggle-dir", str(kaggle_dir), "--out-dir", str(tmp_path / "out")]
+    monkeypatch.setattr(config, "FULL_SEASON_GAMES", FIXTURE_GAMES_PER_SEASON + 1)
+    kaggle_backfill.main(args)
+    out = capsys.readouterr().out
+    assert f"WARNING: 2023-24: {FIXTURE_GAMES_PER_SEASON} games, expected" in out
+    assert (tmp_path / "out" / "game_logs_2023-24.parquet").exists()
+
+    monkeypatch.setattr(config, "MIN_GAMES_PER_SEASON", FIXTURE_GAMES_PER_SEASON + 1)
+    with pytest.raises(kaggle_backfill.ThresholdError):
+        kaggle_backfill.main(["--kaggle-dir", str(kaggle_dir), "--out-dir", str(tmp_path / "out2")])
+    assert not (tmp_path / "out2").exists()
+
+
+def test_known_missing_games_are_well_formed() -> None:
+    games = kaggle_backfill.KNOWN_MISSING_GAMES
+    assert len(games) == 7
+    assert all(g["game_id"].startswith("002") and len(g["game_id"]) == 10 for g in games)
+    assert all(g["season"] == "2024-25" for g in games)
+    assert len({g["game_id"] for g in games}) == 7

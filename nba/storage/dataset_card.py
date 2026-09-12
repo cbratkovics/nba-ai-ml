@@ -9,14 +9,17 @@ file-layout line under Files. Everything else is left exactly as it was.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 
 import pandas as pd
 
 from nba import config
 from nba.storage import local
 
-TABLE_HEADER = "| Season | Rows | First game | Last game |"
+TABLE_HEADER = "| Season | Rows | Games | First game | Last game |"
+TABLE_SEPARATOR = "|---|---:|---:|---|---|"
 SEASON_ROW = re.compile(r"^\| (20\d\d-\d\d) \|.*\|\s*$")
+MISSING_LINE = re.compile(r"^- Games missing from the dump.*$")
 DNP_LINE = re.compile(r"^- Rows for players who did not play \(DNP\) are .*$")
 FILES_LINE = re.compile(r"^`game_logs/[^`]*`, one per season\.\s*$")
 EXCLUDED_LINE = re.compile(r"^- Playoffs, play-in, (and )?preseason.*excluded\..*$")
@@ -32,8 +35,24 @@ def season_rows(summary: pd.DataFrame) -> list[str]:
     for season, r in summary.sort_index().iterrows():
         first = pd.Timestamp(r["first_game"]).date().isoformat()
         last = pd.Timestamp(r["last_game"]).date().isoformat()
-        rows.append(f"| {season} | {int(r['rows']):,} | {first} | {last} |")
+        rows.append(f"| {season} | {int(r['rows']):,} | {int(r['games']):,} | {first} | {last} |")
     return rows
+
+
+def missing_games_line(missing_games: Sequence[Mapping[str, str]]) -> str:
+    by_season: dict[str, list[str]] = {}
+    for g in missing_games:
+        by_season.setdefault(g["season"], []).append(
+            f"{g['game_id']} ({g['scheduled']}, {g['home']} vs {g['away']})"
+        )
+    parts = "; ".join(
+        f"{season}: " + ", ".join(items) for season, items in sorted(by_season.items())
+    )
+    return (
+        f"- Games missing from the dump: {len(missing_games)} regular-season games were "
+        "postponed and never re-captured upstream, so their box scores are absent here; "
+        f"they will be backfilled from nba_api. {parts}."
+    )
 
 
 def dnp_line(summary: pd.DataFrame) -> str:
@@ -52,11 +71,16 @@ def files_line() -> str:
     return f"`{config.HF_DATASET_PREFIX}/{local.FILE_PREFIX}YYYY-YY.parquet`, one per season."
 
 
-def render_dataset_card(card: str, summary: pd.DataFrame) -> str:
-    """Return `card` with the season table rows, DNP bullet, and files line filled in."""
+def render_dataset_card(
+    card: str,
+    summary: pd.DataFrame,
+    missing_games: Sequence[Mapping[str, str]] = (),
+) -> str:
+    """Return `card` with the season table, DNP bullet, excluded-games bullet, files line,
+    and (when given) the missing-games bullet filled in."""
     lines = card.split("\n")
     try:
-        header = next(i for i, ln in enumerate(lines) if ln.strip() == TABLE_HEADER)
+        header = next(i for i, ln in enumerate(lines) if ln.strip().startswith("| Season |"))
     except StopIteration as exc:
         raise ValueError(f"dataset card has no table header {TABLE_HEADER!r}") from exc
     start = header + 2  # skip the |---| separator
@@ -65,7 +89,7 @@ def render_dataset_card(card: str, summary: pd.DataFrame) -> str:
         end += 1
     if end == start:
         raise ValueError("dataset card season table has no rows to replace")
-    lines[start:end] = season_rows(summary)
+    lines[header:end] = [TABLE_HEADER, TABLE_SEPARATOR] + season_rows(summary)
 
     replaced_dnp = replaced_files = replaced_excluded = False
     for i, ln in enumerate(lines):
@@ -84,4 +108,13 @@ def render_dataset_card(card: str, summary: pd.DataFrame) -> str:
         raise ValueError("dataset card has no files line to replace")
     if not replaced_excluded:
         raise ValueError("dataset card has no excluded-games bullet to replace")
+
+    if missing_games:
+        bullet = missing_games_line(missing_games)
+        existing = [i for i, ln in enumerate(lines) if MISSING_LINE.match(ln)]
+        if existing:
+            lines[existing[0]] = bullet
+        else:
+            dnp_at = next(i for i, ln in enumerate(lines) if ln == dnp_line(summary))
+            lines.insert(dnp_at + 1, bullet)
     return "\n".join(lines)

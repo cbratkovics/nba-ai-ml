@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from nba import config
 from nba.ingest import kaggle_backfill
 
 # (teamId, city, name). Team 6 changes city and abbreviation after 2023-24.
@@ -124,6 +125,8 @@ PLAYERS_PER_TEAM = 2
 # "NBA Cup" with a 006-prefixed game id (as 2023-24 does).
 CUP_GAMES_PER_SEASON = 2
 CUP_FINAL_SEASON_LABELLED_REGULAR = "2024-25"
+# Regular-season games kept per fixture season: regular games plus Cup group games.
+FIXTURE_GAMES_PER_SEASON = (GAMES_PER_SEASON - 2) * 3 + CUP_GAMES_PER_SEASON
 # A pre-cutoff row that the streamed reader must drop.
 OLD_GAME_DATE = "2019-11-05 19:30:00"
 # Player ids used only for DNP rows (never in the output).
@@ -314,6 +317,14 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
     pd.DataFrame(box).to_csv(box_path, index=False)
     pd.DataFrame(TEAM_HISTORIES).to_csv(hist_path, index=False)
     return box_path, hist_path
+
+
+@pytest.fixture(autouse=True)
+def relaxed_thresholds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fixture has ~30 games per season; keep the real thresholds out of the way."""
+    monkeypatch.setattr(config, "MIN_ROWS_PER_SEASON", 0)
+    monkeypatch.setattr(config, "MIN_GAMES_PER_SEASON", 0)
+    monkeypatch.setattr(config, "FULL_SEASON_GAMES", FIXTURE_GAMES_PER_SEASON)
 
 
 @pytest.fixture
