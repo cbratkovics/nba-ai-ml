@@ -1,4 +1,4 @@
-# nba-ai-ml
+# NBA Stat Predictor
 
 Batch predictions of NBA player points, rebounds, and assists, scored against the next day's box scores and audited by a tool-grounded agent, all on free tiers.
 
