@@ -1,0 +1,87 @@
+name: Nightly ingest, residuals, slate
+
+# Every day at 10:00 UTC (and on demand with an optional date for replay):
+#   1. daily ingest from the Kaggle dump (new/changed rows pushed to the HF dataset repo)
+#   2. residuals for yesterday's predictions
+#   3. slate for today's games
+#   4. push tonight's predictions/ and residuals/ files to the HF dataset repo
+#   5. upload data/daily_report.json and data/nightly_summary.json as an artifact
+#
+# Days with no schedule file (season not published yet) or no games print one explicit
+# line each and exit 0. Schema validation errors and download failures fail the job.
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Run date (YYYY-MM-DD); default today UTC. Residuals use the day before."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Require secrets
+        run: |
+          missing=""
+          for v in HF_TOKEN KAGGLE_USERNAME KAGGLE_KEY; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - name: Install project
+        run: python -m pip install --quiet "."
+
+      - name: Run nightly pipeline
+        run: |
+          set -o pipefail
+          if [ -n "${{ inputs.date }}" ]; then
+            python -m nba.nightly --date "${{ inputs.date }}" --push 2>&1 | tee nightly.log
+          else
+            python -m nba.nightly --push 2>&1 | tee nightly.log
+          fi
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Nightly outcome"
+            grep -E "^(NIGHTLY|INGEST|RESIDUALS|SLATE) " nightly.log || echo "(no outcome lines; the run failed before logging)"
+            if grep -q "no schedule file for season" nightly.log; then
+              echo; echo "Outcome: NO SCHEDULE for this date's season (the dump author has not published it yet)."
+            elif grep -q "no games on this date" nightly.log; then
+              echo; echo "Outcome: NO GAMES today."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ github.run_id }}
+          path: |
+            data/daily_report.json
+            data/nightly_summary.json
+            nightly.log
+          if-no-files-found: warn

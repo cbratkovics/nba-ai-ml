@@ -121,20 +121,30 @@ def push_products(
     root: Path = Path("."),
     repo_id: str = config.HF_DATASET_REPO,
     message: str = "Update predictions and residuals",
+    files: list[Path] | None = None,
 ) -> str | None:
-    """Upload every file under <root>/predictions and <root>/residuals in one commit.
+    """Upload product files under <root>/predictions and <root>/residuals in one commit.
 
-    Returns the commit sha, or None when there is nothing to upload.
+    `files` restricts the upload to those paths (each must live in one of the product
+    folders); by default every file in both folders is uploaded. Returns the commit
+    sha, or None when there is nothing to upload.
     """
+    if files is None:
+        files = [
+            p
+            for prefix in PRODUCT_PREFIXES
+            if (root / prefix).is_dir()
+            for p in sorted((root / prefix).iterdir())
+            if p.is_file()
+        ]
     operations = []
-    for prefix in PRODUCT_PREFIXES:
-        folder = root / prefix
-        if not folder.is_dir():
-            continue
-        for path in sorted(p for p in folder.iterdir() if p.is_file()):
-            operations.append(
-                CommitOperationAdd(path_in_repo=f"{prefix}/{path.name}", path_or_fileobj=str(path))
-            )
+    for path in files:
+        prefix = path.parent.name
+        if prefix not in PRODUCT_PREFIXES:
+            raise ValueError(f"{path} is not inside a product folder {PRODUCT_PREFIXES}")
+        operations.append(
+            CommitOperationAdd(path_in_repo=f"{prefix}/{path.name}", path_or_fileobj=str(path))
+        )
     if not operations:
         return None
     api = _api(require_token=True)
