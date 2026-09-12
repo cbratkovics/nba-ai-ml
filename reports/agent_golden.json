@@ -1,0 +1,61 @@
+{
+  "season": "2025-26",
+  "rule": "for each chosen date, the player with the largest absolute points residual; dates at least 14 days apart, top 5 by that residual",
+  "dates": [
+    {
+      "date": "2025-10-23",
+      "player_id": 203932,
+      "player_name": "Aaron Gordon",
+      "team": "DEN",
+      "opponent": "GSW",
+      "pred_pts": 15.21,
+      "actual_pts": 50,
+      "resid_pts": 34.79,
+      "n_with_actuals": 35
+    },
+    {
+      "date": "2025-12-03",
+      "player_id": 203507,
+      "player_name": "Giannis Antetokounmpo",
+      "team": "MIL",
+      "opponent": "DET",
+      "pred_pts": 32.38,
+      "actual_pts": 2,
+      "resid_pts": -30.38,
+      "n_with_actuals": 194
+    },
+    {
+      "date": "2026-01-14",
+      "player_id": 1641729,
+      "player_name": "Brice Sensabaugh",
+      "team": "UTA",
+      "opponent": "CHI",
+      "pred_pts": 11.62,
+      "actual_pts": 43,
+      "resid_pts": 31.38,
+      "n_with_actuals": 151
+    },
+    {
+      "date": "2026-03-10",
+      "player_id": 1628389,
+      "player_name": "Bam Adebayo",
+      "team": "MIA",
+      "opponent": "WAS",
+      "pred_pts": 20.47,
+      "actual_pts": 83,
+      "resid_pts": 62.53,
+      "n_with_actuals": 238
+    },
+    {
+      "date": "2026-04-03",
+      "player_id": 1642843,
+      "player_name": "Cooper Flagg",
+      "team": "DAL",
+      "opponent": "ORL",
+      "pred_pts": 21.71,
+      "actual_pts": 51,
+      "resid_pts": 29.29,
+      "n_with_actuals": 199
+    }
+  ]
+}

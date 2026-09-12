@@ -123,6 +123,7 @@ Thumbs.db
 reports/*
 !reports/metrics.json
 !reports/replay_*.json
+!reports/agent_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git.
