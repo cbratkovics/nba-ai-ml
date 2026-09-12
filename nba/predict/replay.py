@@ -16,6 +16,7 @@ Products written to replay/<season>/ (and pushed with --push-products):
   replay.json             the full report (also written to reports/replay_<season>.json)
   daily_mae.json          per date: n, model MAE, last-10 baseline MAE per target
   sample_<last-date>.json that date's slate with predictions and actuals side by side
+  residuals/<date>.parquet one residual file per replayed date (nightly residual columns)
 
 Usage:
     python -m nba.predict.replay [--season 2025-26] [--schedule-dir data/dump]
@@ -205,6 +206,14 @@ def write_products(
             json.dumps(sample_slate(combined, last_date, models, dataset_revision), indent=2) + "\n"
         )
         written.append(sample_path)
+    # One residual file per replayed date, in the nightly residual layout, so the
+    # analyst tools and the golden-set evals can read any 2025-26 date.
+    res_dir = folder / "residuals"
+    res_dir.mkdir(exist_ok=True)
+    for d, part in combined.groupby("date", sort=True):
+        path = res_dir / f"{d}.parquet"
+        part.reset_index(drop=True).to_parquet(path, index=False)
+        written.append(path)
     return written
 
 

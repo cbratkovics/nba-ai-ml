@@ -128,6 +128,8 @@ benchmark_results/frontend/.env.local
 # Game-log Parquet lives on Hugging Face, never in git.
 data/
 # Prediction and residual products live in the HF dataset repo, never in git.
-predictions/
-residuals/
+/predictions/
+/residuals/
 /replay/
+/daily_reports/
+/brief/

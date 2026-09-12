@@ -8,7 +8,9 @@ Layout in the dataset repo:
     game_logs/game_logs_<season>.parquet   one file per season
     predictions/<date>.parquet, latest.json, rolling_metrics.json
     residuals/<date>.parquet
-    replay/<season>/replay.json, daily_mae.json, sample_<date>.json
+    replay/<season>/replay.json, daily_mae.json, sample_<date>.json, residuals/<date>.parquet
+    daily_reports/<date>.json
+    brief/<date>.json, <date>.trace.json, latest.json, index.json
 
 Usage:
     python -m nba.storage.hf push-dataset [--data-dir data/game_logs] \\
@@ -118,6 +120,8 @@ PRODUCT_PREFIXES: tuple[str, ...] = (
     config.HF_PREDICTIONS_PREFIX,
     config.HF_RESIDUALS_PREFIX,
     config.HF_REPLAY_PREFIX,
+    config.HF_DAILY_REPORTS_PREFIX,
+    config.HF_BRIEF_PREFIX,
 )
 PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/**" for p in PRODUCT_PREFIXES)
 

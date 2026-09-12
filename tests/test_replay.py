@@ -199,8 +199,17 @@ def test_products_daily_mae_and_sample(
         "2025-26", combined, report, models, "rev-d", tmp_path / "replay"
     )
     last = str(combined["date"].max())
-    assert [p.name for p in written] == ["replay.json", "daily_mae.json", f"sample_{last}.json"]
-    assert all(p.parent == tmp_path / "replay" / "2025-26" for p in written)
+    n_dates = combined["date"].nunique()
+    assert [p.name for p in written[:3]] == ["replay.json", "daily_mae.json", f"sample_{last}.json"]
+    assert all(p.parent == tmp_path / "replay" / "2025-26" for p in written[:3])
+    residual_files = written[3:]
+    assert len(residual_files) == n_dates
+    assert all(p.parent == tmp_path / "replay" / "2025-26" / "residuals" for p in residual_files)
+    from nba.predict import residuals as residuals_module
+
+    one = pd.read_parquet(residual_files[-1])
+    assert list(one.columns) == list(residuals_module.RESIDUAL_COLUMNS)
+    assert residual_files[-1].stem == last
 
     daily = json.loads(written[1].read_text())
     assert daily["season"] == "2025-26" and daily["sample_file"] == f"sample_{last}.json"
