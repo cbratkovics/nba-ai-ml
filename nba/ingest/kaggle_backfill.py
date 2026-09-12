@@ -46,7 +46,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 
 from nba import config, schema
-from nba.storage import hf, local
+from nba.storage import dataset_card, hf, local
 
 BOX_SCORE_FILE = "PlayerStatistics.csv"
 TEAM_HISTORY_FILE = "TeamHistories.csv"
@@ -449,7 +449,12 @@ def main(argv: list[str] | None = None) -> None:
         print(rows.to_string(index=False) if not rows.empty else "(no rows)")
 
     if args.push:
-        sha = hf.push_dataset(args.out_dir)
+        card_text = dataset_card.render_dataset_card(
+            hf.fetch_dataset_card(), season_summary(prepared)
+        )
+        card_path = args.out_dir / hf.DATASET_CARD_FILE
+        card_path.write_text(card_text)
+        sha = hf.push_dataset(args.out_dir, card_path=card_path)
         print(f"pushed to https://huggingface.co/datasets/{config.HF_DATASET_REPO} at {sha}")
 
 

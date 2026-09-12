@@ -8,6 +8,7 @@ import pytest
 
 from nba.ingest import kaggle_backfill
 from nba.storage import hf
+from tests.test_dataset_card import PLACEHOLDER_CARD
 
 
 def test_ingest_and_storage_do_not_import_models() -> None:
@@ -31,23 +32,26 @@ def test_backfill_push_flag_calls_push_dataset(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     out_dir = tmp_path / "out"
-    calls: list[Path] = []
+    calls: list[tuple[Path, Path | None]] = []
 
-    def fake_push(data_dir: Path) -> str:
-        calls.append(data_dir)
+    def fake_push(data_dir: Path, card_path: Path | None = None) -> str:
+        calls.append((data_dir, card_path))
         return "deadbeef"
 
     monkeypatch.setattr(hf, "push_dataset", fake_push)
+    monkeypatch.setattr(hf, "fetch_dataset_card", lambda: PLACEHOLDER_CARD)
     kaggle_backfill.main(["--kaggle-dir", str(kaggle_dir), "--out-dir", str(out_dir), "--push"])
 
-    assert calls == [out_dir]
+    assert calls == [(out_dir, out_dir / "README.md")]
+    card = (out_dir / "README.md").read_text()
+    assert "[n]" not in card and "| 2024-25 |" in card
     assert "deadbeef" in capsys.readouterr().out
 
 
 def test_backfill_without_push_flag_does_not_push(
     kaggle_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def fail_push(data_dir: Path) -> str:
+    def fail_push(data_dir: Path, card_path: Path | None = None) -> str:
         raise AssertionError("push_dataset must not be called without --push")
 
     monkeypatch.setattr(hf, "push_dataset", fail_push)
