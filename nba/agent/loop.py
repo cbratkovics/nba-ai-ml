@@ -36,7 +36,7 @@ MAX_TURNS_AFTER_TOOLS = 3
 WALL_CLOCK_SECONDS = 60.0
 TEMPERATURE = 0
 MAX_FINDINGS = 5
-MAX_OUTPUT_TOKENS = 1200
+MAX_OUTPUT_TOKENS = 2000
 MAX_TRACE_BYTES = 100_000
 KEY_PATTERN = re.compile(r"gsk_[A-Za-z0-9]+")
 SEVERITIES = ("info", "warning", "critical")
@@ -55,7 +55,13 @@ SYSTEM_PROMPT = (
     "or did not play. Report only counts and values.\n"
     "5. Flag at most 5 findings, most important first. Severity is one of info, warning, "
     "critical.\n"
-    "6. Be brief: the summary is at most 120 words.\n\n"
+    "6. Be brief: the summary is at most 120 words.\n"
+    "7. The standard evidence (ingest report, freshness, residuals, rolling metrics, data "
+    "gaps) has already been fetched for you and appears as tool results. You may call "
+    "get_player_recent or get_team_context a few more times if a residual needs context; "
+    "otherwise answer immediately. Put every number you mention, including window "
+    "lengths and counts, in evidence.values. Round numbers to two decimals. A residual "
+    "finding must name the player and give predicted and actual values.\n\n"
     "When you are done, respond with ONLY a JSON object (no markdown, no prose) with "
     "exactly these keys:\n"
     '{"summary": string, "findings": [{"kind": string, "severity": '
@@ -84,6 +90,7 @@ class Trace:
     started_at: str
     limits: dict[str, Any]
     steps: list[Step] = field(default_factory=list)
+    prefetch: list[dict[str, Any]] = field(default_factory=list)
     tool_calls_made: int = 0
     status: str = STATUS_OK
     error: str | None = None
@@ -100,6 +107,7 @@ class Trace:
             "error": self.error,
             "tool_calls_made": self.tool_calls_made,
             "latency_ms": self.latency_ms,
+            "prefetch": self.prefetch,
             "steps": [
                 {
                     "request_messages": s.request_messages,
@@ -117,13 +125,34 @@ class AgentLimit(RuntimeError):
     """A hard limit was reached before the model produced a brief."""
 
 
+def standard_calls(ctx: tools.ToolContext, d: date) -> list[tuple[str, dict[str, Any]]]:
+    """The five tool calls every brief needs, fetched before the model's first turn.
+
+    Doing this deterministically keeps the conversation short (one round trip instead
+    of five) and inside Groq's free-tier tokens-per-minute budget. The calls are recorded
+    in the trace and counted against the tool budget like any model-initiated call.
+    """
+    return [
+        ("get_daily_report", {"date": ctx.run_date.isoformat()}),
+        ("get_upstream_freshness", {}),
+        ("get_residuals", {"date": d.isoformat()}),
+        ("get_rolling_metrics", {"days": 30}),
+        ("list_data_gaps", {}),
+    ]
+
+
 # ---------- chat backends ----------
 
 
 class GroqChat:
     """Thin wrapper over the Groq client returning plain dicts."""
 
-    def __init__(self, api_key: str | None = None, model_id: str = config.GROQ_MODEL):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model_id: str = config.GROQ_MODEL,
+        reasoning_effort: str | None = config.GROQ_REASONING_EFFORT,
+    ):
         from groq import Groq
 
         key = api_key or config.groq_api_key()
@@ -131,10 +160,12 @@ class GroqChat:
             raise RuntimeError("GROQ_API_KEY is not set")
         self.client = Groq(api_key=key)
         self.model_id = model_id
+        self.reasoning_effort = reasoning_effort
 
     def complete(
         self, messages: list[dict[str, Any]], tool_schemas: list[dict[str, Any]]
     ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        extra = {"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}
         r = self.client.chat.completions.create(
             model=self.model_id,
             messages=messages,
@@ -142,6 +173,7 @@ class GroqChat:
             tool_choice="auto",
             temperature=TEMPERATURE,
             max_tokens=MAX_OUTPUT_TOKENS,
+            **extra,
         )
         m = r.choices[0].message
         message: dict[str, Any] = {"role": "assistant", "content": m.content}
@@ -164,7 +196,7 @@ class ReplayChat:
     def __init__(self, trace: dict[str, Any]):
         self.model_id = trace["model_id"]
         self._responses = [s["response"] for s in trace["steps"]]
-        self._results = [s["tool_results"] for s in trace["steps"]]
+        self._results = [trace.get("prefetch", [])] + [s["tool_results"] for s in trace["steps"]]
         self._i = 0
 
     def complete(self, messages, tool_schemas):
@@ -255,6 +287,7 @@ def run_agent(
     d: date,
     chat: Any,
     run_tool: Callable[[tools.ToolContext, str, dict | None], dict] = tools.run_tool,
+    prefetch: bool = True,
 ) -> tuple[dict[str, Any], Trace]:
     """Run the bounded loop for brief date `d`. Never raises for model or limit errors."""
     model_id = getattr(chat, "model_id", config.GROQ_MODEL)
@@ -287,6 +320,30 @@ def run_agent(
     turns_after_tools = 0
     tools_exhausted = False
     try:
+        if prefetch:
+            calls = []
+            for i, (name, args) in enumerate(standard_calls(ctx, d)):
+                cid = f"pre-{i + 1}"
+                result = run_tool(ctx, name, args)
+                trace.tool_calls_made += 1
+                trace.prefetch.append({"id": cid, "name": name, "args": args, "result": result})
+                calls.append(
+                    {
+                        "id": cid,
+                        "type": "function",
+                        "function": {"name": name, "arguments": json.dumps(args)},
+                    }
+                )
+            messages.append({"role": "assistant", "content": None, "tool_calls": calls})
+            for rec in trace.prefetch:
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": rec["id"],
+                        "name": rec["name"],
+                        "content": json.dumps(rec["result"]),
+                    }
+                )
         while True:
             if time.perf_counter() - started > WALL_CLOCK_SECONDS:
                 raise AgentLimit(f"wall clock exceeded {WALL_CLOCK_SECONDS:.0f}s")
@@ -498,6 +555,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="replay a recorded trace instead of calling Groq",
     )
+    parser.add_argument("--model", default=None, help="override the pinned model id")
     args = parser.parse_args(argv)
     run_date = args.run_date or datetime.now(UTC).date()
 
@@ -507,7 +565,7 @@ def main(argv: list[str] | None = None) -> int:
     ctx = tools.ToolContext(
         root=args.root, data_dir=args.data_dir, run_date=run_date, dump_dir=args.dump_dir
     )
-    chat = None
+    chat = GroqChat(model_id=args.model) if args.model else None
     run_tool = tools.run_tool
     if args.trace_replay:
         replay = ReplayChat(json.loads(args.trace_replay.read_text()))

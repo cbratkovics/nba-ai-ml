@@ -113,7 +113,7 @@ def get_daily_report(ctx: ToolContext, date: str) -> dict[str, Any]:
                 "window_rows_after_rules": report.get("window_rows_after_rules"),
                 "dnp_dropped_in_window": report.get("dnp_dropped_in_window"),
                 "counts": report.get("counts"),
-                "changed_examples": report.get("changed_examples", [])[:10],
+                "changed_examples": report.get("changed_examples", [])[:5],
                 "seasons_written": report.get("seasons_written"),
                 "pushed": report.get("pushed"),
                 "dataset_revision_before": report.get("dataset_revision_before"),
@@ -144,11 +144,17 @@ def get_upstream_freshness(ctx: ToolContext) -> dict[str, Any]:
     out["dump_max_game_date"] = dump_max.isoformat() if dump_max else None
     newest = max(stored_max, dump_max) if dump_max else stored_max
     out["newest_game_date"] = newest.isoformat()
-    out["days_stale"] = (ctx.run_date - newest).days
+    days = (ctx.run_date - newest).days
+    out["days_stale"] = days
+    out["note"] = (
+        f"newest game is {days} days before the run date"
+        if days >= 0
+        else f"stored data extends {-days} days past the run date (replay or backfilled data)"
+    )
     return out
 
 
-def get_residuals(ctx: ToolContext, date: str, top_n: int = 10) -> dict[str, Any]:
+def get_residuals(ctx: ToolContext, date: str, top_n: int = 5) -> dict[str, Any]:
     """Largest absolute residuals per target for one date, plus missing-actual counts."""
     d = _parse_date(date)
     top_n = max(1, min(int(top_n), MAX_TOP_N))
@@ -386,7 +392,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "date": {"type": "string", "description": "YYYY-MM-DD"},
-                    "top_n": {"type": "integer", "description": "1-25, default 10"},
+                    "top_n": {"type": "integer", "description": "1-25, default 5"},
                 },
                 "required": ["date"],
             },

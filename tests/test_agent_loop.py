@@ -75,7 +75,10 @@ def test_happy_path_runs_tools_and_parses_brief(tmp_path: Path, game_logs) -> No
         ]
     )
     brief, trace = loop.run_agent(ctx, date(2026, 1, 14), chat)
-    assert brief["status"] == "ok" and brief["tool_calls_made"] == 2
+    assert brief["status"] == "ok" and brief["tool_calls_made"] == 7  # 5 prefetched + 2
+    assert [r["name"] for r in trace.prefetch] == [
+        n for n, _ in loop.standard_calls(ctx, date(2026, 1, 14))
+    ]
     assert brief["date"] == "2026-01-14" and brief["run_date"] == "2026-01-15"
     assert brief["model_id"] == "scripted-model" and brief["latency_ms"] >= 0
     assert brief["findings"][0]["kind"] == "data_gap"
@@ -85,18 +88,18 @@ def test_happy_path_runs_tools_and_parses_brief(tmp_path: Path, game_logs) -> No
         "list_data_gaps",
     ]
     assert trace.steps[0].tool_results[1]["result"]["full_season_games"] == config.FULL_SEASON_GAMES
-    # Tool results were fed back to the model as tool messages.
+    # Prefetched and model-requested tool results were fed back as tool messages.
     roles = [m["role"] for m in trace.steps[1].request_messages]
-    assert roles == ["system", "user", "assistant", "tool", "tool"]
+    assert roles == ["system", "user", "assistant"] + ["tool"] * 5 + ["assistant", "tool", "tool"]
 
 
 def test_tool_budget_and_turn_limits_end_in_unavailable(tmp_path: Path, game_logs) -> None:
     ctx = _ctx(tmp_path, game_logs)
-    # Nine tool calls in one turn: the ninth must be refused; then three non-JSON turns.
+    # Five calls are prefetched; four more in one turn means the fourth is refused.
     many = {
         "role": "assistant",
         "content": None,
-        "tool_calls": [_tool_call(f"c{i}", "list_data_gaps", {}) for i in range(9)],
+        "tool_calls": [_tool_call(f"c{i}", "list_data_gaps", {}) for i in range(4)],
     }
     chat = ScriptedChat(
         [
@@ -109,7 +112,7 @@ def test_tool_budget_and_turn_limits_end_in_unavailable(tmp_path: Path, game_log
     brief, trace = loop.run_agent(ctx, date(2026, 1, 14), chat)
     assert brief["status"] == "agent_unavailable"
     assert brief["tool_calls_made"] == 8
-    assert "tool budget of 8 calls exhausted" in trace.steps[0].tool_results[8]["result"]["error"]
+    assert "tool budget of 8 calls exhausted" in trace.steps[0].tool_results[3]["result"]["error"]
     assert "no valid JSON brief after 3 turns" in brief["error"]
     assert brief["findings"] == []
 
@@ -213,6 +216,7 @@ def test_replay_chat_reproduces_brief_from_trace(tmp_path: Path, game_logs) -> N
     for key in ("status", "summary", "findings", "tool_calls_made"):
         assert again[key] == brief[key]
     assert trace2.steps[0].tool_results[0]["result"] == trace.steps[0].tool_results[0]["result"]
+    assert trace2.prefetch == trace.prefetch
 
 
 def test_run_and_write_applies_grounding_and_never_raises(

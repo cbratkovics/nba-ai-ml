@@ -72,6 +72,9 @@ MODEL_REVISION: str = "fb427de136e1d6c4b591ae30cf30488f44935182"
 # tool calls (0.53 s on a one-tool probe). Fallback if rate-limited: openai/gpt-oss-20b.
 GROQ_MODEL: str = "openai/gpt-oss-120b"
 GROQ_MODEL_FALLBACK: str = "openai/gpt-oss-20b"
+# gpt-oss models reason before answering; "low" keeps a 5-7 step loop inside the 60 s wall
+# clock (medium spent ~10 s per step on 2026-03-10). Valid: low, medium, high.
+GROQ_REASONING_EFFORT: str = "low"
 
 # A player is on a team's slate if they appeared in any of the team's last N games.
 ROSTER_LOOKBACK_GAMES: int = 10
