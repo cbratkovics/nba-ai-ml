@@ -47,6 +47,8 @@ def test_measure_counts_grounding_and_golden_per_date(tmp_path: Path, game_logs)
         "grounding_rate": 0.75,
         "golden_pass": 1,
         "golden_rate": 0.25,
+        "rate_limited": 0,
+        "complete": True,
         "statuses": {"ok": 3, "ungrounded": 1},
         "models": {"scripted-model": 4},
     }
@@ -68,3 +70,93 @@ def test_unavailable_brief_fails_both(tmp_path: Path, game_logs) -> None:
     r = pass_rates.run_once(ctx, date(2026, 1, 14), {"player_name": "X", "player_id": 1}, Broken())
     assert r["status"] == "agent_unavailable" and not r["grounding_pass"] and not r["golden_pass"]
     assert "down" in r["error"]
+
+
+def _rate_limit_error():
+    import httpx
+    from groq import RateLimitError
+
+    resp = httpx.Response(429, request=httpx.Request("POST", "http://groq.test"))
+    return RateLimitError("tokens per day", response=resp, body=None)
+
+
+def test_rate_limited_run_is_recorded_separately(tmp_path: Path, game_logs) -> None:
+    root = tmp_path / "root"
+    local.write_per_season(game_logs, root / config.DATA_DIR)
+    ctx = tools.ToolContext(root=root, data_dir=root / config.DATA_DIR, run_date=date(2026, 1, 15))
+
+    class Capped:
+        model_id = "pinned"
+
+        def complete(self, messages, tool_schemas):
+            raise _rate_limit_error()
+
+    golden = {"2026-01-14": {"date": "2026-01-14", "player_id": 1, "player_name": "Test Player"}}
+    report = pass_rates.measure(golden, 2, lambda d: ctx, Capped, pause=0, log=lambda s: None)
+    d = report["dates"]["2026-01-14"]
+    assert d["statuses"] == {"rate_limited": 2}
+    assert (d["grounding_pass"], d["golden_pass"], d["rate_limited"]) == (0, 0, 2)
+    assert report["overall"]["rate_limited"] == 2 and report["overall"]["complete"] is False
+    assert all(r["status"] == "rate_limited" for r in d["runs_detail"])
+    # Other provider failures stay agent_unavailable.
+    assert not pass_rates._is_rate_limit("ConnectionError: down")
+
+
+def test_no_fallback_flag_builds_a_single_model_chat(
+    tmp_path: Path, game_logs, monkeypatch
+) -> None:
+    root = tmp_path / "root"
+    local.write_per_season(game_logs, root / config.DATA_DIR)
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(
+        json.dumps({"dates": [{"date": "2026-01-14", "player_id": 1, "player_name": "P"}]})
+    )
+    built = []
+
+    class FakeGroqChat:
+        model_id = "pinned"
+
+        def __init__(self, fallback_model_id="backup"):
+            built.append(fallback_model_id)
+
+        def complete(self, messages, tool_schemas):
+            raise _rate_limit_error()
+
+    monkeypatch.setattr(pass_rates.loop, "GroqChat", FakeGroqChat)
+    out = tmp_path / "pass_rates.json"
+    rc = pass_rates.main(
+        [
+            "--runs",
+            "1",
+            "--pause",
+            "0",
+            "--no-fallback",
+            "--golden",
+            str(golden_path),
+            "--out",
+            str(out),
+            "--root",
+            str(root),
+        ]
+    )
+    assert rc == 0 and built == [None]
+    report = json.loads(out.read_text())
+    assert report["fallback_enabled"] is False and report["fallback_model_id"] is None
+    assert report["overall"]["rate_limited"] == 1 and report["overall"]["complete"] is False
+    # Default keeps the fallback.
+    built.clear()
+    pass_rates.main(
+        [
+            "--runs",
+            "1",
+            "--pause",
+            "0",
+            "--golden",
+            str(golden_path),
+            "--out",
+            str(out),
+            "--root",
+            str(root),
+        ]
+    )
+    assert built == ["backup"]

@@ -3,7 +3,9 @@ name: Agent pass rates
 # Manually triggered: run the analyst agent N times on each golden date against the
 # provider and record grounding and golden pass rates in reports/agent_pass_rates.json.
 # Nothing is pushed to the HF dataset repo; the report is uploaded as an artifact and
-# committed by hand. Cost: 5 dates x N briefs, about 4-5k tokens each, so N=5 is roughly
+# committed by hand. Runs with --no-fallback: a 429 on the pinned model is recorded as
+# rate_limited, never answered by the second model, so every measured brief is the
+# pinned model's. Cost: 5 dates x N briefs, about 4-5k tokens each, so N=5 is roughly
 # half of the free tier's 200k tokens-per-day cap for the pinned model.
 
 on:
@@ -54,7 +56,7 @@ jobs:
         run: |
           set -o pipefail
           python -m nba.agent.pass_rates \
-            --runs "${{ inputs.runs }}" --pause "${{ inputs.pause }}" \
+            --runs "${{ inputs.runs }}" --pause "${{ inputs.pause }}" --no-fallback \
             --out reports/agent_pass_rates.json 2>&1 | tee pass_rates.log
 
       - name: Job summary

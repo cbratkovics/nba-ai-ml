@@ -9,8 +9,14 @@ Grounding pass: the brief came back with status "ok" and no finding was dropped.
 Golden pass: a surviving finding names the date's largest-points-residual player.
 An "agent_unavailable" brief fails both.
 
+With --no-fallback the runner is single-model by construction: a 429 on the pinned
+model is recorded as status "rate_limited" (both checks failed) instead of being
+answered by the fallback model. rate_limited runs are counted separately in the
+overall block, so a capped run reads as incomplete rather than as a lower pass rate.
+
 Usage:
-    python -m nba.agent.pass_rates [--runs 5] [--pause 30] [--out reports/agent_pass_rates.json]
+    python -m nba.agent.pass_rates [--runs 5] [--pause 30] [--no-fallback]
+                                   [--out reports/agent_pass_rates.json]
 """
 
 from __future__ import annotations
@@ -28,11 +34,19 @@ from nba import config
 from nba.agent import evals, loop, tools
 
 PASS_RATES_PATH = config.REPORTS_DIR / "agent_pass_rates.json"
+STATUS_RATE_LIMITED = "rate_limited"
+
+
+def _is_rate_limit(error: str | None) -> bool:
+    """True for the loop's record of a provider 429 (groq.RateLimitError)."""
+    return bool(error) and error.startswith("RateLimitError")
 
 
 def run_once(ctx: tools.ToolContext, d: date, golden: dict[str, Any], chat: Any) -> dict[str, Any]:
     brief, trace = loop.run_agent(ctx, d, chat)
     brief = evals.apply_grounding(brief)
+    if brief["status"] == loop.STATUS_UNAVAILABLE and _is_rate_limit(brief.get("error")):
+        brief["status"] = STATUS_RATE_LIMITED
     grounding_pass = brief["status"] == loop.STATUS_OK
     golden_pass = bool(brief["findings"]) and evals.golden_hit(
         brief, golden["player_name"], golden.get("player_id")
@@ -54,12 +68,15 @@ def _rates(runs: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(runs)
     g = sum(1 for r in runs if r["grounding_pass"])
     k = sum(1 for r in runs if r["golden_pass"])
+    limited = sum(1 for r in runs if r["status"] == STATUS_RATE_LIMITED)
     return {
         "runs": n,
         "grounding_pass": g,
         "grounding_rate": round(g / n, 3) if n else None,
         "golden_pass": k,
         "golden_rate": round(k / n, 3) if n else None,
+        "rate_limited": limited,
+        "complete": limited == 0,
         "statuses": dict(Counter(r["status"] for r in runs)),
         "models": dict(Counter(r["model_id"] for r in runs)),
     }
@@ -120,6 +137,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--golden", type=Path, default=evals.GOLDEN_PATH)
     parser.add_argument("--out", type=Path, default=PASS_RATES_PATH)
     parser.add_argument("--root", type=Path, default=Path("."))
+    parser.add_argument(
+        "--no-fallback",
+        action="store_true",
+        help="never answer with the fallback model; record a 429 as rate_limited",
+    )
     args = parser.parse_args(argv)
     golden = evals.load_golden(args.golden)
     if not golden:
@@ -134,13 +156,22 @@ def main(argv: list[str] | None = None) -> int:
             run_date=date.fromordinal(d.toordinal() + 1),
         )
 
-    report = measure(golden, args.runs, ctx_factory, loop.GroqChat, pause=args.pause)
+    def chat_factory() -> Any:
+        if args.no_fallback:
+            return loop.GroqChat(fallback_model_id=None)
+        return loop.GroqChat()
+
+    report = measure(golden, args.runs, ctx_factory, chat_factory, pause=args.pause)
+    report["fallback_enabled"] = not args.no_fallback
+    if args.no_fallback:
+        report["fallback_model_id"] = None
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     o = report["overall"]
     print(
         f"PASSRATE overall: grounding {o['grounding_pass']}/{o['runs']}, "
-        f"golden {o['golden_pass']}/{o['runs']}; wrote {args.out}"
+        f"golden {o['golden_pass']}/{o['runs']}, rate_limited {o['rate_limited']}"
+        f"{'' if o['complete'] else ' (INCOMPLETE)'}; wrote {args.out}"
     )
     return 0
 
