@@ -74,6 +74,9 @@ PREDICTIONS_DIR: Path = Path("predictions")
 RESIDUALS_DIR: Path = Path("residuals")
 HF_PREDICTIONS_PREFIX: str = "predictions"
 HF_RESIDUALS_PREFIX: str = "residuals"
+# Replay products: replay/<season>/{replay.json, daily_mae.json, sample_<date>.json}.
+REPLAY_DIR: Path = Path("replay")
+HF_REPLAY_PREFIX: str = "replay"
 
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"

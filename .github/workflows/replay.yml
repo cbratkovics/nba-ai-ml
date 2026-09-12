@@ -3,7 +3,9 @@ name: Replay a season
 # Manually triggered backtest: replays the nightly slate for every game date of a
 # season using only data available as of each date, scores it against actuals, and
 # checks the restricted MAE against reports/metrics.json within the tolerance.
-# Uploads reports/replay_<season>.json as an artifact; the file is committed by hand.
+# Pushes replay/<season>/{replay.json,daily_mae.json,sample_<date>.json} to the HF
+# dataset repo and uploads them with reports/replay_<season>.json as an artifact; the
+# report file is committed by hand.
 
 on:
   workflow_dispatch:
@@ -51,6 +53,7 @@ jobs:
           python -m nba.predict.replay \
             --season "${{ inputs.season }}" \
             --download-schedule \
+            --push-products \
             --tolerance "${{ inputs.tolerance }}" 2>&1 | tee replay.log
 
       - name: Job summary
@@ -65,5 +68,6 @@ jobs:
           name: replay-${{ inputs.season }}-${{ github.run_id }}
           path: |
             reports/replay_*.json
+            replay/
             replay.log
           if-no-files-found: error

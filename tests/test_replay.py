@@ -181,3 +181,78 @@ def test_cli_writes_report_and_exit_code(
         ]
     )
     assert rc == 0  # exact equality still passes at tolerance 0
+
+
+def test_products_daily_mae_and_sample(
+    game_logs: pd.DataFrame, sched: pd.DataFrame, tmp_path: Path
+) -> None:
+    models = fake_models()
+    combined, per_date = replay.replay_season("2025-26", game_logs, sched, models, "rev-d")
+    mae = replay._mae(combined[combined["in_metrics_population"]])
+    metrics = {
+        "git_sha": "abc",
+        "dataset": {},
+        "metrics": {t: {"model": {"mae": mae[t], "n": 1}} for t in config.TARGETS},
+    }
+    report = replay.summarize("2025-26", combined, per_date, game_logs, metrics, models, "rev-d")
+    written = replay.write_products(
+        "2025-26", combined, report, models, "rev-d", tmp_path / "replay"
+    )
+    last = str(combined["date"].max())
+    assert [p.name for p in written] == ["replay.json", "daily_mae.json", f"sample_{last}.json"]
+    assert all(p.parent == tmp_path / "replay" / "2025-26" for p in written)
+
+    daily = json.loads(written[1].read_text())
+    assert daily["season"] == "2025-26" and daily["sample_file"] == f"sample_{last}.json"
+    assert daily["n_dates"] == len(daily["days"]) == combined["date"].nunique()
+    assert daily["last_date"] == last
+    day = daily["days"][-1]
+    assert set(day) == {"date", "n", "model", "baseline_last10"}
+    # The fake model returns the last-10 mean, so model and baseline MAE coincide.
+    for t in config.TARGETS:
+        assert day["model"][t] == pytest.approx(day["baseline_last10"][t])
+
+    sample = json.loads(written[2].read_text())
+    assert sample["date"] == last and sample["n_players"] == len(sample["rows"])
+    row = sample["rows"][0]
+    assert {
+        "player_name",
+        "team",
+        "opponent",
+        "home",
+        "pred_pts",
+        "actual_pts",
+        "minutes",
+        "has_actual",
+    } <= set(row)
+    assert row["has_actual"] is True and isinstance(row["actual_pts"], int)
+    assert json.loads(written[0].read_text())["passed"] is True
+
+
+def test_push_products_handles_nested_replay_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    from nba.storage import hf
+
+    root = tmp_path
+    (root / "replay" / "2025-26").mkdir(parents=True)
+    f = root / "replay" / "2025-26" / "daily_mae.json"
+    f.write_text("{}")
+    seen = []
+
+    class FakeApi:
+        def __init__(self, token=None):
+            pass
+
+        def create_commit(self, repo_id, repo_type, operations, commit_message):
+            seen.extend(op.path_in_repo for op in operations)
+            return SimpleNamespace(oid="sha")
+
+    monkeypatch.setattr(hf, "HfApi", FakeApi)
+    monkeypatch.setattr(config, "HF_TOKEN", "t")
+    assert hf.push_products(root, files=[f]) == "sha"
+    assert seen == ["replay/2025-26/daily_mae.json"]
+    with pytest.raises(ValueError, match="not inside a product folder"):
+        hf.push_products(root, files=[root / "reports" / "x.json"])

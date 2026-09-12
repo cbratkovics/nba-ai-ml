@@ -8,6 +8,7 @@ Layout in the dataset repo:
     game_logs/game_logs_<season>.parquet   one file per season
     predictions/<date>.parquet, latest.json, rolling_metrics.json
     residuals/<date>.parquet
+    replay/<season>/replay.json, daily_mae.json, sample_<date>.json
 
 Usage:
     python -m nba.storage.hf push-dataset [--data-dir data/game_logs] \\
@@ -113,8 +114,12 @@ def pull_dataset(
     return sha
 
 
-PRODUCT_PREFIXES: tuple[str, ...] = (config.HF_PREDICTIONS_PREFIX, config.HF_RESIDUALS_PREFIX)
-PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/*" for p in PRODUCT_PREFIXES)
+PRODUCT_PREFIXES: tuple[str, ...] = (
+    config.HF_PREDICTIONS_PREFIX,
+    config.HF_RESIDUALS_PREFIX,
+    config.HF_REPLAY_PREFIX,
+)
+PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/**" for p in PRODUCT_PREFIXES)
 
 
 def push_products(
@@ -134,16 +139,16 @@ def push_products(
             p
             for prefix in PRODUCT_PREFIXES
             if (root / prefix).is_dir()
-            for p in sorted((root / prefix).iterdir())
+            for p in sorted((root / prefix).rglob("*"))
             if p.is_file()
         ]
     operations = []
     for path in files:
-        prefix = path.parent.name
-        if prefix not in PRODUCT_PREFIXES:
+        rel = path.resolve().relative_to(root.resolve())
+        if rel.parts[0] not in PRODUCT_PREFIXES:
             raise ValueError(f"{path} is not inside a product folder {PRODUCT_PREFIXES}")
         operations.append(
-            CommitOperationAdd(path_in_repo=f"{prefix}/{path.name}", path_or_fileobj=str(path))
+            CommitOperationAdd(path_in_repo=rel.as_posix(), path_or_fileobj=str(path))
         )
     if not operations:
         return None
@@ -175,10 +180,11 @@ def pull_products(
             src_dir = Path(tmp) / prefix
             if not src_dir.is_dir():
                 continue
-            (root / prefix).mkdir(parents=True, exist_ok=True)
-            for src in src_dir.iterdir():
+            for src in src_dir.rglob("*"):
                 if src.is_file():
-                    shutil.copyfile(src, root / prefix / src.name)
+                    dest = root / src.relative_to(tmp)
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(src, dest)
     return sha
 
 

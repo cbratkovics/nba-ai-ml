@@ -130,3 +130,4 @@ data/
 # Prediction and residual products live in the HF dataset repo, never in git.
 predictions/
 residuals/
+replay/

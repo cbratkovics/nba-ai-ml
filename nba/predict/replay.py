@@ -12,6 +12,11 @@ baselines defined. The comparison uses that same restricted population; the
 unrestricted MAE and the count of actual rows the roster rule never predicted
 (e.g. post-trade debuts) are reported alongside.
 
+Products written to replay/<season>/ (and pushed with --push-products):
+  replay.json             the full report (also written to reports/replay_<season>.json)
+  daily_mae.json          per date: n, model MAE, last-10 baseline MAE per target
+  sample_<last-date>.json that date's slate with predictions and actuals side by side
+
 Usage:
     python -m nba.predict.replay [--season 2025-26] [--schedule-dir data/dump]
                                  [--download-schedule] [--data-dir data/game_logs]
@@ -103,6 +108,106 @@ def unpredicted_actual_rows(
     }
 
 
+def daily_mae(combined: pd.DataFrame, season: str, sample_date: str | None) -> dict[str, Any]:
+    """Per date: n and MAE per target for the model and the last-10 baseline.
+
+    Both are computed on the same rows: those with actuals and a defined last-10
+    baseline for every target.
+    """
+    base_cols = [f"{t}_mean_last10" for t in config.TARGETS]
+    rows = combined[combined["has_actual"] & combined[base_cols].notna().all(axis=1)]
+    days = []
+    for d, part in rows.groupby("date", sort=True):
+        entry: dict[str, Any] = {
+            "date": str(d),
+            "n": int(len(part)),
+            "model": {},
+            "baseline_last10": {},
+        }
+        for t in config.TARGETS:
+            entry["model"][t] = float(part[f"resid_{t}"].abs().mean())
+            entry["baseline_last10"][t] = float(
+                (part[f"actual_{t}"] - part[f"{t}_mean_last10"]).abs().mean()
+            )
+        days.append(entry)
+    return {
+        "season": season,
+        "population": "rows with actuals and a last-10 baseline for every target",
+        "targets": list(config.TARGETS),
+        "n_dates": len(days),
+        "first_date": days[0]["date"] if days else None,
+        "last_date": days[-1]["date"] if days else None,
+        "sample_date": sample_date,
+        "sample_file": f"sample_{sample_date}.json" if sample_date else None,
+        "days": days,
+    }
+
+
+def sample_slate(
+    combined: pd.DataFrame, d: str, models: model.Models, dataset_revision: str
+) -> dict[str, Any]:
+    """One date's replayed slate with predictions and actuals side by side."""
+    part = combined[combined["date"] == d].sort_values(["game_id", "team", "player_id"])
+    rows = []
+    for r in part.itertuples(index=False):
+        rows.append(
+            {
+                "game_id": str(r.game_id),
+                "player_id": int(r.player_id),
+                "player_name": str(r.player_name),
+                "team": str(r.team),
+                "opponent": str(r.opponent),
+                "home": bool(r.home),
+                "pred_pts": round(float(r.pred_pts), 2),
+                "pred_reb": round(float(r.pred_reb), 2),
+                "pred_ast": round(float(r.pred_ast), 2),
+                "actual_pts": None if pd.isna(r.actual_pts) else int(r.actual_pts),
+                "actual_reb": None if pd.isna(r.actual_reb) else int(r.actual_reb),
+                "actual_ast": None if pd.isna(r.actual_ast) else int(r.actual_ast),
+                "minutes": None if pd.isna(r.minutes) else round(float(r.minutes), 1),
+                "has_actual": bool(r.has_actual),
+            }
+        )
+    return {
+        "date": d,
+        "model_revision": models.revision,
+        "dataset_revision": dataset_revision,
+        "n_games": int(part["game_id"].nunique()),
+        "n_players": len(rows),
+        "n_with_actuals": int(part["has_actual"].sum()),
+        "rows": rows,
+    }
+
+
+def write_products(
+    season: str,
+    combined: pd.DataFrame,
+    report: dict[str, Any],
+    models: model.Models,
+    dataset_revision: str,
+    products_dir: Path,
+) -> list[Path]:
+    """Write replay/<season>/{replay.json, daily_mae.json, sample_<last-date>.json}."""
+    folder = products_dir / season
+    folder.mkdir(parents=True, exist_ok=True)
+    last_date = str(combined["date"].max()) if len(combined) else None
+    written = []
+    replay_path = folder / "replay.json"
+    replay_path.write_text(json.dumps(report, indent=2) + "\n")
+    written.append(replay_path)
+    daily = daily_mae(combined, season, last_date)
+    daily_path = folder / "daily_mae.json"
+    daily_path.write_text(json.dumps(daily, indent=2) + "\n")
+    written.append(daily_path)
+    if last_date:
+        sample_path = folder / f"sample_{last_date}.json"
+        sample_path.write_text(
+            json.dumps(sample_slate(combined, last_date, models, dataset_revision), indent=2) + "\n"
+        )
+        written.append(sample_path)
+    return written
+
+
 def summarize(
     season: str,
     combined: pd.DataFrame,
@@ -166,6 +271,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--tolerance", type=float, default=TOLERANCE)
     parser.add_argument("--no-pull", action="store_true")
+    parser.add_argument("--products-dir", type=Path, default=config.REPLAY_DIR)
+    parser.add_argument(
+        "--push-products", action="store_true", help="upload replay/<season>/ to the dataset repo"
+    )
     args = parser.parse_args(argv)
     out = args.out or (config.REPORTS_DIR / f"replay_{args.season}.json")
 
@@ -196,6 +305,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n")
+    products = write_products(
+        args.season, combined, report, models, dataset_revision, args.products_dir
+    )
+    print(f"REPLAY products: {[str(p) for p in products]}")
+    if args.push_products:
+        sha = hf.push_products(
+            args.products_dir.parent, files=products, message=f"Replay {args.season}"
+        )
+        print(f"REPLAY pushed products at {sha}")
     print(
         f"REPLAY {args.season}: {report['n_dates']} dates, {report['n_predicted']} predictions, "
         f"{report['n_with_actuals']} with actuals, {report['n_restricted']} in metrics population"
