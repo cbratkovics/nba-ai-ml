@@ -1,7 +1,11 @@
 """Deterministic fixtures in the layout of the Kaggle dump, version 515.
 
-Files: PlayerStatistics.csv (box scores, with gameDate and gameType on every row)
-and TeamHistories.csv (teamId, teamAbbrev, seasonFounded, seasonActiveTill).
+Files: PlayerStatistics.csv (box scores, with gameDate, gameType, team ids and
+team city/name on every row) and TeamHistories.csv (teamId, teamCity, teamName,
+teamAbbrev, seasonFounded, seasonActiveTill, league).
+
+Like the real dump, one whole season (2023-24 here; 2021-22 in the dump) has empty
+team id columns and must be resolved by team city/name.
 """
 
 from __future__ import annotations
@@ -14,28 +18,104 @@ import pytest
 
 from nba.ingest import kaggle_backfill
 
-# (teamId, lastName used for its fixture players). Team 6 is renamed between seasons.
-TEAMS: list[tuple[int, str]] = [
-    (1610612747, "Lakers"),
-    (1610612738, "Celtics"),
-    (1610612744, "Warriors"),
-    (1610612748, "Heat"),
-    (1610612743, "Nuggets"),
-    (6, "Renamed"),
+# (teamId, city, name). Team 6 changes city and abbreviation after 2023-24.
+TEAMS: list[tuple[int, str, str]] = [
+    (1610612747, "Los Angeles", "Lakers"),
+    (1610612738, "Boston", "Celtics"),
+    (1610612744, "Golden State", "Warriors"),
+    (1610612748, "Miami", "Heat"),
+    (1610612743, "Denver", "Nuggets"),
+    (6, "Oldtown", "Renamed"),
 ]
 TEAM_HISTORIES: list[dict] = [
-    {"teamId": 1610612747, "teamAbbrev": "LAL", "seasonFounded": 1948, "seasonActiveTill": np.nan},
-    {"teamId": 1610612738, "teamAbbrev": "BOS", "seasonFounded": 1946, "seasonActiveTill": np.nan},
-    {"teamId": 1610612744, "teamAbbrev": "GSW", "seasonFounded": 1971, "seasonActiveTill": np.nan},
-    {"teamId": 1610612748, "teamAbbrev": "MIA", "seasonFounded": 1988, "seasonActiveTill": np.nan},
-    {"teamId": 1610612743, "teamAbbrev": "DEN", "seasonFounded": 1976, "seasonActiveTill": np.nan},
-    # Abbreviation changes after the 2023-24 season.
-    {"teamId": 6, "teamAbbrev": "OLD", "seasonFounded": 2000, "seasonActiveTill": 2023},
-    {"teamId": 6, "teamAbbrev": "NEW", "seasonFounded": 2024, "seasonActiveTill": np.nan},
+    dict(
+        teamId=1610612747,
+        teamCity="Los Angeles",
+        teamName="Lakers",
+        teamAbbrev="LAL  ",
+        seasonFounded=1948,
+        seasonActiveTill=2100,
+        league="NBA",
+    ),
+    dict(
+        teamId=1610612738,
+        teamCity="Boston",
+        teamName="Celtics",
+        teamAbbrev="BOS",
+        seasonFounded=1946,
+        seasonActiveTill=np.nan,
+        league="NBA",
+    ),
+    dict(
+        teamId=1610612744,
+        teamCity="Golden State",
+        teamName="Warriors",
+        teamAbbrev="GSW",
+        seasonFounded=1971,
+        seasonActiveTill=2100,
+        league="NBA",
+    ),
+    dict(
+        teamId=1610612748,
+        teamCity="Miami",
+        teamName="Heat",
+        teamAbbrev="MIA",
+        seasonFounded=1988,
+        seasonActiveTill=2100,
+        league="NBA",
+    ),
+    dict(
+        teamId=1610612743,
+        teamCity="Denver",
+        teamName="Nuggets",
+        teamAbbrev="DEN",
+        seasonFounded=1976,
+        seasonActiveTill=2100,
+        league="NBA",
+    ),
+    # City and abbreviation change after the 2023-24 season.
+    dict(
+        teamId=6,
+        teamCity="Oldtown",
+        teamName="Renamed",
+        teamAbbrev="OLD",
+        seasonFounded=2000,
+        seasonActiveTill=2023,
+        league="NBA",
+    ),
+    dict(
+        teamId=6,
+        teamCity="Newtown",
+        teamName="Renamed",
+        teamAbbrev="NEW",
+        seasonFounded=2024,
+        seasonActiveTill=2100,
+        league="NBA",
+    ),
     # A defunct team that must never match.
-    {"teamId": 7, "teamAbbrev": "GONE", "seasonFounded": 1990, "seasonActiveTill": 2001},
+    dict(
+        teamId=7,
+        teamCity="Gone",
+        teamName="Gone",
+        teamAbbrev="GONE",
+        seasonFounded=1990,
+        seasonActiveTill=2001,
+        league="NBA",
+    ),
+    # A non-NBA team sharing a name; must be ignored by the league filter.
+    dict(
+        teamId=9064,
+        teamCity="Madrid",
+        teamName="Lakers",
+        teamAbbrev="MAD",
+        seasonFounded=1944,
+        seasonActiveTill=2100,
+        league="EuroLeague",
+    ),
 ]
 SEASON_STARTS = {"2023-24": "2023-10-24", "2024-25": "2024-10-22", "2025-26": "2025-10-21"}
+# The season whose rows carry no team ids (resolved by city/name).
+NO_ID_SEASON = "2023-24"
 GAMES_PER_SEASON = 12
 PLAYERS_PER_TEAM = 2
 # A pre-cutoff row that the streamed reader must drop.
@@ -46,6 +126,10 @@ DNP_PLAYER_IDS = (9990, 9991, 9992)
 CLOCK_PLAYER_ID = 1000
 CLOCK_MINUTES_TEXT = "12:30"
 CLOCK_MINUTES = 12.5
+# One 2024-25 row has no team id and the city spelled differently ("LA"), so it
+# can only be resolved by name.
+ALT_CITY_PLAYER_ID = 1001
+ALT_CITY = "LA"
 
 
 def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
@@ -55,9 +139,10 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
     game_no = 0
     players = {
         tid: [(1000 + 10 * i + j, f"P{i}{j}") for j in range(PLAYERS_PER_TEAM)]
-        for i, (tid, _) in enumerate(TEAMS)
+        for i, (tid, _, _) in enumerate(TEAMS)
     }
-    last_names = dict(TEAMS)
+    city_of = {tid: city for tid, city, _ in TEAMS}
+    name_of = {tid: name for tid, _, name in TEAMS}
 
     def box_row(
         pid: int, pname: str, tid: int, opp: int, is_home: int, gid: int, when: str, game_type: str
@@ -72,14 +157,20 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
         ftm = int(rng.integers(0, fta + 1))
         oreb = int(rng.integers(0, 4))
         dreb = int(rng.integers(0, 9))
+        season = kaggle_backfill.season_from_date(pd.Timestamp(when))
+        no_ids = season == NO_ID_SEASON
         return {
             "firstName": pname,
-            "lastName": last_names[tid],
+            "lastName": name_of[tid],
             "personId": pid,
             "gameId": gid,
             "gameDate": when,
-            "playerteamId": tid,
-            "opponentteamId": opp,
+            "playerteamCity": city_of[tid],
+            "playerteamName": name_of[tid],
+            "opponentteamCity": city_of[opp],
+            "opponentteamName": name_of[opp],
+            "playerteamId": np.nan if no_ids else tid,
+            "opponentteamId": np.nan if no_ids else opp,
             "gameType": game_type,
             "home": is_home,
             "numMinutes": minutes,
@@ -139,12 +230,13 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
                     for pid, pname in players[tid]:
                         box.append(box_row(pid, pname, tid, opp, is_home, gid, when, game_type))
 
-    # Did-not-play rows inside regular-season games, all of which must be dropped:
-    # per season one row with no minutes and a comment; in the second season also a
-    # row with 0 minutes and no comment, and a row with minutes but a comment.
     regular = [
         r for r in box if r["gameType"] == "Regular Season" and r["gameDate"] != OLD_GAME_DATE
     ]
+
+    # Did-not-play rows inside regular-season games, all of which must be dropped:
+    # per season one row with no minutes and a comment; in the second season also a
+    # row with 0 minutes and no comment, and a row with minutes but a comment.
     by_season: dict[str, dict] = {}
     for r in regular:
         by_season.setdefault(kaggle_backfill.season_from_date(pd.Timestamp(r["gameDate"])), r)
@@ -171,6 +263,17 @@ def make_kaggle_fixture(directory: Path, seed: int = 0) -> tuple[Path, Path]:
     # One played row with minutes written as MM:SS, as the dump sometimes does.
     clock = next(r for r in regular if r["personId"] == CLOCK_PLAYER_ID)
     clock["numMinutes"] = CLOCK_MINUTES_TEXT
+
+    # One 2024-25 played row with no team ids and an alternate city spelling.
+    alt = next(
+        r
+        for r in regular
+        if r["personId"] == ALT_CITY_PLAYER_ID
+        and kaggle_backfill.season_from_date(pd.Timestamp(r["gameDate"])) == "2024-25"
+    )
+    alt["playerteamId"] = np.nan
+    alt["opponentteamId"] = np.nan
+    alt["playerteamCity"] = ALT_CITY
 
     directory.mkdir(parents=True, exist_ok=True)
     box_path = directory / kaggle_backfill.BOX_SCORE_FILE

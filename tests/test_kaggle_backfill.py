@@ -7,10 +7,12 @@ from nba import config, schema
 from nba.ingest import kaggle_backfill
 from nba.storage import local
 from tests.conftest import (
+    ALT_CITY_PLAYER_ID,
     CLOCK_MINUTES,
     CLOCK_PLAYER_ID,
     DNP_PLAYER_IDS,
     GAMES_PER_SEASON,
+    NO_ID_SEASON,
     PLAYERS_PER_TEAM,
     SEASON_STARTS,
     TEAMS,
@@ -74,11 +76,12 @@ def test_team_abbreviation_follows_season(game_logs: pd.DataFrame) -> None:
     assert "GONE" not in set(game_logs["team"]) | set(game_logs["opponent"])
 
 
-def test_unknown_team_id_is_an_error(kaggle_dir: Path) -> None:
+def test_unknown_team_id_falls_back_to_name(kaggle_dir: Path) -> None:
     box = kaggle_backfill.load_box_scores(kaggle_dir)
     box.loc[box["playerteamId"] == TEAMS[0][0], "playerteamId"] = 424242
-    with pytest.raises(KeyError, match="424242"):
-        kaggle_backfill.map_to_schema(box, kaggle_backfill.load_team_histories(kaggle_dir))
+    prepared = kaggle_backfill.prepare(box, kaggle_backfill.load_team_histories(kaggle_dir))
+    lakers = prepared.game_logs[prepared.game_logs["player_name"].str.endswith("Lakers")]
+    assert set(lakers["team"]) == {"LAL"}
 
 
 def test_ambiguous_team_history_is_an_error(kaggle_dir: Path) -> None:
@@ -152,7 +155,14 @@ def test_dnp_rows_dropped_and_counted_per_season(kaggle_dir: Path) -> None:
     assert (prepared.game_logs["minutes"] > 0).all()
 
     summary = kaggle_backfill.season_summary(prepared)
-    assert list(summary.columns) == ["rows", "games", "first_game", "last_game", "dnp_dropped"]
+    assert list(summary.columns) == [
+        "rows",
+        "games",
+        "first_game",
+        "last_game",
+        "dnp_dropped",
+        "team_by_name",
+    ]
     assert summary["dnp_dropped"].to_dict() == {"2023-24": 1, "2024-25": 3, "2025-26": 1}
     assert (summary["games"] == (GAMES_PER_SEASON - 2) * (len(TEAMS) // 2)).all()
 
@@ -161,3 +171,35 @@ def test_is_dnp_rules() -> None:
     minutes = pd.Series([None, 0.0, 12.0, 30.0, 5.0])
     comment = pd.Series([None, "", "", "DNP - Coach's Decision", "  "])
     assert kaggle_backfill.is_dnp(minutes, comment).tolist() == [True, True, False, True, False]
+
+
+def test_teams_resolved_by_name_when_ids_are_empty(kaggle_dir: Path) -> None:
+    prepared = kaggle_backfill.prepare(
+        kaggle_backfill.load_box_scores(kaggle_dir), kaggle_backfill.load_team_histories(kaggle_dir)
+    )
+    logs = prepared.game_logs
+    no_id = logs[logs["season"] == NO_ID_SEASON]
+    assert len(no_id) > 0
+    assert set(no_id["team"]) == {"LAL", "BOS", "GSW", "MIA", "DEN", "OLD"}
+    # Every kept row of the id-less season was resolved by name; one row in 2024-25 too.
+    counts = prepared.name_resolved_per_season.to_dict()
+    assert counts[NO_ID_SEASON] == len(no_id)
+    assert counts["2024-25"] == 1
+    assert counts["2025-26"] == 0
+    alt = logs[(logs["player_id"] == ALT_CITY_PLAYER_ID) & (logs["season"] == "2024-25")]
+    assert set(alt["team"]) == {"LAL"}
+
+
+def test_non_nba_history_rows_are_ignored(kaggle_dir: Path) -> None:
+    hist = kaggle_backfill.load_team_histories(kaggle_dir)
+    assert "MAD" not in set(hist["teamAbbrev"])
+    assert (hist["teamAbbrev"].str.len() == 3).all() or "LAL" in set(hist["teamAbbrev"])
+
+
+def test_unresolvable_team_is_an_error(kaggle_dir: Path) -> None:
+    box = kaggle_backfill.load_box_scores(kaggle_dir)
+    lakers = box["playerteamName"] == "Lakers"
+    box.loc[lakers, "playerteamId"] = 424242
+    box.loc[lakers, "playerteamName"] = "Sonics"
+    with pytest.raises(KeyError, match="could not resolve teams"):
+        kaggle_backfill.map_to_schema(box, kaggle_backfill.load_team_histories(kaggle_dir))

@@ -8,10 +8,17 @@ Two files are read:
   * PlayerStatistics.csv  one row per player per game (box score), 1947 onward.
                           Streamed with pyarrow and filtered to gameDate >= BACKFILL_START
                           before any pandas frame is built.
-  * TeamHistories.csv     teamId, teamAbbrev, seasonFounded, seasonActiveTill. The row
-                          active for the game's season supplies the abbreviation.
+  * TeamHistories.csv     teamId, teamCity, teamName, teamAbbrev, seasonFounded,
+                          seasonActiveTill, league. The NBA row active for the game's
+                          season supplies the abbreviation.
 
 Games.csv and the LeagueSchedule files are not used.
+
+Team resolution: `playerteamId`/`opponentteamId` are used when present. The dump
+leaves them empty for all of 2021-22 and for a few later rows, so those rows are
+resolved by (city, name) against TeamHistories, then by name alone when the city
+spelling differs (e.g. "LA" vs "Los Angeles" Clippers). Rows resolved by name are
+counted per season.
 
 Did-not-play rows: a row is treated as DNP when `numMinutes` is null or 0, or when
 `comment` is populated (the dump uses it for "DNP - Coach's Decision", injury notes,
@@ -70,14 +77,28 @@ BOX_SCORE_COLUMNS: dict[str, str] = {
     "foulsPersonal": "pf",
     "plusMinusPoints": "plus_minus",
 }
-# PlayerStatistics.csv columns used to derive canonical columns or to detect DNPs.
-BOX_SCORE_DERIVED: tuple[str, ...] = ("firstName", "lastName", "gameType", "comment")
+# PlayerStatistics.csv columns used to derive canonical columns, detect DNPs, or
+# resolve teams when the id columns are empty.
+BOX_SCORE_DERIVED: tuple[str, ...] = (
+    "firstName",
+    "lastName",
+    "gameType",
+    "comment",
+    "playerteamCity",
+    "playerteamName",
+    "opponentteamCity",
+    "opponentteamName",
+)
 TEAM_HISTORY_COLUMNS: tuple[str, ...] = (
     "teamId",
+    "teamCity",
+    "teamName",
     "teamAbbrev",
     "seasonFounded",
     "seasonActiveTill",
 )
+TEAM_HISTORY_LEAGUE_COLUMN = "league"
+TEAM_HISTORY_LEAGUE = "NBA"
 
 COUNTING_STATS: tuple[str, ...] = (
     "pts",
@@ -116,16 +137,16 @@ _STRING_COLUMNS: tuple[str, ...] = (
     "lastName",
     "gameType",
     "comment",
+    "playerteamCity",
+    "playerteamName",
+    "opponentteamCity",
+    "opponentteamName",
 )
-_INT_COLUMNS: tuple[str, ...] = ("personId", "playerteamId", "opponentteamId")
+# Ids are read as float64 too: the team id columns are empty for many rows and
+# may be written as "1610612747.0"; schema.coerce casts player_id to int64 later.
 _BOX_SCORE_TYPES: dict[str, pa.DataType] = {
     **{c: pa.string() for c in _STRING_COLUMNS},
-    **{c: pa.int64() for c in _INT_COLUMNS},
-    **{
-        c: pa.float64()
-        for c in BOX_SCORE_COLUMNS
-        if c not in _STRING_COLUMNS and c not in _INT_COLUMNS
-    },
+    **{c: pa.float64() for c in BOX_SCORE_COLUMNS if c not in _STRING_COLUMNS},
 }
 
 
@@ -135,6 +156,7 @@ class Prepared:
 
     game_logs: pd.DataFrame
     dnp_per_season: pd.Series  # season -> DNP rows dropped
+    name_resolved_per_season: pd.Series  # season -> kept rows whose team came from name lookup
     game_type_counts: pd.Series  # gameType -> rows (before filtering)
 
 
@@ -207,39 +229,83 @@ def load_box_scores(kaggle_dir: Path, start: pd.Timestamp = BACKFILL_START) -> p
 
 
 def load_team_histories(kaggle_dir: Path) -> pd.DataFrame:
+    """NBA rows of TeamHistories.csv with stripped text and an open-ended end season."""
     df = pd.read_csv(kaggle_dir / TEAM_HISTORY_FILE)
     _require(df.columns, TEAM_HISTORY_COLUMNS, TEAM_HISTORY_FILE)
+    if TEAM_HISTORY_LEAGUE_COLUMN in df.columns:
+        league = df[TEAM_HISTORY_LEAGUE_COLUMN].astype("string").str.strip()
+        df = df[league == TEAM_HISTORY_LEAGUE]
     out = df[list(TEAM_HISTORY_COLUMNS)].copy()
     out["teamId"] = pd.to_numeric(out["teamId"]).astype("int64")
-    out["teamAbbrev"] = out["teamAbbrev"].astype("string").str.strip()
+    for col in ("teamCity", "teamName", "teamAbbrev"):
+        out[col] = out[col].astype("string").str.strip()
     out["seasonFounded"] = pd.to_numeric(out["seasonFounded"]).astype("int64")
     # Open-ended histories have no end season (the dump also uses 2100).
     out["seasonActiveTill"] = pd.to_numeric(out["seasonActiveTill"]).fillna(9999).astype("int64")
-    return out
+    return out.reset_index(drop=True)
 
 
-def team_abbreviations(
-    team_ids: pd.Series, season_years: pd.Series, histories: pd.DataFrame
-) -> pd.Series:
-    """Abbreviation for each (team id, season start year), from the history row active then."""
-    pairs = pd.DataFrame({"teamId": team_ids.to_numpy(), "year": season_years.to_numpy()})
-    unique = pairs.drop_duplicates().reset_index(drop=True)
-    merged = unique.merge(histories, on="teamId", how="left")
+def _lookup(keys: pd.DataFrame, histories: pd.DataFrame, on: list[str], label: str) -> pd.Series:
+    """Abbreviation per row of `keys` (columns `on` + `year`) from the active history row.
+
+    Returns NaN where no active row matches. Raises when more than one row matches.
+    """
+    unique = keys.drop_duplicates().reset_index(drop=True)
+    merged = unique.merge(histories, on=on, how="left")
     is_active = (merged["seasonFounded"] <= merged["year"]) & (
         merged["year"] <= merged["seasonActiveTill"]
     )
     active = merged[is_active]
-    counts = active.groupby(["teamId", "year"]).size().rename("n").reset_index()
-    matched = unique.merge(counts, on=["teamId", "year"], how="left")
-    unmatched = matched[matched["n"].isna()][["teamId", "year"]].to_dict("records")
-    if unmatched:
-        raise KeyError(f"no active {TEAM_HISTORY_FILE} row for: {unmatched}")
-    ambiguous = matched[matched["n"] > 1][["teamId", "year"]].to_dict("records")
+    counts = active.groupby(on + ["year"]).size().rename("n").reset_index()
+    ambiguous = counts[counts["n"] > 1][on + ["year"]].to_dict("records")
     if ambiguous:
-        raise KeyError(f"multiple active {TEAM_HISTORY_FILE} rows for: {ambiguous}")
-    lookup = active[["teamId", "year", "teamAbbrev"]]
-    abbrev = pairs.merge(lookup, on=["teamId", "year"], how="left")["teamAbbrev"]
-    return abbrev.astype("string").set_axis(team_ids.index)
+        raise KeyError(f"multiple active {TEAM_HISTORY_FILE} rows by {label} for: {ambiguous}")
+    lookup = active[on + ["year", "teamAbbrev"]]
+    abbrev = keys.merge(lookup, on=on + ["year"], how="left")["teamAbbrev"]
+    return abbrev.astype("string").set_axis(keys.index)
+
+
+def resolve_teams(
+    team_ids: pd.Series,
+    cities: pd.Series,
+    names: pd.Series,
+    season_years: pd.Series,
+    histories: pd.DataFrame,
+) -> tuple[pd.Series, pd.Series]:
+    """Abbreviation for each row, plus a boolean marking rows resolved without an id.
+
+    Order: team id, then (city, name), then name alone. Raises if any row stays unresolved.
+    """
+    years = season_years.astype("int64")
+    ids = pd.to_numeric(team_ids, errors="coerce")
+    city = cities.astype("string").str.strip()
+    name = names.astype("string").str.strip()
+
+    by_id = pd.DataFrame({"teamId": ids.fillna(-1).astype("int64"), "year": years})
+    abbrev = _lookup(by_id, histories, ["teamId"], "id")
+    abbrev = abbrev.mask(ids.isna(), pd.NA)
+
+    missing = abbrev.isna()
+    if missing.any():
+        by_city_name = pd.DataFrame({"teamCity": city, "teamName": name, "year": years})[missing]
+        abbrev.loc[missing] = _lookup(
+            by_city_name, histories, ["teamCity", "teamName"], "city+name"
+        )
+    still_missing = abbrev.isna()
+    if still_missing.any():
+        by_name = pd.DataFrame({"teamName": name, "year": years})[still_missing]
+        abbrev.loc[still_missing] = _lookup(by_name, histories, ["teamName"], "name")
+
+    unresolved = abbrev.isna()
+    if unresolved.any():
+        sample = (
+            pd.DataFrame({"teamId": ids, "city": city, "name": name, "year": years})[unresolved]
+            .drop_duplicates()
+            .head(10)
+            .to_dict("records")
+        )
+        raise KeyError(f"could not resolve teams for: {sample}")
+    return abbrev, missing & ~unresolved
 
 
 def game_type_counts(box: pd.DataFrame) -> pd.Series:
@@ -274,19 +340,24 @@ def prepare(
     df["game_date"] = pd.to_datetime(df["game_date"]).dt.tz_localize(None).dt.normalize()
     df["season"] = df["game_date"].map(season_from_date)
     df = df[df["season"].isin(seasons)]
+    season_index = sorted(df["season"].unique())
 
     dnp = is_dnp(df["minutes"], df["comment"])
-    dnp_per_season = (
-        df.loc[dnp].groupby("season").size().reindex(sorted(df["season"].unique()), fill_value=0)
-    )
+    dnp_per_season = df.loc[dnp].groupby("season").size().reindex(season_index, fill_value=0)
     df = df[~dnp].copy()
 
     first = df["firstName"].astype("string").str.strip()
     last = df["lastName"].astype("string").str.strip()
     df["player_name"] = first + " " + last
     years = df["season"].map(season_start_year)
-    df["team"] = team_abbreviations(df["team_id"], years, histories)
-    df["opponent"] = team_abbreviations(df["opponent_id"], years, histories)
+    df["team"], by_name_team = resolve_teams(
+        df["team_id"], df["playerteamCity"], df["playerteamName"], years, histories
+    )
+    df["opponent"], by_name_opp = resolve_teams(
+        df["opponent_id"], df["opponentteamCity"], df["opponentteamName"], years, histories
+    )
+    by_name = by_name_team | by_name_opp
+    name_resolved = df.loc[by_name].groupby("season").size().reindex(season_index, fill_value=0)
 
     df["home"] = pd.to_numeric(df["home"]).astype("int64").astype("bool")
     for col in COUNTING_STATS:
@@ -295,7 +366,12 @@ def prepare(
 
     out = schema.coerce(df)
     out = out.sort_values(["game_date", "game_id", "player_id"]).reset_index(drop=True)
-    return Prepared(schema.validate(out), dnp_per_season.rename("dnp_dropped"), type_counts)
+    return Prepared(
+        schema.validate(out),
+        dnp_per_season.rename("dnp_dropped"),
+        name_resolved.rename("team_by_name"),
+        type_counts,
+    )
 
 
 def map_to_schema(
@@ -314,7 +390,7 @@ def backfill(kaggle_dir: Path, out_dir: Path) -> dict[str, Path]:
 
 
 def season_summary(prepared: Prepared) -> pd.DataFrame:
-    """Per season: rows, distinct games, first/last game date, DNP rows dropped."""
+    """Per season: rows, distinct games, first/last game date, DNP dropped, name-resolved."""
     df = prepared.game_logs
     summary = df.groupby("season").agg(
         rows=("game_id", "size"),
@@ -322,10 +398,9 @@ def season_summary(prepared: Prepared) -> pd.DataFrame:
         first_game=("game_date", "min"),
         last_game=("game_date", "max"),
     )
-    return (
-        summary.join(prepared.dnp_per_season)
-        .fillna({"dnp_dropped": 0})
-        .astype({"dnp_dropped": "int64"})
+    summary = summary.join(prepared.dnp_per_season).join(prepared.name_resolved_per_season)
+    return summary.fillna({"dnp_dropped": 0, "team_by_name": 0}).astype(
+        {"dnp_dropped": "int64", "team_by_name": "int64"}
     )
 
 
@@ -359,7 +434,10 @@ def main(argv: list[str] | None = None) -> None:
 
     prepared = prepare(box, load_team_histories(args.kaggle_dir))
     written = local.write_per_season(prepared.game_logs, args.out_dir)
-    print("DNP rows (no/zero minutes or populated comment) are dropped; counts per season:")
+    print(
+        "DNP rows (no/zero minutes or populated comment) are dropped; "
+        "team_by_name counts kept rows whose team id was empty in the dump:"
+    )
     print(season_summary(prepared).to_string())
     for season, path in written.items():
         print(f"{season} -> {path}")
