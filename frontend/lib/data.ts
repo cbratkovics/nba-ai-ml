@@ -21,7 +21,7 @@ export const LINKS = {
   dataset: `https://huggingface.co/datasets/${DATASET_REPO}`,
   model: `https://huggingface.co/${MODEL_REPO}`,
   github: 'https://github.com/cbratkovics/nba-ai-ml',
-  reconciliation: 'https://github.com/cbratkovics/nba-ai-ml/blob/master/docs/reconciliation.md',
+  reconciliation: 'https://github.com/cbratkovics/nba-ai-ml/blob/main/docs/reconciliation.md',
 }
 
 /** Paths read from the dataset repo. */
