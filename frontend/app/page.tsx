@@ -2,11 +2,15 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import {
   LINKS,
+  POPULATION,
   REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
   getMetricsReport,
+  getReplayDaily,
   getReplaySummary,
+  modelIdentity,
+  rowWeightedMae,
 } from '@/lib/data'
 
 export const revalidate = 3600
@@ -18,9 +22,18 @@ const PREDICTORS = [
 ] as const
 
 export default async function HomePage() {
-  const [metrics, replay] = await Promise.all([getMetricsReport(), getReplaySummary()])
+  const [metrics, replay, daily] = await Promise.all([
+    getMetricsReport(),
+    getReplaySummary(),
+    getReplayDaily(),
+  ])
   const m = metrics.data
   const r = replay.data
+  const d = daily.data
+  const allRows = d ? rowWeightedMae(d.days) : null
+  const baselineWins = allRows
+    ? TARGETS.filter((t) => allRows.baseline[t] !== null && allRows.model[t] !== null && allRows.baseline[t]! < allRows.model[t]!)
+    : []
 
   return (
     <div className="space-y-8">
@@ -56,7 +69,7 @@ export default async function HomePage() {
       </section>
 
       <section className="glass-card p-8">
-        <h2 className="text-xl font-semibold text-text-primary">Holdout results</h2>
+        <h2 className="text-xl font-semibold text-text-primary">Holdout results (training population)</h2>
         {m ? (
           <>
             <p className="mt-2 text-sm text-text-secondary">
@@ -100,13 +113,74 @@ export default async function HomePage() {
               </table>
             </div>
             <p className="mt-3 text-xs text-text-secondary">
-              Source: metrics.json published with model revision {m.git_sha.slice(0, 7)} on{' '}
-              {m.generated_at.slice(0, 10)}, dataset {m.dataset.version}.
+              Population: {POPULATION.headline(m.split.min_minutes)}. Source: metrics.json for model{' '}
+              {modelIdentity(undefined, m.git_sha)}, trained {m.generated_at.slice(0, 10)}, dataset{' '}
+              {m.dataset.version}.
             </p>
           </>
         ) : (
           <p className="mt-2 text-text-secondary">
             The metrics report is not published at {metrics.url} (HTTP {metrics.status}).
+          </p>
+        )}
+      </section>
+
+      <section className="glass-card p-8">
+        <h2 className="text-xl font-semibold text-text-primary">All rows (replay population)</h2>
+        {allRows && d ? (
+          <>
+            <p className="mt-2 text-sm text-text-secondary">
+              The same model and the last-10-game baseline on {POPULATION.allRows}:{' '}
+              {allRows.n.toLocaleString()} rows over {d.n_dates} game dates of {d.season}, row-weighted from the
+              replay&apos;s daily MAE file. This population is wider than the headline one (it includes
+              games under 10 minutes), and on it{' '}
+              {baselineWins.length === TARGETS.length
+                ? 'the last-10 baseline has the lower MAE on every target'
+                : baselineWins.length === 0
+                  ? 'the model has the lower MAE on every target'
+                  : `the last-10 baseline has the lower MAE on ${baselineWins.map((t) => TARGET_LABEL[t].toLowerCase()).join(' and ')}`}
+              .
+            </p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-text-secondary">
+                    <th className="py-2 pr-4">Target</th>
+                    <th className="py-2 pr-4 text-right">Model MAE</th>
+                    <th className="py-2 pr-4 text-right">Last-10 MAE</th>
+                    <th className="py-2 pr-4">Lower error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {TARGETS.map((t) => (
+                    <tr key={t} className="border-b border-white/5 text-text-primary">
+                      <td className="py-2 pr-4">{TARGET_LABEL[t]}</td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {allRows.model[t] === null ? '–' : allRows.model[t]!.toFixed(3)}
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {allRows.baseline[t] === null ? '–' : allRows.baseline[t]!.toFixed(3)}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {allRows.model[t] === null || allRows.baseline[t] === null
+                          ? '–'
+                          : allRows.baseline[t]! < allRows.model[t]!
+                            ? 'last-10 baseline'
+                            : 'model'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-xs text-text-secondary">
+              Population: {POPULATION.allRows}. Source: replay/{d.season}/daily_mae.json in the dataset repo;
+              the same file drives the <Link href="/replay" className="text-secondary hover:underline">replay page</Link>.
+            </p>
+          </>
+        ) : (
+          <p className="mt-2 text-text-secondary">
+            The replay daily file is not published at {daily.url} (HTTP {daily.status}).
           </p>
         )}
       </section>
@@ -118,9 +192,10 @@ export default async function HomePage() {
             <p className="mt-2 text-sm text-text-secondary">
               The nightly slate was replayed for every game date of {r.season} using only data
               available before each date ({r.n_dates} dates, {r.n_predicted.toLocaleString()}{' '}
-              slated player-games, {r.n_with_actuals.toLocaleString()} with a box score). On the
-              same population as the holdout report ({r.n_restricted.toLocaleString()} rows) the
-              replayed MAE matches within the {r.tolerance} tolerance:{' '}
+              slated player-games, {r.n_with_actuals.toLocaleString()} with a box score), with model{' '}
+              {modelIdentity(r.model_revision)}. On the same population as the holdout report
+              (the training population, {r.n_restricted.toLocaleString()} rows) the replayed MAE
+              matches within the {r.tolerance} tolerance:{' '}
               <span className={r.passed ? 'text-success' : 'text-danger'}>
                 {r.passed ? 'passed' : 'failed'}
               </span>
@@ -134,7 +209,7 @@ export default async function HomePage() {
                     <th className="py-2 pr-4 text-right">Holdout MAE</th>
                     <th className="py-2 pr-4 text-right">Replayed MAE</th>
                     <th className="py-2 pr-4 text-right">Difference</th>
-                    <th className="py-2 pr-4 text-right">All replayed rows</th>
+                    <th className="py-2 pr-4 text-right">Model MAE, all rows</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -154,7 +229,9 @@ export default async function HomePage() {
               </table>
             </div>
             <p className="mt-3 text-xs text-text-secondary">
-              {r.unpredicted_actual_rows.all.toLocaleString()} actual player-games (
+              Populations: the first three columns use the training population; the last column uses every
+              replayed row with a box score ({r.n_with_actuals.toLocaleString()} rows; its baseline is in the
+              table above). {r.unpredicted_actual_rows.all.toLocaleString()} actual player-games (
               {r.unpredicted_actual_rows.minutes_ge_min.toLocaleString()} with 10+ minutes) were never
               slated because the player had not appeared in his team&apos;s previous ten games.{' '}
               <Link href="/replay" className="text-secondary hover:underline">

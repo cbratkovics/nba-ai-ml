@@ -9,10 +9,40 @@
 
 export const DATASET_REPO = 'cbratkovics/nba-game-logs'
 export const MODEL_REPO = 'cbratkovics/nba-stat-predictor'
-/** Model revision pinned in nba/config.py; the site shows the report published with it. */
+/**
+ * The published model has one identity, mirrored from nba/config.py (a test checks the
+ * mirror): MODEL_COMMIT is the git commit of the training code (metrics.json git_sha),
+ * MODEL_REVISION the Hugging Face commit holding the model files. Shown everywhere as
+ * `commit 50a3b2e / HF fb427de`.
+ */
 export const MODEL_REVISION = 'fb427de136e1d6c4b591ae30cf30488f44935182'
+export const MODEL_COMMIT = '50a3b2e33b443d1db19274cea27467072ebfb3f8'
 export const REPLAY_SEASON = '2025-26'
 export const REVALIDATE_SECONDS = 3600
+
+/** `commit <git> / HF <revision>`; a revision other than the pinned one is shown alone. */
+export function modelIdentity(revision: string = MODEL_REVISION, commit: string | null = null): string {
+  const git = commit ?? (revision === MODEL_REVISION ? MODEL_COMMIT : null)
+  return git ? `commit ${git.slice(0, 7)} / HF ${revision.slice(0, 7)}` : `HF ${revision.slice(0, 7)}`
+}
+
+/**
+ * The two populations a metric can be computed on. Every page that shows a metric names
+ * the population next to it, because the answer to "does the model beat the last-10 mean"
+ * differs between them (see AUDIT.md section 15, item 1).
+ */
+export const POPULATION = {
+  headline: (minMinutes: number) =>
+    `players with at least ${minMinutes} minutes and both baselines defined (the training population)`,
+  allRows: 'every replayed player-game with a box score and a last-10 baseline for every target (all rows)',
+  nightlyAll: 'every slated player-game with a box score (all rows)',
+  nightlyRestricted: 'rows in the training population (at least 10 minutes, both baselines defined)',
+}
+
+/** `replay` for brief dates on or before the last replayed date, `live` afterwards. */
+export function briefMode(date: string, lastReplayDate: string | null | undefined): 'replay' | 'live' {
+  return lastReplayDate && date <= lastReplayDate ? 'replay' : 'live'
+}
 
 export const DATASET_BASE = `https://huggingface.co/datasets/${DATASET_REPO}/resolve/main`
 export const MODEL_BASE = `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}`
@@ -128,6 +158,24 @@ export interface ReplayDay {
   n: number
   model: Record<Target, number>
   baseline_last10: Record<Target, number>
+}
+
+/** Row-weighted season MAE of the model and the last-10 baseline over the replayed days. */
+export function rowWeightedMae(days: ReplayDay[]): {
+  n: number
+  model: Record<Target, number | null>
+  baseline: Record<Target, number | null>
+} {
+  const n = days.reduce((acc, d) => acc + d.n, 0)
+  const mean = (pick: (d: ReplayDay) => number) =>
+    n ? days.reduce((acc, d) => acc + pick(d) * d.n, 0) / n : null
+  const model = {} as Record<Target, number | null>
+  const baseline = {} as Record<Target, number | null>
+  for (const t of TARGETS) {
+    model[t] = mean((d) => d.model[t])
+    baseline[t] = mean((d) => d.baseline_last10[t])
+  }
+  return { n, model, baseline }
 }
 
 export interface ReplayDaily {

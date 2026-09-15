@@ -55,8 +55,16 @@ HF_MODEL_REPO: str = "cbratkovics/nba-stat-predictor"
 # Folder inside the dataset repo that holds the per-season Parquet files.
 HF_DATASET_PREFIX: str = "game_logs"
 
-# Kaggle dump used for the backfill and the daily incremental ingest.
+# Kaggle dump used for the backfill and the daily incremental ingest. There is no other
+# automated source: stats.nba.com is unreachable from GitHub Actions runners (see the
+# probe workflow and docs/reconciliation.md), so the dataset and model cards must describe
+# this dataset as both the backfill and the daily source. They are rendered from these
+# constants, never typed by hand.
 KAGGLE_DATASET: str = "eoinamoore/historical-nba-data-and-player-box-scores"
+KAGGLE_DATASET_TITLE: str = "Historical NBA Data and Player Box Scores"
+KAGGLE_DATASET_AUTHOR: str = "Eoin Moore"
+KAGGLE_DATASET_VERSION: int = 515
+KAGGLE_DATASET_LICENSE: str = "CC0 1.0"
 # Value written to the `source` column by the daily ingest.
 KAGGLE_DAILY_SOURCE: str = "kaggle_daily"
 # The daily ingest re-reads rows from this many days before the newest stored game.
@@ -65,8 +73,14 @@ DAILY_REPORT_PATH: Path = Path("data") / "daily_report.json"
 # Where the daily ingest puts the downloaded dump files (the slate reads the schedule here).
 DUMP_DIR: Path = Path("data") / "dump"
 
-# Published model used for scoring, pinned to a commit of HF_MODEL_REPO.
+# Published model used for scoring, pinned to a commit of HF_MODEL_REPO, and the git commit
+# of the training code that produced it (reports/metrics.json `git_sha`). The model has one
+# identity, shown everywhere as `commit 50a3b2e / HF fb427de` (see model_identity()).
 MODEL_REVISION: str = "fb427de136e1d6c4b591ae30cf30488f44935182"
+MODEL_COMMIT: str = "50a3b2e33b443d1db19274cea27467072ebfb3f8"
+# Revision of HF_DATASET_REPO the published model was trained and evaluated on
+# (reports/metrics.json `dataset.version`). The provenance report hashes every file at it.
+DATASET_REVISION: str = "b20b5601de213fa8e704ebffaafd18f182ea68c3"
 # Analyst-agent model on Groq, pinned from the catalogue queried on 2026-09-12: no Llama
 # chat model was listed; openai/gpt-oss-120b was the largest model with verified native
 # tool calls (0.53 s on a one-tool probe). Fallback if rate-limited: openai/gpt-oss-20b.
@@ -131,6 +145,29 @@ GROQ_API_KEY: str | None = os.environ.get("GROQ_API_KEY") or None
 
 def groq_api_key() -> str | None:
     return GROQ_API_KEY
+
+
+def model_identity(commit: str = MODEL_COMMIT, revision: str = MODEL_REVISION) -> str:
+    """The one string that names the published model: `commit <git> / HF <revision>`."""
+    return f"commit {commit[:7]} / HF {revision[:7]}"
+
+
+def source_lines() -> dict[str, str]:
+    """Markdown bullets describing the data sources, shared by the dataset and model cards."""
+    backfill = (
+        f"**Historical backfill:** {KAGGLE_DATASET_AUTHOR}, *{KAGGLE_DATASET_TITLE}*, Kaggle "
+        f"(`{KAGGLE_DATASET}`), version {KAGGLE_DATASET_VERSION}, {KAGGLE_DATASET_LICENSE}. "
+        "Only `PlayerStatistics.csv` and `TeamHistories.csv` are used; rows carry "
+        f"`source = {KAGGLE_SOURCE}`."
+    )
+    daily = (
+        "**Daily updates:** the same Kaggle dataset, re-downloaded by the nightly GitHub "
+        f"Actions job. Rows within {DAILY_LOOKBACK_DAYS} days of the newest stored game are "
+        "reconciled against the stored rows; new or changed rows carry "
+        f"`source = {KAGGLE_DAILY_SOURCE}`. There is no live collection from NBA.com: "
+        "stats.nba.com is not reachable from GitHub Actions runners."
+    )
+    return {"backfill": backfill, "daily": daily}
 
 
 def hf_token() -> str | None:

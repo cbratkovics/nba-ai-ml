@@ -197,14 +197,20 @@ until the dump author publishes `LeagueSchedule26_27.csv`.
 
 GitHub Actions run `34668262142` (`.github/workflows/replay.yml`) replayed the slate for
 all 164 game dates of 2025-26, truncating the game logs to games before each
-date, scoring with model `fb427de` on dataset `b20b560`, and
-joining actuals. Output committed as `reports/replay_2025-26.json`.
+date, scoring with model `commit 50a3b2e / HF fb427de` on dataset `b20b5601`, and
+joining actuals. Output committed as `reports/replay_2025-26.json` (the run pushed at
+dataset-repo revision `8a127c93`; a later identical run, `6cbc915b`, is what the site
+reads; `reports/provenance_b20b5601.json` records both hashes).
 
 | Target | metrics.json MAE | replay MAE (same population) | diff | replay MAE (all rows with actuals) |
 |---|---:|---:|---:|---:|
 | pts | 4.7644 | 4.7665 | +0.0021 | 4.8639 |
 | reb | 1.9421 | 1.9429 | +0.0008 | 2.0228 |
 | ast | 1.4310 | 1.4320 | +0.0010 | 1.4029 |
+
+The first three columns are the training population (minutes >= 10, both baselines
+defined); the last is every replayed row with a box score, where the last-10 baseline is
+the better predictor on all three targets (README, "All rows").
 
 Tolerance 0.05 per target: **passed**. The restricted population (minutes >= 10, both
 baselines present) has 22,075 replayed rows against 22,244 in

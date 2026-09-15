@@ -79,6 +79,36 @@ def push_dataset(
     return info.oid
 
 
+def push_dataset_card(
+    card_path: Path, repo_id: str = config.HF_DATASET_REPO, message: str = "Update dataset card"
+) -> str:
+    """Upload only README.md to the dataset repo. Returns the new commit sha."""
+    api = _api(require_token=True)
+    info = api.create_commit(
+        repo_id=repo_id,
+        repo_type="dataset",
+        operations=[
+            CommitOperationAdd(path_in_repo=DATASET_CARD_FILE, path_or_fileobj=str(card_path))
+        ],
+        commit_message=message,
+    )
+    return info.oid
+
+
+def push_model_card(
+    card_path: Path, repo_id: str = config.HF_MODEL_REPO, message: str = "Update model card"
+) -> str:
+    """Upload only README.md to the model repo; the model files and their revision are untouched."""
+    api = _api(require_token=True)
+    info = api.create_commit(
+        repo_id=repo_id,
+        repo_type="model",
+        operations=[CommitOperationAdd(path_in_repo="README.md", path_or_fileobj=str(card_path))],
+        commit_message=message,
+    )
+    return info.oid
+
+
 def fetch_dataset_card(repo_id: str = config.HF_DATASET_REPO) -> str:
     """Current README.md of the dataset repo."""
     path = hf_hub_download(repo_id, DATASET_CARD_FILE, repo_type="dataset", token=config.hf_token())

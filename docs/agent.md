@@ -191,8 +191,20 @@ rolling window that the same day's six-date dispatches and local smoke runs had
 already mostly consumed. The 15 remaining briefs were refused within 0.5 s each and
 are recorded as `rate_limited`; none was answered by the fallback model. Over the 10
 briefs that ran: grounding 9 of 10, golden 10 of 10. That is too few runs, on two of
-five dates, to quote a pass rate. The workflow needs to be re-run on a day with no
-other agent traffic; the rows above will be replaced by that run.
+five dates, to quote a pass rate.
+
+**Spreading the measurement across days (implemented 2026-09-15, not yet run in
+Actions in this form).** `agent-eval.yml` now measures only the golden dates that are
+missing or rate-limited in the committed report (`--only-incomplete --max-dates 1` by
+default, or an explicit `dates` input), merges the new per-date results into
+`reports/agent_pass_rates.json` (each date records the Actions run id that measured it),
+recomputes the overall block, rewrites the README row between its `pass-rates` markers
+from the report, and commits both files back to the branch it ran on. A daily schedule
+at 03:00 UTC (seven hours before the nightly brief) does one date per day until every
+date is complete, then exits before installing anything. One date is 5 briefs, about
+25k tokens, an eighth of the daily cap. `overall.complete` is true only when all five
+dates have five unlimited runs; until then the README row says "incomplete" with the
+count, rendered from the report and checked by `tests/test_agent_pass_rates.py`.
 
 **The single-run failure mode, plainly.** At temperature 0 the model's output still
 varies between runs. The failure seen in every set of runs so far is the same one: a

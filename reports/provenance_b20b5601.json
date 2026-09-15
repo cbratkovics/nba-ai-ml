@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-09-15T23:02:32+00:00",
+  "git_sha": "3fb19bcc82b89a6d909bd3a69d1433e99112c17d",
+  "model_identity": "commit 50a3b2e / HF fb427de",
+  "dataset": {
+    "repo": "cbratkovics/nba-game-logs",
+    "revision": "b20b5601de213fa8e704ebffaafd18f182ea68c3",
+    "files": {
+      "game_logs/game_logs_2021-22.parquet": {
+        "sha256": "febba85ec9ad206f9e425e549535bdd657a66f6a72cbdfb1c4f596e851740ce0",
+        "bytes": 402836,
+        "rows": 25826,
+        "matches_hub_lfs_sha256": true
+      },
+      "game_logs/game_logs_2022-23.parquet": {
+        "sha256": "f398a553e4c92216fc2dfc4d25622470c8a62bd8254811fccb3496d4cafc553f",
+        "bytes": 393440,
+        "rows": 25687,
+        "matches_hub_lfs_sha256": true
+      },
+      "game_logs/game_logs_2023-24.parquet": {
+        "sha256": "5fff5e5a57dd73ea36b6610c61fb1cb182156ace89e5c8e1c7024427bb9eefc4",
+        "bytes": 405025,
+        "rows": 26095,
+        "matches_hub_lfs_sha256": true
+      },
+      "game_logs/game_logs_2024-25.parquet": {
+        "sha256": "a4cc538112a7c4c7a4f42476022726159907ed71fc13cdd9a070c9950c2b50d6",
+        "bytes": 437754,
+        "rows": 26158,
+        "matches_hub_lfs_sha256": true
+      },
+      "game_logs/game_logs_2025-26.parquet": {
+        "sha256": "2119a573915ebcd548a290e9d2d9c509921adb85b7e01e570908f423d60cb3a3",
+        "bytes": 445819,
+        "rows": 26648,
+        "matches_hub_lfs_sha256": true
+      }
+    }
+  },
+  "model": {
+    "repo": "cbratkovics/nba-stat-predictor",
+    "revision": "fb427de136e1d6c4b591ae30cf30488f44935182",
+    "commit": "50a3b2e33b443d1db19274cea27467072ebfb3f8",
+    "files": {
+      "lgbm_pts.txt": {
+        "sha256": "76aae6e3f81caeac7ba4d732a2042d9512067c6907e0239efb0f0c4013a00c26",
+        "bytes": 1734429
+      },
+      "lgbm_reb.txt": {
+        "sha256": "9b4a30f5b4450c7a340ee9e4ff3f4c8725502d24aabab2860c788537aeaca1cb",
+        "bytes": 1743852
+      },
+      "lgbm_ast.txt": {
+        "sha256": "1b4e6758092c3ca629b41c3324f556d9d5b1126226bbf8b36dc6f874b3f47cbd",
+        "bytes": 1743075
+      },
+      "metrics.json": {
+        "sha256": "6c0168c1ebc21550a81220b7db8737eb060de5d4e2ca4f1246a33acdd1bee33d",
+        "bytes": 3000
+      }
+    }
+  },
+  "reports": {
+    "reports/metrics.json": {
+      "sha256": "6c0168c1ebc21550a81220b7db8737eb060de5d4e2ca4f1246a33acdd1bee33d",
+      "bytes": 3000
+    },
+    "reports/replay_2025-26.json": {
+      "sha256": "8c95feb5b06b3fffda509001b5308f6284daed8755a57292345fb4290fc7cf84",
+      "bytes": 20079
+    },
+    "reports/agent_evals.json": {
+      "sha256": "ec28b6db26d805f5d913300272f29c2eb11696b186fab7944b4c2183eb46c752",
+      "bytes": 2803
+    },
+    "reports/agent_golden.json": {
+      "sha256": "f520ca092a25453f1ef70fef292dfce00277f3f8918ee1da1ae1ca12abfd58fc",
+      "bytes": 1469
+    },
+    "reports/agent_pass_rates.json": {
+      "sha256": "eacef3bd59c0c3ace905df79685968f0874ed0ba938ccc92a599508a67666f92",
+      "bytes": 17954
+    }
+  },
+  "hub_products": {
+    "replay/2025-26/replay.json": {
+      "revision": "cd2427990eaa32bb54102d7a5d41e66d651a0cf1",
+      "sha256": "e08974e534b8fa180ad38b48a4881085f48d1c576430a7bfc3dfff7731e75fe5",
+      "bytes": 20079
+    },
+    "replay/2025-26/daily_mae.json": {
+      "revision": "cd2427990eaa32bb54102d7a5d41e66d651a0cf1",
+      "sha256": "16f27585a8eff80a72fd5d399302ef757cb159c30aad74ca4733d542ee310a42",
+      "bytes": 53070
+    }
+  },
+  "checks": {
+    "model_repo_metrics_json_equals_committed": true,
+    "hub_replay_json_equals_committed_report": false,
+    "all_parquet_match_hub_lfs_sha256": true
+  }
+}

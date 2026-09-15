@@ -1,12 +1,15 @@
 import ReplayChart from '@/components/ReplayChart'
 import SampleTable from '@/components/SampleTable'
+import Link from 'next/link'
 import {
+  POPULATION,
   REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
   getReplayDaily,
   getReplaySample,
-  type ReplayDay,
+  modelIdentity,
+  rowWeightedMae,
 } from '@/lib/data'
 
 export const revalidate = 3600
@@ -17,12 +20,10 @@ export default async function ReplayPage() {
   const sample = d?.sample_date ? await getReplaySample(d.sample_date) : null
   const s = sample?.data ?? null
 
-  const seasonMean = (pick: (day: ReplayDay) => number) => {
-    if (!d || d.days.length === 0) return null
-    const total = d.days.reduce((acc, day) => acc + pick(day) * day.n, 0)
-    const n = d.days.reduce((acc, day) => acc + day.n, 0)
-    return n ? total / n : null
-  }
+  const season = d ? rowWeightedMae(d.days) : null
+  const baselineWins = season
+    ? TARGETS.filter((t) => season.baseline[t] !== null && season.model[t] !== null && season.baseline[t]! < season.model[t]!)
+    : []
 
   return (
     <div className="space-y-8">
@@ -33,16 +34,28 @@ export default async function ReplayPage() {
             <p className="mt-2 text-sm text-text-secondary">
               Daily mean absolute error of the model and of the last-10-game baseline, replaying
               the nightly slate for {d.n_dates} game dates from {d.first_date} to {d.last_date}{' '}
-              using only games played before each date. Population: {d.population}.
+              using only games played before each date. Population: {d.population}
+              {season ? ` (${season.n.toLocaleString()} rows)` : ''}. This is the all-rows population, not the
+              training population behind the{' '}
+              <Link href="/" className="text-secondary hover:underline">
+                headline holdout table
+              </Link>{' '}
+              (at least 10 minutes, both baselines defined); on all rows{' '}
+              {baselineWins.length === TARGETS.length
+                ? 'the last-10 baseline has the lower season MAE on every target'
+                : baselineWins.length === 0
+                  ? 'the model has the lower season MAE on every target'
+                  : `the last-10 baseline has the lower season MAE on ${baselineWins.map((t) => TARGET_LABEL[t].toLowerCase()).join(' and ')}`}
+              .
             </p>
             <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
               {TARGETS.map((t) => {
-                const model = seasonMean((day) => day.model[t])
-                const base = seasonMean((day) => day.baseline_last10[t])
+                const model = season ? season.model[t] : null
+                const base = season ? season.baseline[t] : null
                 return (
                   <div key={t} className="rounded-lg bg-white/5 p-3">
                     <div className="text-xs uppercase tracking-wide text-text-secondary">
-                      {TARGET_LABEL[t]}, row-weighted season MAE
+                      {TARGET_LABEL[t]}, row-weighted season MAE (all rows)
                     </div>
                     <div className="mt-1 text-text-primary">
                       model {model === null ? '–' : model.toFixed(3)} · baseline{' '}
@@ -72,7 +85,7 @@ export default async function ReplayPage() {
             <p className="mt-2 text-sm text-text-secondary">
               The last replayed date: {s.n_games} games, {s.n_players} slated players,{' '}
               {s.n_with_actuals} with a box score (the rest did not play). Predictions were made
-              with model {s.model_revision.slice(0, 7)} from games before {s.date}; actuals come
+              with model {modelIdentity(s.model_revision)} from games before {s.date}; actuals come
               from the stored game logs.
             </p>
             <div className="mt-6">

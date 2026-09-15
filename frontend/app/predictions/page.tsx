@@ -1,5 +1,13 @@
 import SlateTable from '@/components/SlateTable'
-import { TARGETS, TARGET_LABEL, getLatestSlate, getReplayDaily, getRollingMetrics } from '@/lib/data'
+import {
+  POPULATION,
+  TARGETS,
+  TARGET_LABEL,
+  getLatestSlate,
+  getReplayDaily,
+  getRollingMetrics,
+  modelIdentity,
+} from '@/lib/data'
 
 export const revalidate = 3600
 
@@ -21,7 +29,7 @@ export default async function PredictionsPage() {
             <p className="mt-2 text-sm text-text-secondary">
               {slate.date}: {slate.n_games} games, {slate.n_players} players. Generated{' '}
               {slate.generated_at.slice(0, 16).replace('T', ' ')} UTC with model{' '}
-              {slate.model_revision.slice(0, 7)} on dataset {slate.dataset_revision.slice(0, 7)}.
+              {modelIdentity(slate.model_revision)} on dataset {slate.dataset_revision.slice(0, 7)}.
               Predictions are the model&apos;s expected points, rebounds, and assists for players who
               appeared in their team&apos;s last ten games.
             </p>
@@ -53,15 +61,18 @@ export default async function PredictionsPage() {
               Latest scored date {lastLine.date}: {lastLine.n_with_actuals} of{' '}
               {lastLine.n_predicted} slated players had a box score ({lastLine.n_missing_actuals}{' '}
               missing). Rolling 30-day window: {lastLine.rolling_30d.days} days,{' '}
-              {lastLine.rolling_30d.n.toLocaleString()} player-games.
+              {lastLine.rolling_30d.n.toLocaleString()} player-games. Two populations are shown:{' '}
+              {POPULATION.nightlyAll} and {POPULATION.nightlyRestricted}, the latter comparable with
+              the headline holdout table.
             </p>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-text-secondary">
                     <th className="py-2 pr-4">Target</th>
-                    <th className="py-2 pr-4 text-right">MAE on {lastLine.date}</th>
-                    <th className="py-2 pr-4 text-right">Rolling 30-day MAE</th>
+                    <th className="py-2 pr-4 text-right">MAE on {lastLine.date}, all rows</th>
+                    <th className="py-2 pr-4 text-right">MAE on {lastLine.date}, training population ({lastLine.n_restricted})</th>
+                    <th className="py-2 pr-4 text-right">Rolling 30-day MAE, all rows</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -70,6 +81,9 @@ export default async function PredictionsPage() {
                       <td className="py-2 pr-4">{TARGET_LABEL[t]}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">
                         {lastLine.mae[t] === null ? '–' : lastLine.mae[t]!.toFixed(3)}
+                      </td>
+                      <td className="py-2 pr-4 text-right tabular-nums">
+                        {lastLine.mae_restricted[t] === null ? '–' : lastLine.mae_restricted[t]!.toFixed(3)}
                       </td>
                       <td className="py-2 pr-4 text-right tabular-nums">
                         {lastLine.rolling_30d.mae[t] === null ? '–' : lastLine.rolling_30d.mae[t]!.toFixed(3)}

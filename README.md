@@ -14,7 +14,7 @@ Batch predictions of NBA player points, rebounds, and assists, scored against th
 
 ## What it does
 
-- **Predict.** One LightGBM regressor per target from a player's games before the target game, evaluated on the full 2025-26 season against the player's last-10-game mean. Points MAE 4.764 versus 4.908 for that baseline.
+- **Predict.** One LightGBM regressor per target from a player's games before the target game, evaluated on the full 2025-26 season against the player's last-10-game mean. On the training population (players with at least 10 minutes and both baselines defined), points MAE 4.764 versus 4.908 for that baseline. On all replayed rows the last-10 mean is the better predictor; both populations are reported below and on every page that shows a metric.
 - **Validate.** A replay of the nightly slate path over all 164 game dates of 2025-26 reproduces the holdout metrics. Largest MAE difference on the same population: +0.0021 points.
 - **Audit.** A Groq-hosted agent reads the published files through seven read-only tools and writes a brief whose every number must match its cited tool output. Grounding on the committed traces: 6 of 6 briefs.
 
@@ -56,7 +56,7 @@ flowchart TB
 
 ## Results
 
-Source: [reports/metrics.json](reports/metrics.json). Train on 2021-22 through 2024-25 (88,257 rows), holdout is all of 2025-26 (22,630 rows, 2025-10-21 to 2026-04-12), rows with at least 10 minutes played, scored on the 22,244 rows where both baselines exist. Baselines are the player's last-10-game mean and season-to-date mean.
+Source: [reports/metrics.json](reports/metrics.json) for model `commit 50a3b2e / HF fb427de` (the one identity used everywhere: the git commit of the training code and the Hugging Face revision holding the files; both are pinned in `nba/config.py`). Train on 2021-22 through 2024-25 (88,257 rows), holdout is all of 2025-26 (22,630 rows, 2025-10-21 to 2026-04-12). **Population: rows with at least 10 minutes played, scored on the 22,244 rows where both baselines exist (the training population).** Baselines are the player's last-10-game mean and season-to-date mean.
 
 | Target | Model MAE | Last-10 MAE | Season MAE | Model RMSE | Model R² |
 |---|---:|---:|---:|---:|---:|
@@ -66,13 +66,17 @@ Source: [reports/metrics.json](reports/metrics.json). Train on 2021-22 through 2
 
 Replay equivalence ([reports/replay_2025-26.json](reports/replay_2025-26.json)): same population, MAE differs from metrics.json by +0.0021 pts, +0.0008 reb, +0.0010 ast, within the 0.05 tolerance.
 
+**All rows (replay population).** On every replayed player-game with a box score and a last-10 baseline for every target (26,031 rows over the 164 dates; this includes games under 10 minutes) the last-10 mean has the lower MAE on every target: pts 4.679 vs 4.864, reb 1.939 vs 2.023, ast 1.374 vs 1.403 (row-weighted from `replay/2025-26/daily_mae.json` in the dataset repo at revision `6cbc915b`, the file the site's replay page reads; the model's all-rows MAE is also `mae_unrestricted` in the committed replay report). The model's edge exists only on the training population, and a committed policy evaluation covering both populations is the next artifact (see `AUDIT.md`, section 15).
+
+Provenance: [reports/provenance_b20b5601.json](reports/provenance_b20b5601.json) records the SHA-256 of every parquet file at dataset revision `b20b5601`, of the model files and `metrics.json` at HF revision `fb427de`, and of the committed reports.
+
 Agent evals ([reports/agent_evals.json](reports/agent_evals.json), [reports/agent_pass_rates.json](reports/agent_pass_rates.json)), model `openai/gpt-oss-120b`:
 
 | Check | Result |
 |---|---|
 | Grounding: every number in a finding matches its cited tool output within 0.01 | 6 of 6 briefs |
 | Golden set: the finding names the day's largest-points-residual player | 5 of 5 dates |
-| Pass rates over repeated runs (`agent-eval.yml`, 5 per date) | incomplete: 10 of 25 briefs ran before the daily token cap, 9 grounded, 10 named the player; see [docs/agent.md](docs/agent.md#reliability) |
+| Pass rates over repeated runs (`agent-eval.yml`, 5 per date; row rendered from the report) | <!-- pass-rates -->incomplete: 10 of 25 briefs completed (2 of 5 dates; 15 rate-limited); of those, grounding 9 of 10, golden 10 of 10<!-- /pass-rates -->; see [docs/agent.md](docs/agent.md#reliability) |
 
 <details>
 <summary>Running it locally</summary>
@@ -88,7 +92,7 @@ python -m nba.nightly --date 2026-04-12        # ingest, slate, residuals, brief
 python -m nba.agent.loop --date 2026-04-12     # brief only; needs GROQ_API_KEY
 ```
 
-LightGBM needs OpenMP at runtime (`brew install libomp` on macOS). Secrets used by the workflows: `HF_TOKEN`, `KAGGLE_USERNAME`, `KAGGLE_KEY`, `GROQ_API_KEY`. Repo ids, the model revision, and thresholds live in `nba/config.py`.
+LightGBM needs OpenMP at runtime (`brew install libomp` on macOS). Secrets used by the workflows: `HF_TOKEN`, `KAGGLE_USERNAME`, `KAGGLE_KEY`, `GROQ_API_KEY`. Repo ids, the model identity (`MODEL_COMMIT`, `MODEL_REVISION`), the dataset revision, and thresholds live in `nba/config.py`. The dataset and model cards are rendered from that config (`python -m nba.storage.dataset_card`, `python -m nba.models.publish --card-only`); their canonical copies are `docs/DATASET_CARD.md` and `docs/MODEL_CARD.md`.
 
 </details>
 
@@ -126,8 +130,9 @@ nba/
   agent/             tools, loop, evals, pass_rates
   nightly.py         ingest -> slate -> residuals -> brief for one date
 frontend/            Next.js pages over the published files
-docs/                reconciliation.md, agent.md
-reports/             metrics, replay, agent evals, golden set, pass rates
+docs/                reconciliation.md, agent.md, DATASET_CARD.md, MODEL_CARD.md
+reports/             metrics, replay, provenance, agent evals, golden set, pass rates
+AUDIT.md             read-only audit before the template pass (2026-09-15)
 tests/               unit tests and recorded agent traces
 .github/workflows/   ci, nightly, train, replay, agent, agent-eval, probe-nba-api
 ```
