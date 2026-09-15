@@ -1,0 +1,15 @@
+version: 2
+
+snapshots:
+  - name: snp_player_team
+    description: SCD Type 2 history of each player's current team (the team of their most recent game), captured on every build with the check strategy on team. History starts at the first build.
+    columns:
+      - { name: player_id, description: nba.com player id }
+      - { name: player_name, description: name on the most recent game }
+      - { name: team, description: team of the most recent game (check column) }
+      - { name: as_of_game_date, description: date of the game the version was derived from }
+      - { name: as_of_game_id, description: id of the game the version was derived from }
+      - { name: dbt_valid_from, description: capture timestamp of this version }
+      - { name: dbt_valid_to, description: timestamp the version was superseded; null for the current version }
+      - { name: dbt_scd_id, description: dbt's surrogate key for the version }
+      - { name: dbt_updated_at, description: dbt's timestamp of the row at capture }

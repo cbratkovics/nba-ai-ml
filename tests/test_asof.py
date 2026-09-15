@@ -157,3 +157,8 @@ def test_pending_key_clash_is_an_error(game_logs: pd.DataFrame) -> None:
     pending = pd.DataFrame([{c: row[c] for c in asof.PENDING_COLUMNS}])
     with pytest.raises(ValueError, match="already exist"):
         asof.features_for_pending(game_logs, pending)
+
+
+def test_feature_version_is_declared() -> None:
+    assert asof.FEATURE_VERSION == "asof_v1"
+    assert len(asof.FEATURE_COLUMNS) == 23

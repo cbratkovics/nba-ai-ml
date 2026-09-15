@@ -1,0 +1,81 @@
+# nba_dbt — medallion warehouse over the files the pipeline already publishes.
+# bronze: typed copies of the Hugging Face parquet/JSON files and the committed reports;
+# silver: grain-enforced, contracts as tests, incremental with a restatement lookback;
+# gold: contracted marts with the artifact-reconciliation tests. Run dbt from the repository
+# root (paths in sources are relative to it): dbt build --project-dir dbt --profiles-dir dbt.
+name: nba_dbt
+version: "1.0.0"
+config-version: 2
+require-dbt-version: ">=1.9.0"
+
+profile: nba_dbt
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Mirrored from nba/config.py; tests/test_project_config.py fails when they drift.
+  model_revision: "fb427de136e1d6c4b591ae30cf30488f44935182"
+  model_commit: "50a3b2e33b443d1db19274cea27467072ebfb3f8"
+  dataset_revision: "b20b5601de213fa8e704ebffaafd18f182ea68c3"
+  feature_version: "asof_v1"
+  holdout_season: "2025-26"
+  seasons: ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
+  targets: ["pts", "reb", "ast"]
+  min_minutes: 10.0
+  full_season_games: 1230
+  baseline_window: 10
+  # Where the loader put the Hugging Face files (python -m nba.warehouse.load) and where the
+  # committed reports live. Relative to the repository root.
+  warehouse_root: "data/warehouse"
+  reports_root: "reports"
+  # slv_game_logs and the nightly product tables are incremental: an incremental run
+  # reprocesses rows whose game date is within this many days of the newest date already
+  # loaded, so source restatements to recent games are picked up without a full refresh.
+  # 14 = the daily ingest window (7) plus 7; ADR-0004 recalibrates it after 30 in-season
+  # daily reports (mart_restatement_lag records the observed lag).
+  lookback_days: 14
+  # Plausibility thresholds for a single box score (warn, never fail; seeded exceptions).
+  plausible_max_pts: 70
+  plausible_max_reb: 30
+  plausible_max_ast: 25
+  # Reconciliation tolerances (ADR-0011): to the replay reports the marts recompute the same
+  # rows, so the tolerance is float noise; to metrics.json the population differs by the
+  # rows the roster rule never slated, so the tolerance is the observed gap plus margin.
+  tol_replay: 0.000001
+  tol_metrics_json: 0.005
+
+seeds:
+  nba_dbt:
+    +schema: seeds
+    +tags: ["seed"]
+
+models:
+  nba_dbt:
+    +materialized: table
+    bronze:
+      +schema: bronze
+      +tags: ["bronze"]
+    silver:
+      +schema: silver
+      +tags: ["silver"]
+    gold:
+      +schema: gold
+      +tags: ["gold"]
+      +contract:
+        enforced: true
+
+snapshots:
+  nba_dbt:
+    +schema: snapshots
+
+tests:
+  nba_dbt:
+    +store_failures: false

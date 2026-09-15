@@ -1,0 +1,88 @@
+name: Warehouse full refresh
+
+# Weekly (Sundays 06:00 UTC) and on demand: rebuild every warehouse model from scratch on
+# MotherDuck (`nba`, MOTHERDUCK_TOKEN), or into a local DuckDB file uploaded as an artifact
+# when the token is absent or DBT_TARGET=local (fixed decision 7). The nightly job only
+# builds the incremental models; this is where a restatement older than the 14-day lookback,
+# a model-SQL change, or a new season gets picked up. Also exports and pushes the gold marts.
+#
+# Status: implemented on branch `template`; it has not yet run in Actions.
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "motherduck (needs MOTHERDUCK_TOKEN) or local"
+        required: false
+        default: "motherduck"
+      publish:
+        description: "Push the exported gold marts to the dataset repo"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warehouse
+  cancel-in-progress: false
+
+jobs:
+  full-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+      NBA_DUCKDB_PATH: .duckdb/nba.duckdb
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project with the warehouse extra
+        run: python -m pip install --quiet -c constraints.txt ".[warehouse]"
+
+      - name: Choose the target
+        id: target
+        run: |
+          want="${{ inputs.target || 'motherduck' }}"
+          if [ "$want" = "motherduck" ] && [ -n "$MOTHERDUCK_TOKEN" ]; then
+            echo "target=motherduck" >> "$GITHUB_OUTPUT"
+          else
+            echo "target=local" >> "$GITHUB_OUTPUT"
+            [ "$want" = "motherduck" ] && echo "MOTHERDUCK_TOKEN is not set: building a local DuckDB file instead"
+          fi
+
+      - name: Load sources and full-refresh the warehouse
+        env:
+          DBT_TARGET: ${{ steps.target.outputs.target }}
+        run: |
+          mkdir -p .duckdb
+          python -m nba.warehouse.load --root data/warehouse
+          dbt build --project-dir dbt --profiles-dir dbt --full-refresh 2>&1 | tee dbt.log
+          dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
+
+      - name: Push the exported gold marts to the dataset repo
+        if: ${{ inputs.publish != false }}
+        run: python -m nba.warehouse.publish --export-dir data/warehouse/export
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "## Warehouse full refresh (${{ steps.target.outputs.target }})"; grep -E "^.*Done\. PASS=" dbt.log || echo "(no dbt summary line)"; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the local warehouse file (fallback target only)
+        if: ${{ always() && steps.target.outputs.target == 'local' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-local-${{ github.run_id }}
+          path: |
+            .duckdb/nba.duckdb
+            dbt.log
+          if-no-files-found: warn

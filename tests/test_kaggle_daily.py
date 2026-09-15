@@ -275,3 +275,34 @@ def test_load_box_scores_empty_window(kaggle_dir: Path) -> None:
         kaggle_dir, start=pd.Timestamp("2099-01-01"), allow_empty=True
     )
     assert empty.empty and "gameDate" in empty.columns and "numMinutes" in empty.columns
+
+
+def test_restatement_lag_is_recorded_per_changed_row_and_summarised(game_logs) -> None:
+    from datetime import date
+
+    stored = game_logs.copy()
+    incoming = stored.copy()
+    ordered = incoming.sort_values(["game_date", "game_id", "player_id"]).index
+    first, last = ordered[0], ordered[-1]
+    incoming.loc[first, "pts"] = int(incoming.loc[first, "pts"]) + 1
+    incoming.loc[last, "pts"] = int(incoming.loc[last, "pts"]) + 5
+    run_date = date(2026, 6, 30)
+    result = kaggle_daily.classify(stored, incoming, run_date=run_date)
+    assert len(result.changed) == 2
+    expected = sorted(
+        (pd.Timestamp(run_date) - incoming.loc[i, "game_date"]).days for i in (first, last)
+    )
+    assert sorted(e["restatement_lag_days"] for e in result.examples) == expected
+    summary = kaggle_daily.restatement_summary(result.changed, run_date)
+    assert summary["n_changed"] == 2 and summary["max_days"] == expected[-1]
+    assert summary["p50_days"] == sum(expected) / 2
+    assert kaggle_daily.restatement_summary(result.changed.iloc[0:0], run_date) == {
+        "n_changed": 0,
+        "max_days": None,
+        "p50_days": None,
+        "p90_days": None,
+    }
+    # Without a run date the examples carry no lag.
+    assert all(
+        e["restatement_lag_days"] is None for e in kaggle_daily.classify(stored, incoming).examples
+    )

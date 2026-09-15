@@ -109,6 +109,23 @@ def push_model_card(
     return info.oid
 
 
+def push_gold(
+    files: list[Path], repo_id: str = config.HF_DATASET_REPO, message: str = "Export gold marts"
+) -> str:
+    """Upload exported gold marts under gold/ in the dataset repo, in one commit."""
+    if not files:
+        raise ValueError("no files given")
+    api = _api(require_token=True)
+    operations = [
+        CommitOperationAdd(path_in_repo=f"{config.HF_GOLD_PREFIX}/{p.name}", path_or_fileobj=str(p))
+        for p in files
+    ]
+    info = api.create_commit(
+        repo_id=repo_id, repo_type="dataset", operations=operations, commit_message=message
+    )
+    return info.oid
+
+
 def fetch_dataset_card(repo_id: str = config.HF_DATASET_REPO) -> str:
     """Current README.md of the dataset repo."""
     path = hf_hub_download(repo_id, DATASET_CARD_FILE, repo_type="dataset", token=config.hf_token())

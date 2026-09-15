@@ -24,6 +24,12 @@ import pandas as pd
 
 from nba import config, schema
 
+# Version of this feature scheme. Metadata only: it names the set of 23 as-of features below
+# and the rules that build them, so a prediction, residual or mart can say which feature
+# module produced it. Bump when a feature is added, removed, or its formula changes; the
+# published model fb427de was trained on asof_v1.
+FEATURE_VERSION: str = "asof_v1"
+
 # Statistics that get rolling and season-to-date means.
 STAT_COLUMNS: tuple[str, ...] = ("pts", "reb", "ast", "minutes")
 # Statistics that get a prior-games-vs-opponent mean.

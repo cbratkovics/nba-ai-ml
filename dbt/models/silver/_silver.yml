@@ -1,0 +1,139 @@
+version: 2
+
+models:
+  - name: slv_game_logs
+    description: One row per (player_id, game_id) who played; typed game logs, incremental with a 14-day restatement lookback (see the model header and ADR-0004).
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, game_id]
+    columns:
+      - { name: player_id, description: nba.com player id, data_tests: [not_null] }
+      - { name: game_id, description: ten-character nba.com game id, data_tests: [not_null] }
+      - { name: game_date, description: game date (Eastern-time calendar date), data_tests: [not_null] }
+      - { name: season, description: season label such as 2025-26, data_tests: [not_null, { accepted_values: { arguments: { values: ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"] } } }] }
+      - { name: player_name, description: player name as stored }
+      - { name: team, description: team abbreviation as stored for that season }
+      - { name: opponent, description: opponent abbreviation }
+      - { name: home, description: true when the player's team was at home }
+      - { name: minutes, description: minutes played, data_tests: [{ accepted_range: { arguments: { min_value: 0, max_value: 70 } } }] }
+      - { name: pts, description: points }
+      - { name: reb, description: total rebounds }
+      - { name: ast, description: assists }
+      - { name: fgm, description: field goals made }
+      - { name: fga, description: field goals attempted }
+      - { name: fg3m, description: three-pointers made }
+      - { name: fg3a, description: three-pointers attempted }
+      - { name: ftm, description: free throws made }
+      - { name: fta, description: free throws attempted }
+      - { name: oreb, description: offensive rebounds }
+      - { name: dreb, description: defensive rebounds }
+      - { name: stl, description: steals }
+      - { name: blk, description: blocks }
+      - { name: tov, description: turnovers }
+      - { name: pf, description: personal fouls }
+      - { name: plus_minus, description: plus/minus }
+      - { name: source, description: which ingest produced the row (kaggle_v515 backfill or kaggle_daily) }
+      - { name: dataset_revision, description: dataset-repo revision the loader pulled }
+      - { name: source_file, description: parquet file the row came from }
+
+  - name: slv_predictions
+    description: One row per (player_id, game_id, model_revision) the pipeline predicted, from the nightly slate files and the holdout-season replay; incremental by game date.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, game_id, model_revision]
+    columns:
+      - { name: player_id, description: nba.com player id, data_tests: [not_null] }
+      - { name: game_id, description: game id, data_tests: [not_null] }
+      - { name: model_revision, description: Hugging Face revision of the model files that scored the row, data_tests: [not_null] }
+      - { name: feature_version, description: version of the feature module (nba/features/asof.py FEATURE_VERSION) }
+      - { name: run_kind, description: nightly or replay, data_tests: [{ accepted_values: { arguments: { values: [nightly, replay] } } }] }
+      - { name: game_date, description: date of the predicted game }
+      - { name: season, description: season label of the game date }
+      - { name: player_name, description: player name at scoring time }
+      - { name: team, description: team the roster rule assigned }
+      - { name: opponent, description: opponent }
+      - { name: home, description: home flag from the schedule }
+      - { name: pred_pts, description: predicted points }
+      - { name: pred_reb, description: predicted rebounds }
+      - { name: pred_ast, description: predicted assists }
+      - { name: pts_mean_last10, description: last-10-game mean of points at scoring time (the baseline) }
+      - { name: reb_mean_last10, description: last-10-game mean of rebounds }
+      - { name: ast_mean_last10, description: last-10-game mean of assists }
+      - { name: pts_mean_season, description: season-to-date mean of points (nightly files only) }
+      - { name: reb_mean_season, description: season-to-date mean of rebounds (nightly files only) }
+      - { name: ast_mean_season, description: season-to-date mean of assists (nightly files only) }
+      - { name: games_played_season, description: earlier games in the season (nightly files only) }
+      - { name: dataset_revision, description: dataset revision the features were built from }
+      - { name: source_file, description: file the row came from }
+
+  - name: slv_residuals
+    description: One row per (player_id, game_id, model_revision) with the prediction joined to its box score, from the nightly residual files and the replay; incremental by game date.
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, game_id, model_revision]
+    columns:
+      - { name: player_id, description: nba.com player id, data_tests: [not_null] }
+      - { name: game_id, description: game id, data_tests: [not_null] }
+      - { name: model_revision, description: model revision that scored the row, data_tests: [not_null] }
+      - { name: feature_version, description: feature module version }
+      - { name: run_kind, description: nightly or replay, data_tests: [{ accepted_values: { arguments: { values: [nightly, replay] } } }] }
+      - { name: game_date, description: date of the game }
+      - { name: season, description: season label of the game date }
+      - { name: player_name, description: player name at scoring time }
+      - { name: team, description: team the roster rule assigned }
+      - { name: opponent, description: opponent }
+      - { name: home, description: home flag }
+      - { name: pred_pts, description: predicted points }
+      - { name: pred_reb, description: predicted rebounds }
+      - { name: pred_ast, description: predicted assists }
+      - { name: actual_pts, description: actual points; null without a box score }
+      - { name: actual_reb, description: actual rebounds }
+      - { name: actual_ast, description: actual assists }
+      - { name: resid_pts, description: actual minus predicted points }
+      - { name: resid_reb, description: actual minus predicted rebounds }
+      - { name: resid_ast, description: actual minus predicted assists }
+      - { name: minutes, description: minutes played; null without a box score }
+      - { name: pts_mean_last10, description: last-10 baseline for points }
+      - { name: reb_mean_last10, description: last-10 baseline for rebounds }
+      - { name: ast_mean_last10, description: last-10 baseline for assists }
+      - { name: has_actual, description: true when the box score exists }
+      - { name: game_ingested, description: true when the game is in the stored logs }
+      - { name: in_metrics_population, description: the writer's training-population flag (minutes >= 10 and both baselines defined) }
+      - { name: dataset_revision, description: dataset revision the features were built from }
+      - { name: source_file, description: file the row came from }
+
+  - name: slv_daily_reports
+    description: One row per nightly ingest run date with the reconciliation counts against the stored game logs.
+    columns:
+      - { name: report_date, description: run date, data_tests: [unique, not_null] }
+      - { name: generated_at, description: when the report was written }
+      - { name: dataset_revision_before, description: dataset revision before the run }
+      - { name: dataset_revision_after, description: dataset revision after the run (same when nothing was pushed) }
+      - { name: stored_rows, description: rows stored before the run }
+      - { name: stored_max_game_date, description: newest stored game date }
+      - { name: window_start_exclusive, description: start of the re-read window }
+      - { name: window_rows_in_dump, description: dump rows inside the window }
+      - { name: window_rows_after_rules, description: rows left after the ingest rules }
+      - { name: dnp_dropped_in_window, description: did-not-play rows dropped in the window }
+      - { name: n_new, description: new rows }
+      - { name: n_changed, description: changed (restated) rows }
+      - { name: n_unchanged, description: unchanged rows }
+      - { name: n_changed_examples, description: changed examples kept in the report (at most 20) }
+      - { name: schedule_file, description: schedule file found for the run date's season }
+      - { name: pushed, description: whether the run pushed to the dataset repo }
+      - { name: source_file, description: report file }
+
+  - name: slv_restatements
+    description: One row per changed-row example in the daily ingest reports, with the restatement lag in days between the run date and the game date.
+    columns:
+      - { name: report_date, description: run date of the report }
+      - { name: player_id, description: player of the restated row }
+      - { name: game_id, description: game of the restated row }
+      - { name: game_date, description: date of the restated game }
+      - { name: player_name, description: player name }
+      - { name: restatement_lag_days, description: run date minus game date in days }
+      - { name: changed_fields, description: stored and incoming values per changed field, as JSON }
+      - { name: source_file, description: report file }

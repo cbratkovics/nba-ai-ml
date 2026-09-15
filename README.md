@@ -53,6 +53,7 @@ flowchart TB
 | Season replay | GitHub Actions, on dispatch | $0 | `reports/replay_2025-26.json`, `replay/2025-26/` |
 | Agent brief | GitHub Actions, Groq free tier | $0 | `brief/<date>.json`, `brief/latest.json`, trace |
 | Site | Vercel, fetch-only pages revalidated hourly | $0 | `/`, `/predictions`, `/replay`, `/brief` |
+| Warehouse (prototyped) | dbt Core + dbt-duckdb; MotherDuck `nba` from the nightly job, local DuckDB in CI and as the fallback | $0 | bronze/silver/gold marts, `gold/*.parquet` in the dataset repo, dbt docs on GitHub Pages |
 
 ## Results
 
@@ -69,6 +70,8 @@ Replay equivalence ([reports/replay_2025-26.json](reports/replay_2025-26.json)):
 **All rows (replay population).** On every replayed player-game with a box score and a last-10 baseline for every target (26,031 rows over the 164 dates; this includes games under 10 minutes) the last-10 mean has the lower MAE on every target: pts 4.679 vs 4.864, reb 1.939 vs 2.023, ast 1.374 vs 1.403 (row-weighted from [reports/replay_all_rows_2025-26.json](reports/replay_all_rows_2025-26.json), a committed copy of `replay/2025-26/daily_mae.json` at dataset-repo revision `6cbc915b`, keys `days[].model` and `days[].baseline_last10` weighted by `days[].n`; the site reads the derived `frontend/lib/all_rows_baseline.json`, which a test recomputes from that report; the model's all-rows MAE is also `mae_unrestricted` in the committed replay report). The model's edge exists only on the training population, and a committed policy evaluation covering both populations is the next artifact (see `AUDIT.md`, section 15).
 
 Provenance: [reports/provenance_b20b5601.json](reports/provenance_b20b5601.json) records the SHA-256 of every parquet file at dataset revision `b20b5601`, of the model files and `metrics.json` at HF revision `fb427de`, of the committed reports (including the all-rows file above), and of the replay products the site reads.
+
+Warehouse reconciliation (prototyped: built locally, not yet run in Actions; [docs/DECISIONS.md](docs/DECISIONS.md) ADR-0011): the gold marts recompute the replay's numbers from the residual rows and match `reports/replay_2025-26.json` and `reports/replay_all_rows_2025-26.json` to within 1e-14 with exact row counts, and `reports/metrics.json` to within 0.0022 (the replay never slated 169 of the 22,244 holdout rows). `dbt build`: 24 models, 3 seeds, 1 snapshot, 53 tests.
 
 Agent evals ([reports/agent_evals.json](reports/agent_evals.json), [reports/agent_pass_rates.json](reports/agent_pass_rates.json)), model `openai/gpt-oss-120b`:
 
@@ -90,6 +93,8 @@ python -m nba.storage.hf pull-dataset          # game logs from the HF dataset r
 python -m nba.models.train                     # writes reports/metrics.json
 python -m nba.nightly --date 2026-04-12        # ingest, slate, residuals, brief for one date
 python -m nba.agent.loop --date 2026-04-12     # brief only; needs GROQ_API_KEY
+
+make dbt-load && make dbt-full && make dbt-docs   # warehouse on a local DuckDB file (dbt/, ADR-0003..0014)
 ```
 
 LightGBM needs OpenMP at runtime (`brew install libomp` on macOS). Secrets used by the workflows: `HF_TOKEN`, `KAGGLE_USERNAME`, `KAGGLE_KEY`, `GROQ_API_KEY`. Repo ids, the model identity (`MODEL_COMMIT`, `MODEL_REVISION`), the dataset revision, and thresholds live in `nba/config.py`. The dataset and model cards are rendered from that config (`python -m nba.storage.dataset_card`, `python -m nba.models.publish --card-only`); their canonical copies are `docs/DATASET_CARD.md` and `docs/MODEL_CARD.md`.
@@ -130,11 +135,12 @@ nba/
   agent/             tools, loop, evals, pass_rates
   nightly.py         ingest -> slate -> residuals -> brief for one date
 frontend/            Next.js pages over the published files
-docs/                reconciliation.md, agent.md, DATASET_CARD.md, MODEL_CARD.md
+dbt/                 medallion warehouse (bronze/silver/gold, snapshot, seeds, tests, docs overview)
+docs/                reconciliation.md, agent.md, DECISIONS.md, DATASET_CARD.md, MODEL_CARD.md
 reports/             metrics, replay, provenance, agent evals, golden set, pass rates
 AUDIT.md             read-only audit before the template pass (2026-09-15)
 tests/               unit tests and recorded agent traces
-.github/workflows/   ci, nightly, train, replay, agent, agent-eval, probe-nba-api
+.github/workflows/   ci (lint, tests, dbt slim CI, docs to Pages), nightly (+ warehouse step), warehouse (weekly full refresh), train, replay, agent, agent-eval, probe-nba-api
 ```
 
 </details>

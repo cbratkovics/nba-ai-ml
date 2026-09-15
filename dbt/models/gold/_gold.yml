@@ -1,0 +1,233 @@
+version: 2
+
+# Gold = the product. Every model has an enforced contract, a description per column and tests.
+# The nightly job exports these tables (macro export_gold) and pushes them to the dataset repo.
+models:
+  - name: dim_player_current
+    description: One row per player, the current version of the snp_player_team snapshot (team of the most recent game as of the last build). Not exported.
+    config:
+      contract: { enforced: true }
+    columns:
+      - { name: player_id, data_type: bigint, description: nba.com player id, data_tests: [unique, not_null] }
+      - { name: player_name, data_type: varchar, description: name on the most recent game }
+      - { name: team, data_type: varchar, description: team of the most recent game }
+      - { name: as_of_game_date, data_type: date, description: date of the game the version was derived from }
+      - { name: as_of_game_id, data_type: varchar, description: id of the game the version was derived from }
+      - { name: version_valid_from_utc, data_type: timestamp, description: capture timestamp }
+
+  - name: dim_player_asof
+    description: One row per (player_id, stint_no), the runs of consecutive games a player played for one team, with the dates the stint is effective for the roster rule (team of the most recent game strictly before a date). Answers "which team was this player on as of date D" for the whole history.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, stint_no]
+    columns:
+      - { name: player_id, data_type: bigint, description: nba.com player id, constraints: [{ type: not_null }] }
+      - { name: stint_no, data_type: integer, description: 1-based stint number in date order, constraints: [{ type: not_null }] }
+      - { name: team, data_type: varchar, description: team of the stint, constraints: [{ type: not_null }] }
+      - { name: player_name, data_type: varchar, description: player name during the stint }
+      - { name: first_game_date, data_type: date, description: first game of the stint }
+      - { name: first_game_id, data_type: varchar, description: id of the first game of the stint }
+      - { name: last_game_date, data_type: date, description: last game of the stint }
+      - { name: games, data_type: integer, description: games in the stint }
+      - { name: effective_from_date, data_type: date, description: the stint applies to dates strictly after this date (its first game) }
+      - { name: effective_to_date, data_type: date, description: the stint applies to dates up to and including this date (the next stint's first game); null for the current stint }
+      - { name: is_current, data_type: boolean, description: true for the player's latest stint, constraints: [{ type: not_null }] }
+
+  - name: dim_game
+    description: One row per game with date, season, both teams, player counts and the Cup-final flag (always false; the ingest excludes the final).
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [game_id]
+    columns:
+      - { name: game_id, data_type: varchar, description: ten-character nba.com game id, constraints: [{ type: not_null }], data_tests: [unique] }
+      - { name: game_date, data_type: date, description: game date, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: home_team, data_type: varchar, description: home team abbreviation }
+      - { name: away_team, data_type: varchar, description: away team abbreviation }
+      - { name: n_players, data_type: integer, description: players with a box score in the game, data_tests: [{ accepted_range: { arguments: { min_value: 13, max_value: 30 } } }] }
+      - { name: n_home_players, data_type: integer, description: home players with a box score }
+      - { name: n_away_players, data_type: integer, description: away players with a box score }
+      - { name: home_pts, data_type: integer, description: home team points summed from player rows }
+      - { name: away_pts, data_type: integer, description: away team points summed from player rows }
+      - { name: is_cup_final, data_type: boolean, description: game id with season-type code 006 (the NBA Cup final, excluded from the regular season), data_tests: [{ accepted_values: { arguments: { values: [false] } } }] }
+
+  - name: dim_team
+    description: One row per (team, season) with coverage counts; abbreviations as stored for the season.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [team, season]
+    columns:
+      - { name: team, data_type: varchar, description: team abbreviation, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: games, data_type: integer, description: distinct games with a player row }
+      - { name: players, data_type: integer, description: distinct players }
+      - { name: player_games, data_type: integer, description: player rows }
+      - { name: first_game_date, data_type: date, description: first game of the season }
+      - { name: last_game_date, data_type: date, description: last game of the season }
+
+  - name: fct_player_game
+    description: One row per (player_id, game_id) box score with history counts and the population the row belongs to (min10 = training population, all = every other row).
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [player_id, game_id]
+    columns:
+      - { name: player_id, data_type: bigint, description: nba.com player id, constraints: [{ type: not_null }] }
+      - { name: game_id, data_type: varchar, description: game id, constraints: [{ type: not_null }], data_tests: [{ relationships: { arguments: { to: ref('dim_game'), field: game_id } } }] }
+      - { name: game_date, data_type: date, description: game date, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: player_name, data_type: varchar, description: player name }
+      - { name: team, data_type: varchar, description: team abbreviation }
+      - { name: opponent, data_type: varchar, description: opponent abbreviation }
+      - { name: home, data_type: boolean, description: home flag }
+      - { name: minutes, data_type: double, description: minutes played }
+      - { name: pts, data_type: integer, description: points }
+      - { name: reb, data_type: integer, description: rebounds }
+      - { name: ast, data_type: integer, description: assists }
+      - { name: fgm, data_type: integer, description: field goals made }
+      - { name: fga, data_type: integer, description: field goals attempted }
+      - { name: fg3m, data_type: integer, description: threes made }
+      - { name: fg3a, data_type: integer, description: threes attempted }
+      - { name: ftm, data_type: integer, description: free throws made }
+      - { name: fta, data_type: integer, description: free throws attempted }
+      - { name: oreb, data_type: integer, description: offensive rebounds }
+      - { name: dreb, data_type: integer, description: defensive rebounds }
+      - { name: stl, data_type: integer, description: steals }
+      - { name: blk, data_type: integer, description: blocks }
+      - { name: tov, data_type: integer, description: turnovers }
+      - { name: pf, data_type: integer, description: fouls }
+      - { name: plus_minus, data_type: integer, description: plus/minus }
+      - { name: source, data_type: varchar, description: ingest that produced the row }
+      - { name: dataset_revision, data_type: varchar, description: dataset-repo revision of the load }
+      - { name: prior_games, data_type: integer, description: the player's earlier games in the warehouse }
+      - { name: prior_games_season, data_type: integer, description: the player's earlier games in the same season }
+      - { name: population, data_type: varchar, description: min10 (training population) or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
+
+  - name: fct_prediction
+    description: One row per (player_id, game_id, model_revision) prediction with its box score when known, absolute errors of the model and of the last-10 baseline, and the population.
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [player_id, game_id, model_revision]
+    columns:
+      - { name: player_id, data_type: bigint, description: nba.com player id, constraints: [{ type: not_null }] }
+      - { name: game_id, data_type: varchar, description: game id, constraints: [{ type: not_null }] }
+      - { name: model_revision, data_type: varchar, description: model revision that scored the row, constraints: [{ type: not_null }] }
+      - { name: feature_version, data_type: varchar, description: feature module version, constraints: [{ type: not_null }] }
+      - { name: dataset_revision, data_type: varchar, description: dataset revision the features were built from }
+      - { name: run_kind, data_type: varchar, description: nightly or replay, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [nightly, replay] } } }] }
+      - { name: game_date, data_type: date, description: game date, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label }
+      - { name: player_name, data_type: varchar, description: player name }
+      - { name: team, data_type: varchar, description: team the roster rule assigned }
+      - { name: opponent, data_type: varchar, description: opponent }
+      - { name: home, data_type: boolean, description: home flag }
+      - { name: pred_pts, data_type: double, description: predicted points, constraints: [{ type: not_null }] }
+      - { name: pred_reb, data_type: double, description: predicted rebounds, constraints: [{ type: not_null }] }
+      - { name: pred_ast, data_type: double, description: predicted assists, constraints: [{ type: not_null }] }
+      - { name: baseline_last10_pts, data_type: double, description: last-10 mean of points at scoring time }
+      - { name: baseline_last10_reb, data_type: double, description: last-10 mean of rebounds }
+      - { name: baseline_last10_ast, data_type: double, description: last-10 mean of assists }
+      - { name: actual_pts, data_type: double, description: actual points; null without a box score }
+      - { name: actual_reb, data_type: double, description: actual rebounds }
+      - { name: actual_ast, data_type: double, description: actual assists }
+      - { name: minutes, data_type: double, description: minutes played }
+      - { name: has_actual, data_type: boolean, description: box score exists, constraints: [{ type: not_null }] }
+      - { name: baseline_defined, data_type: boolean, description: last-10 baseline defined for every target, constraints: [{ type: not_null }] }
+      - { name: in_metrics_population, data_type: boolean, description: the writer's training-population flag, constraints: [{ type: not_null }] }
+      - { name: population, data_type: varchar, description: min10 (training population) or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
+      - { name: abs_error_pts, data_type: double, description: "|actual - predicted| points" }
+      - { name: abs_error_reb, data_type: double, description: "|actual - predicted| rebounds" }
+      - { name: abs_error_ast, data_type: double, description: "|actual - predicted| assists" }
+      - { name: baseline_abs_error_pts, data_type: double, description: "|actual - last-10 mean| points" }
+      - { name: baseline_abs_error_reb, data_type: double, description: "|actual - last-10 mean| rebounds" }
+      - { name: baseline_abs_error_ast, data_type: double, description: "|actual - last-10 mean| assists" }
+
+  - name: mart_holdout_metrics
+    description: One row per (season, run_kind, model_revision, population, target) with model and last-10 baseline MAE recomputed from fct_prediction; reconciles to the committed reports (ADR-0011).
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, run_kind, model_revision, population, target]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: run_kind, data_type: varchar, description: nightly or replay, constraints: [{ type: not_null }] }
+      - { name: model_revision, data_type: varchar, description: model revision, constraints: [{ type: not_null }] }
+      - { name: feature_version, data_type: varchar, description: feature module version }
+      - { name: dataset_revision, data_type: varchar, description: dataset revision }
+      - { name: population, data_type: varchar, description: min10 or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
+      - { name: target, data_type: varchar, description: pts, reb or ast, constraints: [{ type: not_null }] }
+      - { name: n, data_type: integer, description: rows scored, constraints: [{ type: not_null }] }
+      - { name: model_mae, data_type: double, description: model mean absolute error }
+      - { name: model_rmse, data_type: double, description: model root mean squared error }
+      - { name: baseline_last10_mae, data_type: double, description: last-10 baseline mean absolute error }
+      - { name: model_minus_baseline_mae, data_type: double, description: model MAE minus baseline MAE (negative = model better) }
+
+  - name: mart_daily_metrics
+    description: One row per (season, run_kind, model_revision, game_date, population, target) with the daily model and baseline MAE; the replay all-rows rows reconcile to reports/replay_all_rows_<season>.json.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, run_kind, model_revision, game_date, population, target]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: run_kind, data_type: varchar, description: nightly or replay, constraints: [{ type: not_null }] }
+      - { name: model_revision, data_type: varchar, description: model revision, constraints: [{ type: not_null }] }
+      - { name: feature_version, data_type: varchar, description: feature module version }
+      - { name: game_date, data_type: date, description: game date, constraints: [{ type: not_null }] }
+      - { name: population, data_type: varchar, description: min10 or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
+      - { name: target, data_type: varchar, description: pts, reb or ast, constraints: [{ type: not_null }] }
+      - { name: n, data_type: integer, description: rows scored on the date, constraints: [{ type: not_null }] }
+      - { name: model_mae, data_type: double, description: model mean absolute error }
+      - { name: baseline_last10_mae, data_type: double, description: last-10 baseline mean absolute error }
+
+  - name: mart_season_coverage
+    description: One row per season against the season contract (1,230 games unless the season_exceptions seed declares a documented shortfall), with players-per-game range and row counts.
+    config:
+      contract: { enforced: true }
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }], data_tests: [unique] }
+      - { name: games, data_type: integer, description: distinct games in the warehouse }
+      - { name: games_expected, data_type: integer, description: games in a full regular season }
+      - { name: games_declared, data_type: integer, description: games the contract requires for this season }
+      - { name: meets_contract, data_type: boolean, description: games equals games_declared }
+      - { name: missing_games_listed, data_type: integer, description: games listed in the known_missing_games seed }
+      - { name: exception_reason, data_type: varchar, description: reason from the season_exceptions seed }
+      - { name: cup_finals, data_type: integer, description: Cup finals present (must be 0) }
+      - { name: players_per_game_min, data_type: integer, description: fewest players with a box score in a game }
+      - { name: players_per_game_max, data_type: integer, description: most players with a box score in a game }
+      - { name: player_games, data_type: integer, description: player rows }
+      - { name: players, data_type: integer, description: distinct players }
+      - { name: first_game_date, data_type: date, description: first game date }
+      - { name: last_game_date, data_type: date, description: last game date }
+
+  - name: mart_restatement_lag
+    description: One row per nightly ingest run date with the number of restated rows and the maximum and percentile restatement lag in days, against the silver lookback (ADR-0008).
+    config:
+      contract: { enforced: true }
+    columns:
+      - { name: report_date, data_type: date, description: run date, constraints: [{ type: not_null }], data_tests: [unique] }
+      - { name: n_changed, data_type: integer, description: restated rows in the run }
+      - { name: n_new, data_type: integer, description: new rows in the run }
+      - { name: n_examples, data_type: integer, description: changed examples the report kept }
+      - { name: max_lag_days, data_type: integer, description: largest run-date-minus-game-date among the examples }
+      - { name: p50_lag_days, data_type: double, description: median lag }
+      - { name: p90_lag_days, data_type: double, description: 90th percentile lag }
+      - { name: lookback_days, data_type: integer, description: the silver incremental lookback }
+      - { name: within_lookback, data_type: boolean, description: max lag within the lookback (true when nothing was restated) }
+      - { name: stored_max_game_date, data_type: date, description: newest stored game date at the run }
+      - { name: window_start_exclusive, data_type: date, description: start of the ingest's re-read window }

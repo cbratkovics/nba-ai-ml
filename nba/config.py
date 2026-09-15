@@ -107,6 +107,8 @@ HF_DAILY_REPORTS_PREFIX: str = "daily_reports"
 # Analyst-agent briefs: brief/<date>.json, brief/<date>.trace.json, latest.json, index.json.
 BRIEF_DIR: Path = Path("brief")
 HF_BRIEF_PREFIX: str = "brief"
+# Exported gold marts from the warehouse: gold/<mart>.parquet, gold/_export_manifest.json.
+HF_GOLD_PREFIX: str = "gold"
 
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"

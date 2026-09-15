@@ -1,0 +1,74 @@
+version: 2
+
+# Every source is a file the pipeline already publishes: the Hugging Face dataset repo's
+# parquet/JSON products, pulled by `python -m nba.warehouse.load` into var('warehouse_root'),
+# and the committed reports under var('reports_root'). dbt-duckdb reads them in place through
+# external_location; bronze models copy them into typed warehouse tables so silver and gold
+# never touch files. Paths are relative to the repository root; run dbt from there.
+sources:
+  - name: warehouse_files
+    description: >
+      Files pulled from the Hugging Face dataset repo cbratkovics/nba-game-logs at one
+      revision by the warehouse loader (data/warehouse/, git-ignored): per-season game logs,
+      nightly predictions and residuals, daily ingest reports, and the holdout-season replay
+      residuals. load_manifest.json records the revision.
+    loader: python -m nba.warehouse.load
+    meta:
+      owner: Christopher Bratkovics
+    tables:
+      - name: game_logs
+        description: game_logs/game_logs_<season>.parquet, one file per season; one row per (player_id, game_id) who played.
+        meta:
+          formatter: template
+          external_location: "read_parquet('{{ var('warehouse_root') }}/game_logs/game_logs_*.parquet', filename = true, union_by_name = true)"
+        columns:
+          - { name: player_id, description: nba.com player id }
+          - { name: game_id, description: ten-character nba.com game id }
+          - { name: game_date, description: game date }
+      - name: predictions
+        description: predictions/<date>.parquet, the nightly slate per date (empty until the first in-season run).
+        meta:
+          formatter: template
+          external_location: "read_parquet('{{ var('warehouse_root') }}/predictions/*.parquet', filename = true, union_by_name = true)"
+      - name: residuals
+        description: residuals/<date>.parquet, the nightly residuals per date (empty until the first in-season run).
+        meta:
+          formatter: template
+          external_location: "read_parquet('{{ var('warehouse_root') }}/residuals/*.parquet', filename = true, union_by_name = true)"
+      - name: replay_residuals
+        description: replay/<season>/residuals/<date>.parquet, one file per replayed date of the holdout season, in the nightly residual layout.
+        meta:
+          formatter: template
+          external_location: "read_parquet('{{ var('warehouse_root') }}/replay/*/residuals/*.parquet', filename = true, union_by_name = true)"
+      - name: daily_reports
+        description: daily_reports/<date>.json, the nightly ingest reconciliation report per run date.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('warehouse_root') }}/daily_reports/*.json', filename = true, union_by_name = true)"
+      - name: load_manifest
+        description: load_manifest.json written by the loader, with the dataset revision and file counts of this load.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('warehouse_root') }}/load_manifest.json', filename = true)"
+
+  - name: repo_reports
+    description: The committed evaluation reports under reports/; the published numbers come from these files and the gold marts must reconcile to them.
+    loader: git (reports/*.json, committed by hand from Actions artifacts)
+    meta:
+      owner: Christopher Bratkovics
+    tables:
+      - name: metrics_json
+        description: reports/metrics.json, the holdout evaluation of the published model on the training population.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('reports_root') }}/metrics.json', filename = true)"
+      - name: replay_report
+        description: reports/replay_<season>.json, the season replay of the nightly slate path with restricted and unrestricted MAE.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('reports_root') }}/replay_{{ var('holdout_season') }}.json', filename = true)"
+      - name: replay_all_rows
+        description: reports/replay_all_rows_<season>.json, per replayed date the model and last-10 baseline MAE on every row with a box score.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('reports_root') }}/replay_all_rows_{{ var('holdout_season') }}.json', filename = true)"

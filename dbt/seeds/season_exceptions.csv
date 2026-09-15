@@ -1,0 +1,2 @@
+season,games_expected,games_declared,reason,source
+2024-25,1230,1223,seven regular-season games have no box-score rows in the Kaggle dump (postponed and never re-captured upstream); not filled from any other source,docs/reconciliation.md finding 7
