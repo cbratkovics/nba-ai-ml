@@ -72,6 +72,8 @@ data/cache/
 !package.json
 !tsconfig.json
 !package-lock.json
+# Derived from reports/replay_all_rows_<season>.json; checked by tests/test_all_rows_baseline.py.
+!frontend/lib/all_rows_baseline.json
 
 # Logs
 logs/
@@ -125,6 +127,8 @@ reports/*
 !reports/replay_*.json
 !reports/agent_*.json
 !reports/provenance_*.json
+# The all-rows replay baseline the site shows (already matched by replay_*; explicit on purpose).
+!reports/replay_all_rows_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git.

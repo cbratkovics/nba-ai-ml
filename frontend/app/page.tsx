@@ -1,16 +1,15 @@
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import {
+  ALL_ROWS_BASELINE,
   LINKS,
   POPULATION,
   REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
   getMetricsReport,
-  getReplayDaily,
   getReplaySummary,
   modelIdentity,
-  rowWeightedMae,
 } from '@/lib/data'
 
 export const revalidate = 3600
@@ -22,18 +21,12 @@ const PREDICTORS = [
 ] as const
 
 export default async function HomePage() {
-  const [metrics, replay, daily] = await Promise.all([
-    getMetricsReport(),
-    getReplaySummary(),
-    getReplayDaily(),
-  ])
+  const [metrics, replay] = await Promise.all([getMetricsReport(), getReplaySummary()])
   const m = metrics.data
   const r = replay.data
-  const d = daily.data
-  const allRows = d ? rowWeightedMae(d.days) : null
-  const baselineWins = allRows
-    ? TARGETS.filter((t) => allRows.baseline[t] !== null && allRows.model[t] !== null && allRows.baseline[t]! < allRows.model[t]!)
-    : []
+  const allRows = { n: ALL_ROWS_BASELINE.n, model: ALL_ROWS_BASELINE.model_mae, baseline: ALL_ROWS_BASELINE.baseline_last10_mae }
+  const d = ALL_ROWS_BASELINE
+  const baselineWins = ALL_ROWS_BASELINE.baseline_wins
 
   return (
     <div className="space-y-8">
@@ -127,12 +120,12 @@ export default async function HomePage() {
 
       <section className="glass-card p-8">
         <h2 className="text-xl font-semibold text-text-primary">All rows (replay population)</h2>
-        {allRows && d ? (
+        {allRows.n > 0 ? (
           <>
             <p className="mt-2 text-sm text-text-secondary">
               The same model and the last-10-game baseline on {POPULATION.allRows}:{' '}
               {allRows.n.toLocaleString()} rows over {d.n_dates} game dates of {d.season}, row-weighted from the
-              replay&apos;s daily MAE file. This population is wider than the headline one (it includes
+              committed copy of the replay&apos;s daily MAE file. This population is wider than the headline one (it includes
               games under 10 minutes), and on it{' '}
               {baselineWins.length === TARGETS.length
                 ? 'the last-10 baseline has the lower MAE on every target'
@@ -174,14 +167,13 @@ export default async function HomePage() {
               </table>
             </div>
             <p className="mt-3 text-xs text-text-secondary">
-              Population: {POPULATION.allRows}. Source: replay/{d.season}/daily_mae.json in the dataset repo;
-              the same file drives the <Link href="/replay" className="text-secondary hover:underline">replay page</Link>.
+              Population: {POPULATION.allRows}. Source: {d.source_file} in the repository, a committed copy of
+              the replay&apos;s daily MAE file in the dataset repo; the same numbers drive the{' '}
+              <Link href="/replay" className="text-secondary hover:underline">replay page</Link>.
             </p>
           </>
         ) : (
-          <p className="mt-2 text-text-secondary">
-            The replay daily file is not published at {daily.url} (HTTP {daily.status}).
-          </p>
+          <p className="mt-2 text-text-secondary">The all-rows baseline report is empty.</p>
         )}
       </section>
 

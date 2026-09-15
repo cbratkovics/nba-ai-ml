@@ -33,6 +33,7 @@ from nba import config
 REPORT_FILES: tuple[str, ...] = (
     "reports/metrics.json",
     "reports/replay_2025-26.json",
+    "reports/replay_all_rows_2025-26.json",
     "reports/agent_evals.json",
     "reports/agent_golden.json",
     "reports/agent_pass_rates.json",
@@ -114,12 +115,16 @@ def build(
 
     metrics_committed = reports.get("reports/metrics.json", {}).get("sha256")
     replay_committed = reports.get("reports/replay_2025-26.json", {}).get("sha256")
+    all_rows_committed = reports.get("reports/replay_all_rows_2025-26.json", {}).get("sha256")
     checks = {
         "model_repo_metrics_json_equals_committed": (
             model_files["metrics.json"]["sha256"] == metrics_committed
         ),
         "hub_replay_json_equals_committed_report": (
             hub_products["replay/2025-26/replay.json"]["sha256"] == replay_committed
+        ),
+        "hub_daily_mae_equals_committed_all_rows_report": (
+            hub_products["replay/2025-26/daily_mae.json"]["sha256"] == all_rows_committed
         ),
         "all_parquet_match_hub_lfs_sha256": all(
             v["matches_hub_lfs_sha256"] for v in dataset_files.values()

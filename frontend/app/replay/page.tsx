@@ -2,14 +2,13 @@ import ReplayChart from '@/components/ReplayChart'
 import SampleTable from '@/components/SampleTable'
 import Link from 'next/link'
 import {
-  POPULATION,
+  ALL_ROWS_BASELINE,
   REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
   getReplayDaily,
   getReplaySample,
   modelIdentity,
-  rowWeightedMae,
 } from '@/lib/data'
 
 export const revalidate = 3600
@@ -20,10 +19,9 @@ export default async function ReplayPage() {
   const sample = d?.sample_date ? await getReplaySample(d.sample_date) : null
   const s = sample?.data ?? null
 
-  const season = d ? rowWeightedMae(d.days) : null
-  const baselineWins = season
-    ? TARGETS.filter((t) => season.baseline[t] !== null && season.model[t] !== null && season.baseline[t]! < season.model[t]!)
-    : []
+  // Season numbers come from the committed report, not from the fetched daily file.
+  const season = { n: ALL_ROWS_BASELINE.n, model: ALL_ROWS_BASELINE.model_mae, baseline: ALL_ROWS_BASELINE.baseline_last10_mae }
+  const baselineWins = ALL_ROWS_BASELINE.baseline_wins
 
   return (
     <div className="space-y-8">
@@ -35,7 +33,7 @@ export default async function ReplayPage() {
               Daily mean absolute error of the model and of the last-10-game baseline, replaying
               the nightly slate for {d.n_dates} game dates from {d.first_date} to {d.last_date}{' '}
               using only games played before each date. Population: {d.population}
-              {season ? ` (${season.n.toLocaleString()} rows)` : ''}. This is the all-rows population, not the
+              {` (${season.n.toLocaleString()} rows)`}. This is the all-rows population, not the
               training population behind the{' '}
               <Link href="/" className="text-secondary hover:underline">
                 headline holdout table
@@ -50,8 +48,8 @@ export default async function ReplayPage() {
             </p>
             <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
               {TARGETS.map((t) => {
-                const model = season ? season.model[t] : null
-                const base = season ? season.baseline[t] : null
+                const model = season.model[t]
+                const base = season.baseline[t]
                 return (
                   <div key={t} className="rounded-lg bg-white/5 p-3">
                     <div className="text-xs uppercase tracking-wide text-text-secondary">
@@ -65,6 +63,10 @@ export default async function ReplayPage() {
                 )
               })}
             </div>
+            <p className="mt-3 text-xs text-text-secondary">
+              The season figures above come from the committed copy of this daily file in the repository (the
+              all-rows replay report cited on the overview); the chart below reads the published copy.
+            </p>
             <div className="mt-6">
               <ReplayChart days={d.days} />
             </div>

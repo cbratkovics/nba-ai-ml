@@ -33,6 +33,7 @@ def test_build_hashes_every_input(tmp_path: Path) -> None:
     (repo_root / "reports").mkdir(parents=True)
     (repo_root / "reports" / "metrics.json").write_bytes(b"model metrics.json")
     (repo_root / "reports" / "replay_2025-26.json").write_bytes(b"{}")
+    (repo_root / "reports" / "replay_all_rows_2025-26.json").write_bytes(b"{}")
 
     lfs = {
         rel: provenance.sha256_of(path)
@@ -59,6 +60,7 @@ def test_build_hashes_every_input(tmp_path: Path) -> None:
     assert report["checks"] == {
         "model_repo_metrics_json_equals_committed": True,
         "hub_replay_json_equals_committed_report": True,
+        "hub_daily_mae_equals_committed_all_rows_report": True,
         "all_parquet_match_hub_lfs_sha256": True,
     }
     assert report["hub_products"]["replay/2025-26/replay.json"]["revision"] == "mainsha"
@@ -75,7 +77,12 @@ def test_committed_provenance_is_consistent_with_config_and_reports() -> None:
     assert set(report["dataset"]["files"]) == {
         f"{config.HF_DATASET_PREFIX}/game_logs_{s}.parquet" for s in config.SEASONS
     }
-    for rel in ("reports/metrics.json", "reports/replay_2025-26.json"):
+    for rel in (
+        "reports/metrics.json",
+        "reports/replay_2025-26.json",
+        "reports/replay_all_rows_2025-26.json",
+    ):
         assert report["reports"][rel]["sha256"] == provenance.sha256_of(ROOT / rel), rel
     assert report["checks"]["all_parquet_match_hub_lfs_sha256"] is True
     assert report["checks"]["model_repo_metrics_json_equals_committed"] is True
+    assert report["checks"]["hub_daily_mae_equals_committed_all_rows_report"] is True

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-15T23:02:32+00:00",
-  "git_sha": "3fb19bcc82b89a6d909bd3a69d1433e99112c17d",
+  "generated_at": "2026-09-15T23:24:14+00:00",
+  "git_sha": "d269525e5f8fe255d3ad8384729d7830a4c0697f",
   "model_identity": "commit 50a3b2e / HF fb427de",
   "dataset": {
     "repo": "cbratkovics/nba-game-logs",
@@ -70,6 +70,10 @@
       "sha256": "8c95feb5b06b3fffda509001b5308f6284daed8755a57292345fb4290fc7cf84",
       "bytes": 20079
     },
+    "reports/replay_all_rows_2025-26.json": {
+      "sha256": "16f27585a8eff80a72fd5d399302ef757cb159c30aad74ca4733d542ee310a42",
+      "bytes": 53070
+    },
     "reports/agent_evals.json": {
       "sha256": "ec28b6db26d805f5d913300272f29c2eb11696b186fab7944b4c2183eb46c752",
       "bytes": 2803
@@ -98,6 +102,7 @@
   "checks": {
     "model_repo_metrics_json_equals_committed": true,
     "hub_replay_json_equals_committed_report": false,
+    "hub_daily_mae_equals_committed_all_rows_report": true,
     "all_parquet_match_hub_lfs_sha256": true
   }
 }

@@ -104,7 +104,19 @@ A row is DNP when `numMinutes` is null or 0, or when `comment` is populated
 (`DNP - Coach's Decision`, injury notes, and similar). DNP rows are dropped and
 counted per season (table above); 29,585 in total across the five seasons.
 
-### 9. Other observations
+### 9. An 83-point box score is genuine
+
+`PlayerStatistics.csv` records Bam Adebayo (player id `1628389`, MIA vs WAS, game
+`0022500938`, 2026-03-10) with 41.54 minutes, 83 points, 9 rebounds and 3 assists: the
+season maximum, the largest points residual of the replay (predicted 20.47) and the
+`2026-03-10` golden-set case for the analyst agent. Verified 2026-09-15 from a local machine
+(GitHub runners cannot reach nba.com) with `nba_api` endpoint `boxscoretraditionalv3` for
+game `0022500938`: Adebayo MIA, 41:54, 83 pts, 9 reb, 3 ast. The row stands. The warehouse
+carries a plausibility warning for box scores above 70 points, 30 rebounds or 25 assists
+with this game listed as a known exception, so the warning cites the verification instead
+of reopening it.
+
+### 10. Other observations
 
 - `gameDate` is `YYYY-MM-DD HH:MM:SS` and parsed with `format="ISO8601"`; it is empty
   on some non-NBA rows, which fall before the 2021-10-01 cutoff and are skipped.

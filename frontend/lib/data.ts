@@ -7,6 +7,8 @@
  * normal state before the season starts and is returned as `null`, never faked.
  */
 
+import allRowsBaseline from './all_rows_baseline.json'
+
 export const DATASET_REPO = 'cbratkovics/nba-game-logs'
 export const MODEL_REPO = 'cbratkovics/nba-stat-predictor'
 /**
@@ -160,23 +162,26 @@ export interface ReplayDay {
   baseline_last10: Record<Target, number>
 }
 
-/** Row-weighted season MAE of the model and the last-10 baseline over the replayed days. */
-export function rowWeightedMae(days: ReplayDay[]): {
+/**
+ * The all-rows season comparison, from the committed report
+ * reports/replay_all_rows_<season>.json (a copy of the replay's daily MAE file), derived by
+ * `python -m nba.models.evaluate all-rows` and checked against that report by a test. The
+ * pages import this file; they never compute the headline all-rows numbers from a fetch.
+ */
+export interface AllRowsBaseline {
+  season: string
+  population: string
+  source_file: string
+  source_sha256: string
+  n_dates: number
+  first_date: string | null
+  last_date: string | null
   n: number
-  model: Record<Target, number | null>
-  baseline: Record<Target, number | null>
-} {
-  const n = days.reduce((acc, d) => acc + d.n, 0)
-  const mean = (pick: (d: ReplayDay) => number) =>
-    n ? days.reduce((acc, d) => acc + pick(d) * d.n, 0) / n : null
-  const model = {} as Record<Target, number | null>
-  const baseline = {} as Record<Target, number | null>
-  for (const t of TARGETS) {
-    model[t] = mean((d) => d.model[t])
-    baseline[t] = mean((d) => d.baseline_last10[t])
-  }
-  return { n, model, baseline }
+  model_mae: Record<Target, number | null>
+  baseline_last10_mae: Record<Target, number | null>
+  baseline_wins: Target[]
 }
+export const ALL_ROWS_BASELINE = allRowsBaseline as AllRowsBaseline
 
 export interface ReplayDaily {
   season: string
