@@ -337,7 +337,7 @@ Hard-coded strings that would break on a second domain: team abbreviations (`SAN
 
 ## 15. Discrepancies
 
-Items 1–6 were reported by the owner; 7–9 were added by this audit.
+Items 1–6 were reported by the owner; 7–9 were added by this audit; 10 was found during the template pass.
 
 1. **`/replay` population vs headline.** `/replay` computes row-weighted season MAE from
    `daily_mae.json` on 26,031 rows (all replayed rows with actuals and a last-10 baseline);
@@ -367,4 +367,14 @@ Items 1–6 were reported by the owner; 7–9 were added by this audit.
 7. **Committed replay report vs the HF copy the site reads** are different runs with
    identical numbers (section 6). Recorded in the provenance file.
 8. **`agent_pass_rates.json` embeds the Groq organisation id** in error strings.
-9. **Freshness counts playoff rows** in the dump as "newest game" (section 4).
+9. **Freshness counts playoff rows** in the dump as "newest game" (section 4). *Fixed in
+   Phase 4:* the tool applies the backfill's regular-season rules before taking the newest
+   date (ADR-0019).
+10. **The agent traces were never tracked** (found 2026-09-16 during Phase 4, fixed in
+    `3874a29`). `tests/traces/*.trace.json` matched the repo's `*.json` ignore, so the six
+    traces recorded on 2026-09-12 existed only on the machine that recorded them; the
+    README and docs/agent.md grounding claim ("6 of 6 briefs" on "the committed traces") was
+    backed by files the repository did not hold, and `test_committed_traces_replay_cleanly`
+    returned without asserting on an empty folder, so CI never replayed a trace. The traces
+    are re-included and committed (re-recorded under the version-2 golden set), the test
+    fails on an empty folder, and CI replays them on every run (ADR-0021).

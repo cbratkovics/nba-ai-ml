@@ -15,8 +15,6 @@ dependencies = [
     "scikit-learn==1.9.1",
     "lightgbm==4.7.0",
     "huggingface_hub==1.31.0",
-    "nba_api==1.11.4",
-    "pyyaml==6.0.3",
     "python-dotenv==1.2.3",
     "requests==2.34.2",
     "groq==1.7.0",

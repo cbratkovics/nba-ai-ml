@@ -130,8 +130,12 @@ def test_committed_traces_replay_cleanly() -> None:
     traces_dir = evals.TRACES_DIR
     golden = evals.load_golden()
     paths = sorted(traces_dir.glob("*.trace.json")) if traces_dir.exists() else []
-    if not paths:
-        return  # no live traces recorded yet
+    # ADR-0021: an empty folder is a failure, never a skip; the traces are committed and
+    # this is what CI replays.
+    assert paths, f"no traces under {traces_dir}; the committed traces are missing"
+    assert {p.name for p in paths} >= {f"{d}.trace.json" for d in golden}, (
+        "every golden date needs a committed trace"
+    )
     for path in paths:
         text = path.read_text()
         assert "gsk_" not in text, f"{path} contains a key-like string"

@@ -390,3 +390,20 @@ counts each fact separately. The system prompt requires one `decision_policy` an
 they were made under; a date measured under an older version is incomplete for the
 spreader (`agent-eval.yml`), which re-measures it, and the README row says how many are
 stale until then.
+
+## ADR-0021 — The agent traces are committed and replayed in CI (implemented, Phase 5)
+
+Found 2026-09-16 during Phase 4: `tests/traces/*.trace.json` matched the repository's
+`*.json` ignore rule, so the six traces recorded on 2026-09-12 were never tracked and the
+grounding claim in the README and `docs/agent.md` ("6 of 6 briefs" on "the committed
+traces") was, before `3874a29`, backed by files only the recording machine held;
+`test_committed_traces_replay_cleanly` returned without asserting when the folder was
+empty, so CI passed vacuously and never replayed a trace. What changed: `.gitignore`
+re-includes `tests/traces/*.trace.json`; the six traces were re-recorded under the
+version-2 golden set and committed (144 KB, key-scrubbed and scanned for `gsk_` and the
+organisation id); the test now fails when the folder holds no trace and asserts every
+committed trace replays into a grounded brief that passes every golden fact; CI runs it
+on every push. The same class of failure (a global or repo-wide ignore silently dropping
+files a claim depends on) is what `test_no_warehouse_file_is_git_ignored` guards for the
+dbt project (Phase 1). Reading: an artifact a claim rests on must be in the repository,
+and a test that skips on "nothing to check" must fail instead.

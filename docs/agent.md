@@ -42,11 +42,23 @@ dimension, and is checked by deterministic evals before anything it says is publ
 
 Every tool returns a JSON-serializable dict; bad arguments or failures come back as
 `{"error": ...}` so a mistake never ends the loop. Each tool is unit-tested against
-fixtures (`tests/test_agent_tools.py`). The marts arrive through `pull_products` (the
-`gold/` folder the nightly warehouse step pushes); until the first warehouse build has run
-in Actions the tools use the fallbacks, which compute the same numbers (ADR-0019). A tool
-whose return shape grew carries `tool_version: 2` and keeps every version-1 key; the test
-suite freezes the version-1 keys per tool.
+fixtures (`tests/test_agent_tools.py`).
+
+### Marts and fallbacks (ADR-0019)
+
+The marts arrive through `pull_products` (the `gold/` folder the nightly warehouse step
+pushes after its build); until the first warehouse build has run in Actions the tools use
+the fallbacks, which compute the same numbers (the decisions fallback was checked equal
+to the mart on two golden dates, every count and rate). A tool whose return shape grew
+carries `tool_version: 2` and keeps every version-1 key; the test suite freezes the
+version-1 keys per tool, so a shape change is a versioned, additive change with a test.
+
+| Tool | Version | Mart when exported | Fallback |
+|---|---|---|---|
+| `get_daily_report` | 2: adds `drift`, `restatement` | `mart_drift` (latest run on or before the date: status, flagged features by name, streak), `mart_restatement_lag` | `drift/<date>.json` products, then the calibration's per-date row for replay dates; restatement unavailable |
+| `get_upstream_freshness` | 2: adds `dump_max_game_date_any_type`, `dump_rows_excluded_by_rules`, `rules_applied` | (stored logs) | the dump under the backfill's regular-season rules, so playoff rows never set the newest date |
+| `get_rolling_metrics` | 2: adds `decisions` | `mart_daily_metrics` (row-weighted over the window, population `all`), `fct_decision_policy` (training-population calls and hit rate to date) | residual files, then the replay daily file; decisions from the residual files with `reports/policy_<season>.json` through the same rule |
+| the other four | 1 | | unchanged |
 
 ## Model and limits (`nba/agent/loop.py`)
 
@@ -219,8 +231,20 @@ from the report, and commits both files back to the branch it ran on. A daily sc
 at 03:00 UTC (seven hours before the nightly brief) does one date per day until every
 date is complete, then exits before installing anything. One date is 5 briefs, about
 25k tokens, an eighth of the daily cap. `overall.complete` is true only when all five
-dates have five unlimited runs; until then the README row says "incomplete" with the
-count, rendered from the report and checked by `tests/test_agent_pass_rates.py`.
+dates have five unlimited runs under the current golden set; until then the README row
+says "incomplete" with the count, rendered from the report and checked by
+`tests/test_agent_pass_rates.py`.
+
+**Status wording (the README row).** Every date entry records the golden-set version it
+was measured under. A date measured under an older version is incomplete for the
+spreader, which re-measures it, and its runs are left out of the overall block; the row
+then reads "incomplete: N of 25 briefs completed under the current golden set (R
+rate-limited; S dates measured under an older golden set, not counted)". As of
+2026-09-16 that row is "0 of 25 ... (5 rate-limited; 4 dates measured under an older
+golden set, not counted)": the golden set moved to version 2 (decision and drift facts),
+the four version-1 dates are stale, and the one date measured locally under version 2 hit
+the daily token cap after the trace re-recording. The scheduled spreader measures one
+date per day once the branch is pushed.
 
 **The single-run failure mode, plainly.** At temperature 0 the model's output still
 varies between runs. The failure seen in every set of runs so far is the same one: a
