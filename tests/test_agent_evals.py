@@ -142,3 +142,56 @@ def test_committed_traces_replay_cleanly() -> None:
     for r in results:
         if "golden" in r:
             assert r["golden"]["pass"], f"golden miss on {r['date']}: {r['golden']}"
+
+
+def test_decision_and_drift_facts() -> None:
+    brief = {
+        "findings": [
+            {
+                "kind": "decision_policy",
+                "text": "Training population pts hit rate to date 0.66 over 5,138 calls.",
+                "evidence": {
+                    "tool": "get_rolling_metrics",
+                    "args": {"days": 30},
+                    "values": {"hit_rate": 0.6625, "n_resolved": 5138},
+                },
+            },
+            {
+                "kind": "drift",
+                "text": "Drift status is ok as of 2026-03-11; no feature flagged.",
+                "evidence": {
+                    "tool": "get_daily_report",
+                    "args": {"date": "2026-03-11"},
+                    "values": {"status": "ok", "n_flagged": 0},
+                },
+            },
+        ]
+    }
+    decision = {"tool": "get_rolling_metrics", "value": 0.6625}
+    drift = {"tool": "get_daily_report", "status": "ok"}
+    assert evals.decision_hit(brief, decision) is True
+    assert evals.decision_hit(brief, {"tool": "get_rolling_metrics", "value": 0.51}) is False
+    assert evals.decision_hit(brief, {"tool": "get_residuals", "value": 0.6625}) is False
+    assert evals.decision_hit(brief, None) is None
+    # A percentage still counts.
+    pct = {
+        "findings": [
+            {"text": "hit rate 66%", "evidence": {"tool": "get_rolling_metrics", "values": {}}}
+        ]
+    }
+    assert evals.decision_hit(pct, decision) is True
+    assert evals.drift_hit(brief, drift) is True
+    assert evals.drift_hit(brief, {"tool": "get_daily_report", "status": "hold"}) is False
+    assert evals.drift_hit(brief, None) is None
+    golden = {
+        "player_id": 1,
+        "player_name": "Nobody",
+        "decision_fact": decision,
+        "drift_fact": drift,
+    }
+    result = evals.golden_result(brief, golden)
+    assert result["decision_pass"] and result["drift_pass"] and not result["player_pass"]
+    assert result["pass"] is False
+    golden_v1 = {"player_id": 1, "player_name": "Nobody"}
+    r1 = evals.golden_result({"findings": [{"text": "Nobody scored", "evidence": {}}]}, golden_v1)
+    assert r1["pass"] is True and r1["decision_pass"] is None and r1["drift_pass"] is None

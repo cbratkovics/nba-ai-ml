@@ -88,9 +88,9 @@ Agent evals ([reports/agent_evals.json](reports/agent_evals.json), [reports/agen
 
 | Check | Result |
 |---|---|
-| Grounding: every number in a finding matches its cited tool output within 0.01 | 6 of 6 briefs |
-| Golden set: the finding names the day's largest-points-residual player | 5 of 5 dates |
-| Pass rates over repeated runs (`agent-eval.yml`, 5 per date; row rendered from the report) | <!-- pass-rates -->incomplete: 10 of 25 briefs completed (2 of 5 dates; 15 rate-limited); of those, grounding 9 of 10, golden 10 of 10<!-- /pass-rates -->; see [docs/agent.md](docs/agent.md#reliability) |
+| Grounding: every number in a finding matches its cited tool output within 0.01 | 6 of 6 briefs (23 of 23 findings) |
+| Golden set (version 2): a finding names the day's largest-points-residual player, a finding carries the decision policy's hit rate to date, a finding names the drift status | 5 of 5 dates, all three facts each |
+| Pass rates over repeated runs (`agent-eval.yml`, 5 per date; row rendered from the report) | <!-- pass-rates -->incomplete: 0 of 25 briefs completed under the current golden set (5 rate-limited; 4 dates measured under an older golden set, not counted)<!-- /pass-rates -->; see [docs/agent.md](docs/agent.md#reliability) |
 
 <details>
 <summary>Running it locally</summary>

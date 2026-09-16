@@ -185,6 +185,15 @@ def test_write_outputs_scrubs_keys_and_maintains_index(tmp_path: Path, game_logs
     index = json.loads((brief_dir / "index.json").read_text())
     assert index == {"dates": ["2026-01-10", "2026-01-14"], "latest": "2026-01-14"}
     assert json.loads((brief_dir / "latest.json").read_text())["date"] == "2026-01-14"
+    # A partial pull: the local folder has two dates but the repo listing knows three more,
+    # one of them newer, so latest.json is not rewritten for the older brief.
+    written3 = loop.write_outputs(
+        older, trace, brief_dir, known_dates=["2025-12-01", "2026-01-14", "2026-02-01"]
+    )
+    assert [p.name for p in written3] == ["2026-01-10.json", "2026-01-10.trace.json", "index.json"]
+    index = json.loads((brief_dir / "index.json").read_text())
+    assert index["dates"] == ["2025-12-01", "2026-01-10", "2026-01-14", "2026-02-01"]
+    assert index["latest"] == "2026-02-01"
 
 
 def test_replay_chat_reproduces_brief_from_trace(tmp_path: Path, game_logs) -> None:

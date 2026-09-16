@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from nba import config
-from nba.agent import pass_rates, tools
+from nba.agent import evals, pass_rates, tools
 from nba.storage import local
 from tests.test_agent_loop import ScriptedChat, _final
 
@@ -43,7 +43,9 @@ def test_measure_counts_grounding_and_golden_per_date(tmp_path: Path, game_logs)
     assert (d1["grounding_pass"], d1["golden_pass"], d1["runs"]) == (1, 1, 2)
     assert d1["statuses"] == {"ok": 1, "ungrounded": 1}
     assert (d2["grounding_pass"], d2["golden_pass"]) == (2, 0)
-    assert report["overall"] == {
+    added_in_v2 = ("golden_version", "dates_stale", "runs_stale")
+    overall = {k: v for k, v in report["overall"].items() if k not in added_in_v2}
+    assert overall == {
         "runs": 4,
         "grounding_pass": 3,
         "grounding_rate": 0.75,
@@ -327,3 +329,33 @@ def test_measure_can_run_a_subset_of_dates(tmp_path: Path, game_logs) -> None:
     assert report["golden_dates"] == ["2026-01-13", "2026-01-14"]
     assert report["dates"]["2026-01-14"]["measured"]["runner"] == "local"
     assert report["overall"]["complete"] is False and report["overall"]["dates_complete"] == 1
+
+
+@pytest.fixture(autouse=True)
+def golden_set_version_one(monkeypatch):
+    """The synthetic reports in this module predate the versioned golden set."""
+    monkeypatch.setattr(evals, "golden_version", lambda *a, **k: 1)
+
+
+def test_dates_measured_under_an_older_golden_set_are_incomplete(monkeypatch) -> None:
+    monkeypatch.setattr(evals, "golden_version", lambda *a, **k: 2)
+    golden = {"2026-01-14": {"player_name": "A"}, "2026-03-10": {"player_name": "B"}}
+    run = {"status": "ok", "grounding_pass": True, "golden_pass": True, "model_id": "m"}
+    report = {
+        "runs_per_date": 1,
+        "golden_dates": sorted(golden),
+        "dates": {
+            "2026-01-14": {"complete": True, "runs": 1, "golden_version": 1, "runs_detail": [run]},
+            "2026-03-10": {"complete": True, "runs": 1, "golden_version": 2, "runs_detail": [run]},
+        },
+    }
+    assert pass_rates.incomplete_dates(report, golden) == ["2026-01-14"]
+    final = pass_rates.finalize(report)
+    assert final["overall"]["dates_stale"] == 1 and final["overall"]["dates_complete"] == 1
+    assert final["overall"]["complete"] is False and final["overall"]["golden_version"] == 2
+    # The stale date's runs are left out of the overall counts.
+    assert final["overall"]["runs"] == 1 and final["overall"]["runs_stale"] == 1
+    assert "older golden set" in pass_rates.readme_row(final)
+    only_stale = {**report, "dates": {"2026-01-14": report["dates"]["2026-01-14"]}}
+    row = pass_rates.readme_row(pass_rates.finalize(only_stale))
+    assert row.startswith("incomplete: 0 of 2 briefs completed under the current golden set")

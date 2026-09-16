@@ -142,7 +142,15 @@ def run(
             run_date=d,
             dump_dir=dump_dir if dump_dir.exists() else None,
         )
-        brief, brief_files = agent_loop.run_and_write(ctx, yesterday, root / config.BRIEF_DIR)
+        known_dates = None
+        if push:
+            try:
+                known_dates = hf.list_brief_dates()
+            except Exception as exc:  # noqa: BLE001 - the listing is a convenience, never fatal
+                summary.log(f"AGENT {yesterday}: brief listing unavailable ({type(exc).__name__})")
+        brief, brief_files = agent_loop.run_and_write(
+            ctx, yesterday, root / config.BRIEF_DIR, known_dates=known_dates
+        )
         written += brief_files
         summary.agent = {
             "status": brief["status"],

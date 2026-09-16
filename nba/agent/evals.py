@@ -8,8 +8,10 @@
     for inspection.
 
 (b) Golden set: for a handful of replay dates with a known largest points residual, the
-    agent's findings must name that player. Results are written to
-    reports/agent_evals.json. In CI the loop is replayed from saved traces
+    agent's findings must name that player; version 2 adds one decision fact (the policy's
+    pts hit rate to date, cited from get_rolling_metrics) and one drift fact (the status
+    word cited from get_daily_report) per date, and a date passes only with every fact.
+    Results are written to reports/agent_evals.json. In CI the loop is replayed from saved traces
     (tests/traces/<date>.trace.json), so no network is needed.
 
 Usage:
@@ -128,6 +130,58 @@ def golden_hit(brief: dict[str, Any], player_name: str, player_id: int | None = 
     return False
 
 
+def _findings_citing(brief: dict[str, Any], tool: str) -> list[dict[str, Any]]:
+    return [f for f in brief.get("findings", []) if f.get("evidence", {}).get("tool") == tool]
+
+
+def decision_hit(brief: dict[str, Any], fact: dict[str, Any] | None) -> bool | None:
+    """True when a finding cites the fact's tool and carries its hit rate (within 0.01) in
+    its text or evidence values; None when the golden date has no decision fact."""
+    if not fact:
+        return None
+    value = float(fact["value"])
+    for f in _findings_citing(brief, fact["tool"]):
+        numbers = numeric_leaves(f.get("evidence", {}).get("values", {})) + numbers_in_text(
+            f.get("text", "")
+        )
+        if any(abs(abs(n) - value) <= TOLERANCE for n in numbers):
+            return True
+        # A hit rate quoted as a percentage still matches.
+        if any(abs(abs(n) - value * 100) <= 0.5 for n in numbers):
+            return True
+    return False
+
+
+def drift_hit(brief: dict[str, Any], fact: dict[str, Any] | None) -> bool | None:
+    """True when a finding cites the fact's tool and names the drift status word (or, for a
+    no-schedule streak, the streak); None when the golden date has no drift fact."""
+    if not fact:
+        return None
+    status = str(fact["status"]).lower()
+    for f in _findings_citing(brief, fact["tool"]):
+        blob = (f.get("text", "") + " " + json.dumps(f.get("evidence", {}))).lower()
+        if status in blob:
+            return True
+    return False
+
+
+def golden_result(brief: dict[str, Any], golden: dict[str, Any]) -> dict[str, Any]:
+    """Every fact of a golden date: the player (version 1), the decision and drift facts
+    (version 2). `pass` needs every fact the date carries."""
+    player = golden_hit(brief, golden["player_name"], golden.get("player_id"))
+    decision = decision_hit(brief, golden.get("decision_fact"))
+    drift = drift_hit(brief, golden.get("drift_fact"))
+    return {
+        "player_id": golden["player_id"],
+        "player_name": golden["player_name"],
+        "resid_pts": golden.get("resid_pts"),
+        "player_pass": player,
+        "decision_pass": decision,
+        "drift_pass": drift,
+        "pass": player and decision is not False and drift is not False,
+    }
+
+
 def evaluate_brief(brief: dict[str, Any], golden: dict[str, Any] | None) -> dict[str, Any]:
     checks = [is_grounded(f) for f in brief.get("findings", [])]
     result: dict[str, Any] = {
@@ -142,13 +196,14 @@ def evaluate_brief(brief: dict[str, Any], golden: dict[str, Any] | None) -> dict
         "latency_ms": brief.get("latency_ms"),
     }
     if golden:
-        result["golden"] = {
-            "player_id": golden["player_id"],
-            "player_name": golden["player_name"],
-            "resid_pts": golden.get("resid_pts"),
-            "pass": golden_hit(brief, golden["player_name"], golden.get("player_id")),
-        }
+        result["golden"] = golden_result(brief, golden)
     return result
+
+
+def golden_version(path: Path = GOLDEN_PATH) -> int:
+    if not path.exists():
+        return 0
+    return int(json.loads(path.read_text()).get("version", 1))
 
 
 def load_golden(path: Path = GOLDEN_PATH) -> dict[str, dict[str, Any]]:
@@ -184,10 +239,16 @@ def write_report(results: list[dict[str, Any]], out: Path, mode: str) -> dict[st
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "mode": mode,
         "model_id": config.GROQ_MODEL,
+        "golden_version": golden_version(),
         "n_briefs": len(results),
         "grounding_pass": sum(1 for r in results if r["grounding_pass"]),
         "golden_pass": sum(golden_results),
         "golden_total": len(golden_results),
+        "golden_facts": {
+            "player_pass": sum(1 for r in results if r.get("golden", {}).get("player_pass")),
+            "decision_pass": sum(1 for r in results if r.get("golden", {}).get("decision_pass")),
+            "drift_pass": sum(1 for r in results if r.get("golden", {}).get("drift_pass")),
+        },
         "results": results,
     }
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -217,7 +278,12 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"EVAL {r['date']}: status={r['status']} grounded={r['grounded_findings']}/"
             f"{r['n_findings']}"
-            + (f" golden={'pass' if g['pass'] else 'FAIL'} ({g['player_name']})" if g else "")
+            + (
+                f" golden={'pass' if g['pass'] else 'FAIL'} ({g['player_name']}; "
+                f"decision={g['decision_pass']} drift={g['drift_pass']})"
+                if g
+                else ""
+            )
         )
     print(
         f"EVAL summary: grounding {payload['grounding_pass']}/{payload['n_briefs']}, "

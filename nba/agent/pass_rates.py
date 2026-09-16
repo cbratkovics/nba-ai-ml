@@ -139,6 +139,7 @@ def measure(
         per_date[iso] = {
             "player_name": golden[iso]["player_name"],
             "player_id": golden[iso].get("player_id"),
+            "golden_version": evals.golden_version(),
             **_rates(results),
             "measured": {
                 "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -153,6 +154,7 @@ def measure(
         "model_id": config.GROQ_MODEL,
         "fallback_model_id": config.GROQ_MODEL_FALLBACK,
         "runs_per_date": runs,
+        "golden_version": evals.golden_version(),
         "golden_dates": sorted(golden),
         "dates": per_date,
         "overall": _rates(all_runs),
@@ -163,15 +165,36 @@ def measure(
 def finalize(report: dict[str, Any]) -> dict[str, Any]:
     """Recompute the overall block and completeness from the per-date results."""
     golden_dates = report.get("golden_dates") or sorted(report["dates"])
-    all_runs = [r for iso in sorted(report["dates"]) for r in report["dates"][iso]["runs_detail"]]
+    current = evals.golden_version()
+    # Runs measured under an older golden set are not comparable and are left out of the
+    # overall block (they stay in their date entry until the spreader re-measures it).
+    all_runs = [
+        r
+        for iso in sorted(report["dates"])
+        if int(report["dates"][iso].get("golden_version", 1)) == current
+        for r in report["dates"][iso]["runs_detail"]
+    ]
+    stale_runs = sum(
+        len(report["dates"][iso]["runs_detail"])
+        for iso in report["dates"]
+        if int(report["dates"][iso].get("golden_version", 1)) != current
+    )
     overall = _rates(all_runs)
+    overall["runs_stale"] = stale_runs
     complete_dates = [
         iso
         for iso in golden_dates
         if iso in report["dates"]
         and report["dates"][iso]["complete"]
         and report["dates"][iso]["runs"] >= report["runs_per_date"]
+        and int(report["dates"][iso].get("golden_version", 1)) == current
     ]
+    overall["golden_version"] = current
+    overall["dates_stale"] = sum(
+        1
+        for iso in golden_dates
+        if iso in report["dates"] and int(report["dates"][iso].get("golden_version", 1)) != current
+    )
     overall["complete"] = len(complete_dates) == len(golden_dates) and bool(golden_dates)
     overall["dates_complete"] = len(complete_dates)
     overall["dates_total"] = len(golden_dates)
@@ -187,9 +210,15 @@ def incomplete_dates(report: dict[str, Any] | None, golden: dict[str, Any]) -> l
     if not report:
         return sorted(golden)
     out = []
+    current = evals.golden_version()
     for iso in sorted(golden):
         d = report.get("dates", {}).get(iso)
-        if d is None or not d.get("complete") or d.get("runs", 0) < report.get("runs_per_date", 0):
+        if (
+            d is None
+            or not d.get("complete")
+            or d.get("runs", 0) < report.get("runs_per_date", 0)
+            or int(d.get("golden_version", 1)) != current
+        ):
             out.append(iso)
     return out
 
@@ -225,10 +254,18 @@ def readme_row(report: dict[str, Any]) -> str:
             f"grounding {o['grounding_pass']} of {o['runs']}, golden {o['golden_pass']} of "
             f"{o['runs']} ({n_dates} dates × {per_date} runs, `{report['model_id']}`)"
         )
+    stale = o.get("dates_stale", 0)
+    stale_text = f"; {stale} dates measured under an older golden set, not counted" if stale else ""
+    if done == 0:
+        return (
+            f"incomplete: 0 of {expected} briefs completed under the current golden set "
+            f"({o['rate_limited']} rate-limited{stale_text})"
+        )
     return (
         f"incomplete: {done} of {expected} briefs completed "
-        f"({o.get('dates_complete', 0)} of {n_dates} dates; {o['rate_limited']} rate-limited); "
-        f"of those, grounding {o['grounding_pass']} of {done}, golden {o['golden_pass']} of {done}"
+        f"({o.get('dates_complete', 0)} of {n_dates} dates; {o['rate_limited']} rate-limited"
+        f"{stale_text}); of those, grounding {o['grounding_pass']} of {done}, golden "
+        f"{o['golden_pass']} of {done}"
     )
 
 

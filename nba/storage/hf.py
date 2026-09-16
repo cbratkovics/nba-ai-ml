@@ -23,6 +23,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -171,6 +172,7 @@ PRODUCT_PREFIXES: tuple[str, ...] = (
     config.HF_BRIEF_PREFIX,
     config.HF_DECISIONS_PREFIX,
     config.HF_DRIFT_PREFIX,
+    config.HF_GOLD_PREFIX,  # exported marts, read by the agent tools (pushed by push_gold)
 )
 PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/**" for p in PRODUCT_PREFIXES)
 
@@ -239,6 +241,21 @@ def pull_products(
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(src, dest)
     return sha
+
+
+BRIEF_DATE_PATTERN = re.compile(rf"^{config.HF_BRIEF_PREFIX}/(\d{{4}}-\d{{2}}-\d{{2}})\.json$")
+
+
+def list_brief_dates(repo_id: str = config.HF_DATASET_REPO) -> list[str]:
+    """Every brief date published in the dataset repo, from the repo's file listing (so the
+    index never depends on which files a partial pull brought down; AUDIT.md risk 8)."""
+    api = _api(require_token=False)
+    dates = []
+    for name in api.list_repo_files(repo_id, repo_type="dataset"):
+        m = BRIEF_DATE_PATTERN.match(name)
+        if m:
+            dates.append(m.group(1))
+    return sorted(dates)
 
 
 def push_model(

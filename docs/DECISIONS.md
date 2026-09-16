@@ -351,3 +351,42 @@ time it runs on a season it has not seen. A HOLD there is to be reviewed against
 reference and the calibration, not treated as a bug in the rule or in the data: the
 opening reference comes from three prior openings and a fourth may sit outside them.
 
+## ADR-0019 — Agent tools read the exported gold marts, with the files as fallback; return shapes are versioned (prototyped, Phase 4)
+
+The seven-tool contract stands (`get_daily_report`, `get_upstream_freshness`,
+`get_residuals`, `get_rolling_metrics`, `get_player_recent`, `get_team_context`,
+`list_data_gaps`). Where an exported mart is the better source the tool reads it from
+`<root>/gold/<mart>.parquet`, which `pull_products` now brings down with the other product
+folders (the nightly job pushes the exports there after the warehouse build), and names it
+in `source`; without the export the tool computes the same numbers from the product files,
+which is what the Actions runs do until the first warehouse build has pushed `gold/`:
+
+| Tool | Version | Mart when exported | Fallback |
+|---|---|---|---|
+| `get_daily_report` | 2: adds `drift`, `restatement` | `mart_drift` (latest run on or before the date: status, flagged features by name, streak), `mart_restatement_lag` | `drift/<date>.json` products, then the calibration's per-date row for replay dates; restatement unavailable |
+| `get_upstream_freshness` | 2: adds `dump_max_game_date_any_type`, `dump_rows_excluded_by_rules`, `rules_applied` | (stored logs) | the dump, now under the backfill's regular-season rules (game type in `GAME_TYPES`, Cup final excluded), so playoff rows never set the newest date (AUDIT.md risk 9) |
+| `get_rolling_metrics` | 2: adds `decisions` | `mart_daily_metrics` (row-weighted over the window, population `all`), `fct_decision_policy` (training-population calls and hit rate to date) | residual files, then the replay daily file; decisions from the residual files with `reports/policy_<season>.json` through the same `nba.decisions.policy` rule |
+| the other four | 1 | | unchanged |
+
+Changing a return shape is a versioned, additive change: version-2 results carry
+`tool_version`, every version-1 key is still returned, and `tests/test_agent_tools.py`
+freezes the version-1 key set per tool. The decisions fallback was checked equal to the
+mart on two golden dates (every count and rate identical for all three targets), which is
+the reconciliation the marts already carry. `brief/index.json` is built from the dataset
+repo's file listing unioned with the local folder (`hf.list_brief_dates`), so a partial
+pull can no longer drop dates (risk 8); the listing failing is logged, never fatal.
+
+## ADR-0020 — Golden set version 2: one decision fact and one drift fact per date (prototyped, Phase 4)
+
+`reports/agent_golden.json` is version 2: each date keeps its largest-points-residual
+player and gains a decision fact (the policy's pts hit rate to date on the training
+population, from the decisions block of `get_rolling_metrics`, with the run date one day
+after the brief date as the runners use) and a drift fact (the status word from the drift
+block of `get_daily_report`; on off-season dates that is the `insufficient` / streak line).
+Both are computed by the tool functions themselves (`python -m nba.agent.golden`), so the
+fact is whatever the tool returns. A date passes only with every fact; the evals report
+counts each fact separately. The system prompt requires one `decision_policy` and one
+`drift` finding, each citing its tool. Pass-rate measurements record the golden version
+they were made under; a date measured under an older version is incomplete for the
+spreader (`agent-eval.yml`), which re-measures it, and the README row says how many are
+stale until then.

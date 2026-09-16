@@ -11,7 +11,25 @@
       "pred_pts": 15.21,
       "actual_pts": 50,
       "resid_pts": 34.79,
-      "n_with_actuals": 35
+      "n_with_actuals": 35,
+      "decision_fact": {
+        "tool": "get_rolling_metrics",
+        "path": "decisions.pts.hit_rate",
+        "value": 0.6404,
+        "n_resolved": 114,
+        "through": "2025-10-24",
+        "population": "min10",
+        "source": "fct_decision_policy (gold export)"
+      },
+      "drift_fact": {
+        "tool": "get_daily_report",
+        "path": "drift.status",
+        "status": "insufficient",
+        "as_of": "2025-10-24",
+        "flagged": [],
+        "no_schedule_streak": 0,
+        "source": "drift calibration per-date row (replay season)"
+      }
     },
     {
       "date": "2025-12-03",
@@ -22,7 +40,25 @@
       "pred_pts": 32.38,
       "actual_pts": 2,
       "resid_pts": -30.38,
-      "n_with_actuals": 194
+      "n_with_actuals": 194,
+      "decision_fact": {
+        "tool": "get_rolling_metrics",
+        "path": "decisions.pts.hit_rate",
+        "value": 0.6732,
+        "n_resolved": 1628,
+        "through": "2025-12-04",
+        "population": "min10",
+        "source": "fct_decision_policy (gold export)"
+      },
+      "drift_fact": {
+        "tool": "get_daily_report",
+        "path": "drift.status",
+        "status": "ok",
+        "as_of": "2025-12-04",
+        "flagged": [],
+        "no_schedule_streak": 0,
+        "source": "drift calibration per-date row (replay season)"
+      }
     },
     {
       "date": "2026-01-14",
@@ -33,7 +69,25 @@
       "pred_pts": 11.62,
       "actual_pts": 43,
       "resid_pts": 31.38,
-      "n_with_actuals": 151
+      "n_with_actuals": 151,
+      "decision_fact": {
+        "tool": "get_rolling_metrics",
+        "path": "decisions.pts.hit_rate",
+        "value": 0.6617,
+        "n_resolved": 3142,
+        "through": "2026-01-15",
+        "population": "min10",
+        "source": "fct_decision_policy (gold export)"
+      },
+      "drift_fact": {
+        "tool": "get_daily_report",
+        "path": "drift.status",
+        "status": "ok",
+        "as_of": "2026-01-15",
+        "flagged": [],
+        "no_schedule_streak": 0,
+        "source": "drift calibration per-date row (replay season)"
+      }
     },
     {
       "date": "2026-03-10",
@@ -44,7 +98,25 @@
       "pred_pts": 20.47,
       "actual_pts": 83,
       "resid_pts": 62.53,
-      "n_with_actuals": 238
+      "n_with_actuals": 238,
+      "decision_fact": {
+        "tool": "get_rolling_metrics",
+        "path": "decisions.pts.hit_rate",
+        "value": 0.6625,
+        "n_resolved": 5138,
+        "through": "2026-03-11",
+        "population": "min10",
+        "source": "fct_decision_policy (gold export)"
+      },
+      "drift_fact": {
+        "tool": "get_daily_report",
+        "path": "drift.status",
+        "status": "ok",
+        "as_of": "2026-03-11",
+        "flagged": [],
+        "no_schedule_streak": 0,
+        "source": "drift calibration per-date row (replay season)"
+      }
     },
     {
       "date": "2026-04-03",
@@ -55,7 +127,32 @@
       "pred_pts": 21.71,
       "actual_pts": 51,
       "resid_pts": 29.29,
-      "n_with_actuals": 199
+      "n_with_actuals": 199,
+      "decision_fact": {
+        "tool": "get_rolling_metrics",
+        "path": "decisions.pts.hit_rate",
+        "value": 0.6619,
+        "n_resolved": 6250,
+        "through": "2026-04-04",
+        "population": "min10",
+        "source": "fct_decision_policy (gold export)"
+      },
+      "drift_fact": {
+        "tool": "get_daily_report",
+        "path": "drift.status",
+        "status": "ok",
+        "as_of": "2026-04-04",
+        "flagged": [],
+        "no_schedule_streak": 0,
+        "source": "drift calibration per-date row (replay season)"
+      }
     }
-  ]
+  ],
+  "version": 2,
+  "facts": {
+    "player": "a finding names the player with the largest absolute points residual",
+    "decision": "a finding cites get_rolling_metrics and carries decisions.pts.hit_rate to date (within 0.01, or as a percentage within 0.5)",
+    "drift": "a finding cites get_daily_report and names the drift status word",
+    "run_date": "the day after the brief date"
+  }
 }

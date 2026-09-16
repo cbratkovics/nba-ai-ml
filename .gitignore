@@ -76,6 +76,9 @@ data/cache/
 !frontend/lib/all_rows_baseline.json
 # Derived from reports/policy_<season>.json; checked by tests/test_policy.py.
 !frontend/lib/policy_summary.json
+# The agent traces the evals replay offline; recorded by nba.agent.loop, key-scrubbed, and
+# refused by the tests if a key remains (docs/agent.md). Were ignored by *.json until Phase 4.
+!tests/traces/*.trace.json
 # dbt seeds are committed CSV; the warehouse loader's copies and dbt's own outputs are not.
 !dbt/seeds/*.csv
 !dbt/package-lock.yml
@@ -162,3 +165,4 @@ site/
 /brief/
 /decisions/
 /drift/
+/gold/

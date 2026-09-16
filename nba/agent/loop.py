@@ -56,15 +56,25 @@ SYSTEM_PROMPT = (
     "5. Flag at most 5 findings, most important first. Severity is one of info, warning, "
     "critical.\n"
     "6. Be brief: the summary is at most 120 words.\n"
-    "7. The standard evidence (ingest report, freshness, residuals, rolling metrics, data "
-    "gaps) has already been fetched for you and appears as tool results. You may call "
-    "get_player_recent or get_team_context a few more times if a residual needs context; "
-    "otherwise answer immediately. evidence.values is a small flat object holding only "
-    "the keys and numbers the text cites, including window lengths (days_requested) and "
-    "counts; never copy whole lists or nested tool output into it. Round numbers to two "
-    "decimals. A residual finding must name the player and give predicted and actual "
-    "values.\n"
-    "8. The brief is your final message content, plain JSON with no code fence. Never "
+    "7. The standard evidence (ingest report with drift and restatement, freshness, "
+    "residuals, rolling metrics with the decision policy, data gaps) has already been "
+    "fetched for you and appears as tool results. You may call get_player_recent or "
+    "get_team_context a few more times if a residual needs context; otherwise answer "
+    "immediately. evidence.values is a small flat object holding only the keys and numbers "
+    "the text cites, including window lengths (days_requested) and counts; never copy "
+    "whole lists or nested tool output into it. Round numbers to two decimals. A residual "
+    "finding must name the player and give predicted and actual values.\n"
+    "8. Three findings are required and come first, in this order: (a) residual_outlier "
+    "citing get_residuals, naming the player with the largest absolute points residual "
+    "with predicted and actual; (b) decision_policy citing get_rolling_metrics, giving the "
+    "decisions block's pts hit_rate and n_resolved to date on the training population, or "
+    "'no evidence' if unavailable; (c) drift citing get_daily_report, giving the drift "
+    "block's status word (ok, warn, hold or insufficient), its as_of date, the flagged "
+    "features by name when any, and no_schedule_streak when it is above 0; an insufficient "
+    "status with n_rows is itself the finding. Ingest, freshness, rolling accuracy and data "
+    "gaps are optional: add them only when something is notable and only within the "
+    "five-finding limit.\n"
+    "9. The brief is your final message content, plain JSON with no code fence. Never "
     "wrap it in a tool call; there is no tool named json.\n\n"
     "When you are done, respond with ONLY a JSON object (no markdown, no prose) with "
     "exactly these keys:\n"
@@ -72,7 +82,7 @@ SYSTEM_PROMPT = (
     '"info"|"warning"|"critical", "evidence": {"tool": string, "args": object, '
     '"values": object}, "text": string}]}\n'
     '"kind" is a short label such as ingest, freshness, residual_outlier, '
-    "rolling_accuracy, data_gap.\n"
+    "rolling_accuracy, decision_policy, drift, data_gap.\n"
     '"evidence.values" must contain every number used in "text", as returned by the tool.'
 )
 
@@ -371,8 +381,9 @@ def run_agent(
                 f"Run date: {ctx.run_date.isoformat()}. Brief date: {d.isoformat()}. "
                 f"Write the analyst brief for {d.isoformat()}: ingest status for the run date, "
                 f"upstream freshness, residual outliers for {d.isoformat()}, rolling accuracy "
-                "versus the last-10 baseline, and known data gaps. Use the tools, then answer "
-                "with the JSON object only."
+                "versus the last-10 baseline, the decision policy's hit rate to date, the "
+                "drift status, and known data gaps. Use the tools, then answer with the JSON "
+                "object only."
             ),
         },
     ]
@@ -525,9 +536,15 @@ def scrub(text: str) -> str:
 
 
 def write_outputs(
-    brief: dict[str, Any], trace: Trace | dict[str, Any], brief_dir: Path
+    brief: dict[str, Any],
+    trace: Trace | dict[str, Any],
+    brief_dir: Path,
+    known_dates: list[str] | None = None,
 ) -> list[Path]:
-    """Write brief/<date>.json, brief/<date>.trace.json, brief/index.json, brief/latest.json."""
+    """Write brief/<date>.json, brief/<date>.trace.json, brief/index.json, brief/latest.json.
+
+    `known_dates` are the brief dates already published (the dataset repo's file listing);
+    the index is their union with the local folder, so a partial pull never drops dates."""
     brief_dir.mkdir(parents=True, exist_ok=True)
     d = brief["date"]
     written = []
@@ -550,9 +567,10 @@ def write_outputs(
     trace_path.write_text(text + "\n")
     written.append(trace_path)
 
-    dates = sorted(
-        {p.stem for p in brief_dir.glob("*.json") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p.stem)}
-    )
+    local_dates = {
+        p.stem for p in brief_dir.glob("*.json") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p.stem)
+    }
+    dates = sorted(local_dates | set(known_dates or []))
     index = {"dates": dates, "latest": dates[-1] if dates else None}
     index_path = brief_dir / "index.json"
     index_path.write_text(json.dumps(index, indent=2) + "\n")
@@ -570,6 +588,7 @@ def run_and_write(
     brief_dir: Path,
     chat: Any | None = None,
     run_tool: Callable[[tools.ToolContext, str, dict | None], dict] = tools.run_tool,
+    known_dates: list[str] | None = None,
 ) -> tuple[dict[str, Any], list[Path]]:
     """Build the chat backend if needed, run the loop, write outputs. Never raises."""
     try:
@@ -587,12 +606,12 @@ def run_and_write(
             status=STATUS_UNAVAILABLE,
             error=brief["error"],
         )
-        return brief, write_outputs(brief, trace, brief_dir)
+        return brief, write_outputs(brief, trace, brief_dir, known_dates)
     brief, trace = run_agent(ctx, d, chat, run_tool=run_tool)
     from nba.agent import evals
 
     brief = evals.apply_grounding(brief)
-    return brief, write_outputs(brief, trace, brief_dir)
+    return brief, write_outputs(brief, trace, brief_dir, known_dates)
 
 
 def main(argv: list[str] | None = None) -> int:

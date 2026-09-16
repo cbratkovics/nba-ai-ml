@@ -1,0 +1,512 @@
+{
+ "date": "2026-03-10",
+ "run_date": "2026-03-11",
+ "model_id": "openai/gpt-oss-120b",
+ "started_at": "2026-09-16T01:51:29+00:00",
+ "limits": {
+  "max_tool_calls": 8,
+  "max_turns_after_tools": 3,
+  "wall_clock_seconds": 60.0,
+  "temperature": 0
+ },
+ "status": "ok",
+ "error": null,
+ "tool_calls_made": 5,
+ "latency_ms": 7924,
+ "prefetch": [
+  {
+   "id": "pre-1",
+   "name": "get_daily_report",
+   "args": {
+    "date": "2026-03-11"
+   },
+   "result": {
+    "available": false,
+    "date": "2026-03-11",
+    "reason": "no daily report for this date",
+    "drift": {
+     "available": true,
+     "as_of": "2026-03-11",
+     "source": "drift calibration per-date row (replay season)",
+     "status": "ok",
+     "position": "regular",
+     "reference_mode": "day_141",
+     "n_rows": 1942,
+     "psi_threshold": 0.15,
+     "calibrated": true,
+     "n_flagged": 0,
+     "flagged": [],
+     "largest_feature": "minutes_mean_last10",
+     "largest_psi": 0.1274,
+     "slate_status": "ok",
+     "no_schedule_streak": 0,
+     "no_schedule_warn": false
+    },
+    "restatement": {
+     "available": false,
+     "reason": "no restatement row on or before this date"
+    },
+    "tool_version": 2
+   }
+  },
+  {
+   "id": "pre-2",
+   "name": "get_upstream_freshness",
+   "args": {},
+   "result": {
+    "run_date": "2026-03-11",
+    "stored_max_game_date": "2026-04-12",
+    "stored_rows": 130414,
+    "stored_seasons": [
+     "2021-22",
+     "2022-23",
+     "2023-24",
+     "2024-25",
+     "2025-26"
+    ],
+    "days_stale_stored": -32,
+    "dump_present": false,
+    "dump_max_game_date": null,
+    "dump_max_game_date_any_type": null,
+    "dump_rows_excluded_by_rules": 0,
+    "rules_applied": "gameType in ['Regular Season', 'NBA Emirates Cup', 'Emirates NBA Cup', 'NBA Cup', 'in-season-knockout'] and not the Cup final, as the backfill does",
+    "tool_version": 2,
+    "newest_game_date": "2026-04-12",
+    "days_stale": -32,
+    "note": "stored data extends 32 days past the run date (replay or backfilled data)"
+   }
+  },
+  {
+   "id": "pre-3",
+   "name": "get_residuals",
+   "args": {
+    "date": "2026-03-10"
+   },
+   "result": {
+    "available": true,
+    "date": "2026-03-10",
+    "source": "replay",
+    "n_predicted": 347,
+    "n_with_actuals": 238,
+    "did_not_play": 109,
+    "missing_actual_game_not_ingested": 0,
+    "mae": {
+     "pts": 5.4659929088445,
+     "reb": 2.0672234999302903,
+     "ast": 1.3851854605393383
+    },
+    "largest_residuals": {
+     "pts": [
+      {
+       "player_id": 1628389,
+       "player_name": "Bam Adebayo",
+       "team": "MIA",
+       "opponent": "WAS",
+       "home": true,
+       "minutes": 41.54,
+       "predicted": 20.47,
+       "actual": 83.0,
+       "residual": 62.53
+      },
+      {
+       "player_id": 1626166,
+       "player_name": "Cameron Payne",
+       "team": "PHI",
+       "opponent": "MEM",
+       "home": true,
+       "minutes": 30.14,
+       "predicted": 6.53,
+       "actual": 32.0,
+       "residual": 25.47
+      },
+      {
+       "player_id": 1641824,
+       "player_name": "Matas Buzelis",
+       "team": "CHI",
+       "opponent": "GSW",
+       "home": false,
+       "minutes": 45.12,
+       "predicted": 17.11,
+       "actual": 41.0,
+       "residual": 23.89
+      },
+      {
+       "player_id": 1627759,
+       "player_name": "Jaylen Brown",
+       "team": "BOS",
+       "opponent": "SAN",
+       "home": false,
+       "minutes": 14.42,
+       "predicted": 28.13,
+       "actual": 8.0,
+       "residual": -20.13
+      },
+      {
+       "player_id": 1628398,
+       "player_name": "Kyle Kuzma",
+       "team": "MIL",
+       "opponent": "PHX",
+       "home": true,
+       "minutes": 38.02,
+       "predicted": 14.41,
+       "actual": 33.0,
+       "residual": 18.59
+      }
+     ],
+     "reb": [
+      {
+       "player_id": 1642907,
+       "player_name": "Cedric Coward",
+       "team": "MEM",
+       "opponent": "PHI",
+       "home": false,
+       "minutes": 23.47,
+       "predicted": 6.3,
+       "actual": 16.0,
+       "residual": 9.7
+      },
+      {
+       "player_id": 1626162,
+       "player_name": "Kelly Oubre Jr.",
+       "team": "PHI",
+       "opponent": "MEM",
+       "home": true,
+       "minutes": 37.39,
+       "predicted": 4.67,
+       "actual": 12.0,
+       "residual": 7.33
+      },
+      {
+       "player_id": 1631159,
+       "player_name": "Leonard Miller",
+       "team": "CHI",
+       "opponent": "GSW",
+       "home": false,
+       "minutes": 37.41,
+       "predicted": 4.28,
+       "actual": 11.0,
+       "residual": 6.72
+      },
+      {
+       "player_id": 1627780,
+       "player_name": "Gary Payton II",
+       "team": "GSW",
+       "opponent": "CHI",
+       "home": true,
+       "minutes": 21.5,
+       "predicted": 4.33,
+       "actual": 11.0,
+       "residual": 6.67
+      },
+      {
+       "player_id": 1631172,
+       "player_name": "Ousmane Dieng",
+       "team": "MIL",
+       "opponent": "PHX",
+       "home": true,
+       "minutes": 36.4,
+       "predicted": 3.57,
+       "actual": 10.0,
+       "residual": 6.43
+      }
+     ],
+     "ast": [
+      {
+       "player_id": 1630581,
+       "player_name": "Josh Giddey",
+       "team": "CHI",
+       "opponent": "GSW",
+       "home": false,
+       "minutes": 43.12,
+       "predicted": 8.02,
+       "actual": 17.0,
+       "residual": 8.98
+      },
+      {
+       "player_id": 1626166,
+       "player_name": "Cameron Payne",
+       "team": "PHI",
+       "opponent": "MEM",
+       "home": true,
+       "minutes": 30.14,
+       "predicted": 3.28,
+       "actual": 10.0,
+       "residual": 6.72
+      },
+      {
+       "player_id": 1630595,
+       "player_name": "Cade Cunningham",
+       "team": "DET",
+       "opponent": "BKN",
+       "home": false,
+       "minutes": 25.5,
+       "predicted": 9.01,
+       "actual": 15.0,
+       "residual": 5.99
+      },
+      {
+       "player_id": 1642880,
+       "player_name": "Kam Jones",
+       "team": "IND",
+       "opponent": "SAC",
+       "home": false,
+       "minutes": 26.34,
+       "predicted": 3.65,
+       "actual": 9.0,
+       "residual": 5.35
+      },
+      {
+       "player_id": 1628963,
+       "player_name": "Marvin Bagley III",
+       "team": "DAL",
+       "opponent": "ATL",
+       "home": false,
+       "minutes": 20.39,
+       "predicted": 1.27,
+       "actual": 6.0,
+       "residual": 4.73
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "pre-4",
+   "name": "get_rolling_metrics",
+   "args": {
+    "days": 30
+   },
+   "result": {
+    "available": true,
+    "source": "mart_daily_metrics (gold export)",
+    "days_requested": 30,
+    "window": {
+     "start": "2026-02-10",
+     "end": "2026-03-11"
+    },
+    "n_dates_covered": 24,
+    "n": 3892,
+    "population": "every row with a box score and a last-10 baseline (all)",
+    "model": {
+     "pts": 4.812961683636529,
+     "reb": 2.015323628287565,
+     "ast": 1.4090696277683394
+    },
+    "baseline_last10": {
+     "pts": 4.579438897861303,
+     "reb": 1.9429527806326368,
+     "ast": 1.3803253315714776
+    },
+    "decisions": {
+     "available": true,
+     "source": "fct_decision_policy (gold export)",
+     "population": "min10",
+     "season": "2025-26",
+     "through": "2026-03-11",
+     "first_date": "2025-10-23",
+     "pts": {
+      "threshold": 1.75,
+      "n_called": 5191,
+      "n_resolved": 5138,
+      "n_push": 53,
+      "n_hit": 3404,
+      "hit_rate": 0.6625
+     },
+     "reb": {
+      "threshold": 0.7,
+      "n_called": 5193,
+      "n_resolved": 5108,
+      "n_push": 85,
+      "n_hit": 3371,
+      "hit_rate": 0.6599
+     },
+     "ast": {
+      "threshold": 0.5,
+      "n_called": 4639,
+      "n_resolved": 4539,
+      "n_push": 100,
+      "n_hit": 2866,
+      "hit_rate": 0.6314
+     }
+    },
+    "tool_version": 2
+   }
+  },
+  {
+   "id": "pre-5",
+   "name": "list_data_gaps",
+   "args": {},
+   "result": {
+    "known_missing_count": 7,
+    "known_missing_games": [
+     {
+      "season": "2024-25",
+      "game_id": "0022400524",
+      "scheduled": "2025-01-09",
+      "home": "LAL",
+      "away": "CHA"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400532",
+      "scheduled": "2025-01-11",
+      "home": "ATL",
+      "away": "HOU"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400537",
+      "scheduled": "2025-01-11",
+      "home": "LAL",
+      "away": "SAN"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400538",
+      "scheduled": "2025-01-11",
+      "home": "LAC",
+      "away": "CHA"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400617",
+      "scheduled": "2025-01-22",
+      "home": "NOP",
+      "away": "MIL"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400627",
+      "scheduled": "2025-01-23",
+      "home": "UTA",
+      "away": "WAS"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400988",
+      "scheduled": "2025-03-17",
+      "home": "SAN",
+      "away": "ORL"
+     }
+    ],
+    "seasons_below_full": [
+     {
+      "season": "2024-25",
+      "games": 1223,
+      "expected": 1230
+     }
+    ],
+    "full_season_games": 1230
+   }
+  }
+ ],
+ "steps": [
+  {
+   "request_messages": [
+    {
+     "role": "system",
+     "content": "You are the nightly analyst for an NBA player-stat prediction pipeline. You have read-only tools over the pipeline's published files. Rules:\n1. Report only what the tools returned. Every number in a finding's text must come from that finding's evidence.values, copied exactly.\n2. Cite the tool call (tool name and arguments) for every number you report.\n3. If a tool returns available=false or an error, say \"no evidence\" for that topic instead of guessing.\n4. Never speculate about injuries, lineups, trades, rest, or any reason a player did or did not play. Report only counts and values.\n5. Flag at most 5 findings, most important first. Severity is one of info, warning, critical.\n6. Be brief: the summary is at most 120 words.\n7. The standard evidence (ingest report with drift and restatement, freshness, residuals, rolling metrics with the decision policy, data gaps) has already been fetched for you and appears as tool results. You may call get_player_recent or get_team_context a few more times if a residual needs context; otherwise answer immediately. evidence.values is a small flat object holding only the keys and numbers the text cites, including window lengths (days_requested) and counts; never copy whole lists or nested tool output into it. Round numbers to two decimals. A residual finding must name the player and give predicted and actual values.\n8. Three findings are required and come first, in this order: (a) residual_outlier citing get_residuals, naming the player with the largest absolute points residual with predicted and actual; (b) decision_policy citing get_rolling_metrics, giving the decisions block's pts hit_rate and n_resolved to date on the training population, or 'no evidence' if unavailable; (c) drift citing get_daily_report, giving the drift block's status word (ok, warn, hold or insufficient), its as_of date, the flagged features by name when any, and no_schedule_streak when it is above 0; an insufficient status with n_rows is itself the finding. Ingest, freshness, rolling accuracy and data gaps are optional: add them only when something is notable and only within the five-finding limit.\n9. The brief is your final message content, plain JSON with no code fence. Never wrap it in a tool call; there is no tool named json.\n\nWhen you are done, respond with ONLY a JSON object (no markdown, no prose) with exactly these keys:\n{\"summary\": string, \"findings\": [{\"kind\": string, \"severity\": \"info\"|\"warning\"|\"critical\", \"evidence\": {\"tool\": string, \"args\": object, \"values\": object}, \"text\": string}]}\n\"kind\" is a short label such as ingest, freshness, residual_outlier, rolling_accuracy, decision_policy, drift, data_gap.\n\"evidence.values\" must contain every number used in \"text\", as returned by the tool."
+    },
+    {
+     "role": "user",
+     "content": "Run date: 2026-03-11. Brief date: 2026-03-10. Write the analyst brief for 2026-03-10: ingest status for the run date, upstream freshness, residual outliers for 2026-03-10, rolling accuracy versus the last-10 baseline, the decision policy's hit rate to date, the drift status, and known data gaps. Use the tools, then answer with the JSON object only."
+    },
+    {
+     "role": "assistant",
+     "content": null,
+     "tool_calls": [
+      {
+       "id": "pre-1",
+       "type": "function",
+       "function": {
+        "name": "get_daily_report",
+        "arguments": "{\"date\": \"2026-03-11\"}"
+       }
+      },
+      {
+       "id": "pre-2",
+       "type": "function",
+       "function": {
+        "name": "get_upstream_freshness",
+        "arguments": "{}"
+       }
+      },
+      {
+       "id": "pre-3",
+       "type": "function",
+       "function": {
+        "name": "get_residuals",
+        "arguments": "{\"date\": \"2026-03-10\"}"
+       }
+      },
+      {
+       "id": "pre-4",
+       "type": "function",
+       "function": {
+        "name": "get_rolling_metrics",
+        "arguments": "{\"days\": 30}"
+       }
+      },
+      {
+       "id": "pre-5",
+       "type": "function",
+       "function": {
+        "name": "list_data_gaps",
+        "arguments": "{}"
+       }
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-1",
+     "name": "get_daily_report",
+     "content": "{\"available\": false, \"date\": \"2026-03-11\", \"reason\": \"no daily report for this date\", \"drift\": {\"available\": true, \"as_of\": \"2026-03-11\", \"source\": \"drift calibration per-date row (replay season)\", \"status\": \"ok\", \"position\": \"regular\", \"reference_mode\": \"day_141\", \"n_rows\": 1942, \"psi_threshold\": 0.15, \"calibrated\": true, \"n_flagged\": 0, \"flagged\": [], \"largest_feature\": \"minutes_mean_last10\", \"largest_psi\": 0.1274, \"slate_status\": \"ok\", \"no_schedule_streak\": 0, \"no_schedule_warn\": false}, \"restatement\": {\"available\": false, \"reason\": \"no restatement row on or before this date\"}, \"tool_version\": 2}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-2",
+     "name": "get_upstream_freshness",
+     "content": "{\"run_date\": \"2026-03-11\", \"stored_max_game_date\": \"2026-04-12\", \"stored_rows\": 130414, \"stored_seasons\": [\"2021-22\", \"2022-23\", \"2023-24\", \"2024-25\", \"2025-26\"], \"days_stale_stored\": -32, \"dump_present\": false, \"dump_max_game_date\": null, \"dump_max_game_date_any_type\": null, \"dump_rows_excluded_by_rules\": 0, \"rules_applied\": \"gameType in ['Regular Season', 'NBA Emirates Cup', 'Emirates NBA Cup', 'NBA Cup', 'in-season-knockout'] and not the Cup final, as the backfill does\", \"tool_version\": 2, \"newest_game_date\": \"2026-04-12\", \"days_stale\": -32, \"note\": \"stored data extends 32 days past the run date (replay or backfilled data)\"}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-3",
+     "name": "get_residuals",
+     "content": "{\"available\": true, \"date\": \"2026-03-10\", \"source\": \"replay\", \"n_predicted\": 347, \"n_with_actuals\": 238, \"did_not_play\": 109, \"missing_actual_game_not_ingested\": 0, \"mae\": {\"pts\": 5.4659929088445, \"reb\": 2.0672234999302903, \"ast\": 1.3851854605393383}, \"largest_residuals\": {\"pts\": [{\"player_id\": 1628389, \"player_name\": \"Bam Adebayo\", \"team\": \"MIA\", \"opponent\": \"WAS\", \"home\": true, \"minutes\": 41.54, \"predicted\": 20.47, \"actual\": 83.0, \"residual\": 62.53}, {\"player_id\": 1626166, \"player_name\": \"Cameron Payne\", \"team\": \"PHI\", \"opponent\": \"MEM\", \"home\": true, \"minutes\": 30.14, \"predicted\": 6.53, \"actual\": 32.0, \"residual\": 25.47}, {\"player_id\": 1641824, \"player_name\": \"Matas Buzelis\", \"team\": \"CHI\", \"opponent\": \"GSW\", \"home\": false, \"minutes\": 45.12, \"predicted\": 17.11, \"actual\": 41.0, \"residual\": 23.89}, {\"player_id\": 1627759, \"player_name\": \"Jaylen Brown\", \"team\": \"BOS\", \"opponent\": \"SAN\", \"home\": false, \"minutes\": 14.42, \"predicted\": 28.13, \"actual\": 8.0, \"residual\": -20.13}, {\"player_id\": 1628398, \"player_name\": \"Kyle Kuzma\", \"team\": \"MIL\", \"opponent\": \"PHX\", \"home\": true, \"minutes\": 38.02, \"predicted\": 14.41, \"actual\": 33.0, \"residual\": 18.59}], \"reb\": [{\"player_id\": 1642907, \"player_name\": \"Cedric Coward\", \"team\": \"MEM\", \"opponent\": \"PHI\", \"home\": false, \"minutes\": 23.47, \"predicted\": 6.3, \"actual\": 16.0, \"residual\": 9.7}, {\"player_id\": 1626162, \"player_name\": \"Kelly Oubre Jr.\", \"team\": \"PHI\", \"opponent\": \"MEM\", \"home\": true, \"minutes\": 37.39, \"predicted\": 4.67, \"actual\": 12.0, \"residual\": 7.33}, {\"player_id\": 1631159, \"player_name\": \"Leonard Miller\", \"team\": \"CHI\", \"opponent\": \"GSW\", \"home\": false, \"minutes\": 37.41, \"predicted\": 4.28, \"actual\": 11.0, \"residual\": 6.72}, {\"player_id\": 1627780, \"player_name\": \"Gary Payton II\", \"team\": \"GSW\", \"opponent\": \"CHI\", \"home\": true, \"minutes\": 21.5, \"predicted\": 4.33, \"actual\": 11.0, \"residual\": 6.67}, {\"player_id\": 1631172, \"player_name\": \"Ousmane Dieng\", \"team\": \"MIL\", \"opponent\": \"PHX\", \"home\": true, \"minutes\": 36.4, \"predicted\": 3.57, \"actual\": 10.0, \"residual\": 6.43}], \"ast\": [{\"player_id\": 1630581, \"player_name\": \"Josh Giddey\", \"team\": \"CHI\", \"opponent\": \"GSW\", \"home\": false, \"minutes\": 43.12, \"predicted\": 8.02, \"actual\": 17.0, \"residual\": 8.98}, {\"player_id\": 1626166, \"player_name\": \"Cameron Payne\", \"team\": \"PHI\", \"opponent\": \"MEM\", \"home\": true, \"minutes\": 30.14, \"predicted\": 3.28, \"actual\": 10.0, \"residual\": 6.72}, {\"player_id\": 1630595, \"player_name\": \"Cade Cunningham\", \"team\": \"DET\", \"opponent\": \"BKN\", \"home\": false, \"minutes\": 25.5, \"predicted\": 9.01, \"actual\": 15.0, \"residual\": 5.99}, {\"player_id\": 1642880, \"player_name\": \"Kam Jones\", \"team\": \"IND\", \"opponent\": \"SAC\", \"home\": false, \"minutes\": 26.34, \"predicted\": 3.65, \"actual\": 9.0, \"residual\": 5.35}, {\"player_id\": 1628963, \"player_name\": \"Marvin Bagley III\", \"team\": \"DAL\", \"opponent\": \"ATL\", \"home\": false, \"minutes\": 20.39, \"predicted\": 1.27, \"actual\": 6.0, \"residual\": 4.73}]}}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-4",
+     "name": "get_rolling_metrics",
+     "content": "{\"available\": true, \"source\": \"mart_daily_metrics (gold export)\", \"days_requested\": 30, \"window\": {\"start\": \"2026-02-10\", \"end\": \"2026-03-11\"}, \"n_dates_covered\": 24, \"n\": 3892, \"population\": \"every row with a box score and a last-10 baseline (all)\", \"model\": {\"pts\": 4.812961683636529, \"reb\": 2.015323628287565, \"ast\": 1.4090696277683394}, \"baseline_last10\": {\"pts\": 4.579438897861303, \"reb\": 1.9429527806326368, \"ast\": 1.3803253315714776}, \"decisions\": {\"available\": true, \"source\": \"fct_decision_policy (gold export)\", \"population\": \"min10\", \"season\": \"2025-26\", \"through\": \"2026-03-11\", \"first_date\": \"2025-10-23\", \"pts\": {\"threshold\": 1.75, \"n_called\": 5191, \"n_resolved\": 5138, \"n_push\": 53, \"n_hit\": 3404, \"hit_rate\": 0.6625}, \"reb\": {\"threshold\": 0.7, \"n_called\": 5193, \"n_resolved\": 5108, \"n_push\": 85, \"n_hit\": 3371, \"hit_rate\": 0.6599}, \"ast\": {\"threshold\": 0.5, \"n_called\": 4639, \"n_resolved\": 4539, \"n_push\": 100, \"n_hit\": 2866, \"hit_rate\": 0.6314}}, \"tool_version\": 2}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-5",
+     "name": "list_data_gaps",
+     "content": "{\"known_missing_count\": 7, \"known_missing_games\": [{\"season\": \"2024-25\", \"game_id\": \"0022400524\", \"scheduled\": \"2025-01-09\", \"home\": \"LAL\", \"away\": \"CHA\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400532\", \"scheduled\": \"2025-01-11\", \"home\": \"ATL\", \"away\": \"HOU\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400537\", \"scheduled\": \"2025-01-11\", \"home\": \"LAL\", \"away\": \"SAN\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400538\", \"scheduled\": \"2025-01-11\", \"home\": \"LAC\", \"away\": \"CHA\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400617\", \"scheduled\": \"2025-01-22\", \"home\": \"NOP\", \"away\": \"MIL\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400627\", \"scheduled\": \"2025-01-23\", \"home\": \"UTA\", \"away\": \"WAS\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400988\", \"scheduled\": \"2025-03-17\", \"home\": \"SAN\", \"away\": \"ORL\"}], \"seasons_below_full\": [{\"season\": \"2024-25\", \"games\": 1223, \"expected\": 1230}], \"full_season_games\": 1230}"
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": "{\"summary\":\"Residual outlier: Bam Adebayo scored 83 points vs predicted 20.47 (residual 62.53). Decision policy hit rate for points: 0.6625 (n_resolved 5138). Drift status: ok as of 2026-03-11, no flagged features, no schedule streak.\",\"findings\":[{\"kind\":\"residual_outlier\",\"severity\":\"critical\",\"evidence\":{\"tool\":\"get_residuals\",\"args\":{\"date\":\"2026-03-10\"},\"values\":{\"player_id\":1628389,\"predicted\":20.47,\"actual\":83.0,\"residual\":62.53}},\"text\":\"Bam Adebayo scored 83 points versus a predicted 20.47, a residual of 62.53.\"},{\"kind\":\"decision_policy\",\"severity\":\"info\",\"evidence\":{\"tool\":\"get_rolling_metrics\",\"args\":{\"days\":30},\"values\":{\"hit_rate\":0.6625,\"n_resolved\":5138}},\"text\":\"The decision policy hit rate for points is 0.6625 based on 5138 resolved decisions.\"},{\"kind\":\"drift\",\"severity\":\"info\",\"evidence\":{\"tool\":\"get_daily_report\",\"args\":{\"date\":\"2026-03-11\"},\"values\":{\"status\":\"ok\",\"as_of\":\"2026-03-11\",\"flagged\":[],\"no_schedule_streak\":0}},\"text\":\"Drift status is ok as of 2026-03-11, with no flagged features and no schedule streak.\"}]}"
+   },
+   "usage": {
+    "completion_tokens": 355,
+    "prompt_tokens": 3731,
+    "total_tokens": 4086,
+    "completion_time": 0.374178744,
+    "completion_tokens_details": {
+     "reasoning_tokens": 27
+    },
+    "prompt_time": 0.187441129,
+    "prompt_tokens_details": null,
+    "queue_time": 0.003537184,
+    "total_time": 0.561619873
+   },
+   "tool_results": [],
+   "latency_ms": 7429
+  }
+ ]
+}
