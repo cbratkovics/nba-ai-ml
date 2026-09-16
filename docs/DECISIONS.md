@@ -95,7 +95,9 @@ reproduce the feature module's rule on all 26,031 replayed rows with a box score
 
 The template's ordinal `period` seam is replaced by `game_date` (a date) and `game_id`
 everywhere: incremental lookbacks are in days, the snapshot's as-of column is a game date,
-and `dim_player_asof` gives each team stint an effective date range. Seasons are the
+and `dim_player_asof` gives each team stint an effective date range: derived from the game
+logs alone on the first local build (2026-09-15), 2,003 stints for 1,027 players, of which
+976 are team changes (a player's second or later stint). Seasons are the
 pipeline's labels (`2025-26`), derived in SQL by the same rule as the package
 (`season_of` macro: October starts the season).
 
