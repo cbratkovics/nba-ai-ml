@@ -229,3 +229,25 @@ models:
       - { name: season_mean_same_rows_hit_rate, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
       - { name: season_mean_own_n_called, description: rows the season-mean sign calls at the same threshold on its own edge }
       - { name: season_mean_own_hit_rate, description: its hit rate as a policy at that threshold }
+  - name: brz_drift_reports
+    description: drift/<date>.json unnested to one row per (run date, feature) with the run's verdict on every row. Empty (typed) until the first nightly run writes a report.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: run_date, description: run date of the nightly job }
+      - { name: season, description: season of the run date }
+      - { name: position, description: "season position label (opening, cup, deadline_week, all_star_return, april, regular, off_season)" }
+      - { name: reference_mode, description: "reference block used: day_NNN (season day) or all" }
+      - { name: feature_version, description: feature module version of the reference }
+      - { name: model_revision, description: model revision of the reference }
+      - { name: n_rows, description: training-population rows in the window }
+      - { name: psi_threshold, description: PSI threshold that applied }
+      - { name: min_features, description: features at or above the threshold needed to fire }
+      - { name: calibrated, description: whether the threshold came from the committed calibration }
+      - { name: status, description: "ok, warn, hold or insufficient" }
+      - { name: n_flagged, description: features at or above the threshold }
+      - { name: slate_status, description: "the slate outcome of the run: ok, no_games or no_schedule" }
+      - { name: no_schedule_streak, description: consecutive runs ending at the no-schedule line }
+      - { name: no_schedule_warn, description: whether the streak reached the warning length }
+      - { name: feature, description: "model feature; null on the one row of a run without PSI" }
+      - { name: psi, description: population stability index of the feature in the window }
+      - { name: flagged, description: whether the feature is at or above the threshold }

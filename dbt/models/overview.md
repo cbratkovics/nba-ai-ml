@@ -12,7 +12,7 @@ nightly job. Grain is the game date and game id, not a week.
 
 **Bronze** (`brz_*`) — typed one-to-one copies of the source files pulled by
 `python -m nba.warehouse.load`: per-season game logs, nightly predictions and residuals, daily
-ingest reports, the holdout-season replay residuals, and the committed reports
+ingest reports, nightly drift reports, the holdout-season replay residuals, and the committed reports
 (`reports/metrics.json`, `reports/replay_<season>.json`, `reports/replay_all_rows_<season>.json`,
 `reports/policy_<season>.json`).
 Every row carries `source_file`; the game logs carry the dataset-repo revision of the load.
@@ -36,7 +36,10 @@ call per prediction, population and target against the last-10 mean, its bands, 
 outcome once the box score exists), `mart_policy_metrics` (coverage and hit rate at the
 chosen threshold against a coin flip and the season-mean sign) and `mart_policy_sweep`
 (the whole coverage curve). Thresholds come from `reports/policy_<season>.json` through
-`brz_policy_report`; the policy marts are empty until that artifact exists.
+`brz_policy_report`; the policy marts are empty until that artifact exists. `mart_drift`
+(one row per run date and feature) copies the nightly drift reports `drift/<date>.json`:
+PSI per feature against the day-aligned reference and the run's verdict (ADR-0016 to
+ADR-0018); empty until the first nightly run.
 
 ## Populations
 

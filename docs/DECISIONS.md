@@ -237,3 +237,100 @@ inputs, the artifact is written from them, the second build reconciles to it. Th
 selection adds `brz_policy_report+` and `brz_policy_curve+`. The artifact records the code
 commit that wrote it (`git_sha`), which is the commit before the one that adds it; the same
 is true of every committed report.
+
+## ADR-0016 — Drift is PSI per model feature against a reference built from the gold marts (prototyped, Phase 3)
+
+The nightly job checks the 14-day window of games played before the run date
+(`DRIFT_WINDOW_DAYS`): training-population rows (`min10`, ADR-0009), features from the one
+feature module over the stored game logs, one population stability index per feature over
+decile bins with an explicit missing-value bin (`nba/drift/psi.py`). The reference is
+`reports/drift_reference_<feature_version>_<model_revision>.json`, written by
+`python -m nba.drift.reference` from `gold.fct_player_game` (population `min10`, training
+seasons; the features are computed by the feature module over those rows, never by a second
+SQL implementation, per the one-feature-module rule) and re-included in git; the file name
+and content carry `asof_v1` and `fb427de`, so a new model or feature version gets a new
+reference. Bin edges are deciles over every training row (86,814); a feature with at most
+ten distinct values gets one bin per value. Fewer than `DRIFT_MIN_ROWS` = 500 rows in the
+window (the first days of a season, the off-season) is `insufficient`: no PSI, no verdict.
+Every run writes `drift/<date>.json` to the dataset repo (per-feature PSI, the window, the
+reference block used, the thresholds and whether they were calibrated, the verdict and its
+reasons, the slate outcome and the no-schedule streak), which the warehouse copies into
+`mart_drift`; logs expire, artifacts are what the next investigation reads. The reference
+population is the evaluation population (86,814 rows), not the 88,257 rows the trainer
+saw: the trainer keeps season debuts, whose season-to-date mean is undefined, and the
+population rule does not (ADR-0009).
+
+## ADR-0017 — The reference is aligned by season day, from seasons with history (prototyped, Phase 3)
+
+Calibrating on the 164 replay dates (every one of them normal data the model was evaluated
+on, so any firing is a false positive) found three failures of a naive reference, in order:
+
+1. **A season-long reference fires everywhere, not only at the opening.** `games_played_season`
+   is a season counter (PSI 1.4 to 6.4 at every position), the vs-opponent means fill in as
+   opponents are met, and `days_rest` moves around the calendar gaps. This is the failure the
+   fantasy-football warehouse hit at a season boundary (its ADR-0031), and here it is not
+   confined to the boundary.
+2. **A week bucket is not enough.** A 21-day reference span for a 14-day window still biased
+   the counter (PSI up to 2.1 during the Cup). The reference therefore stores fixed bin
+   edges per feature and expected proportions for every season day *s* (days since the
+   season's first game date) from the training rows whose season day falls in
+   [s − 14, s − 1]: exactly the days the check compares. The check picks `day_NNN` from the
+   run date (clipped to the last day the training seasons reached; `all` off-season).
+3. **The first season in the data is history-truncated.** 2021-22 has no earlier season in
+   the data, so its career-long `<stat>_mean_vs_opp` are missing on 85% of rows at season
+   day 15, against 9% to 12% in 2022-23, 2023-24, 2024-25 and 2025-26 alike; PSI 0.35 to 0.38
+   on all three at the opening and through the Cup, with the model-relevant distribution
+   unchanged. The day-aligned expectations therefore use `DRIFT_REFERENCE_SEASONS`, the
+   training seasons with an earlier season in the data (2022-23 to 2024-25); the bin edges and
+   the season-long `all` block keep every training season. This departs from the brief's
+   "seasons 2021-22 to 2024-25" for the expectations only, and for a reason the numbers show.
+
+With that reference, per position (`reports/drift_calibration_2025-26.json`; PSI over all
+date × feature pairs; false positives under the three-feature rule):
+
+| Position | Dates (scored) | PSI median / p90 / max | Largest feature | FP at 0.05 / 0.10 / 0.15 / 0.20 |
+|---|---:|---|---|---|
+| opening (first 10 game dates) | 10 (3) | 0.021 / 0.040 / 0.046 | pts_mean_last10 | 0 / 0 / 0 / 0 |
+| cup (2025-10-31 to 2025-12-15) | 45 (45) | 0.022 / 0.040 / 0.325 | games_played_season | 0 / 0 / 0 / 0 |
+| deadline week (2026-02-02 to 02-08) | 7 (7) | 0.025 / 0.058 / 0.077 | games_played_season | 7 / 0 / 0 / 0 |
+| All-Star return (7 dates from 02-19) | 7 (7) | 0.035 / 0.078 / 0.161 | days_rest | 7 / 0 / 0 / 0 |
+| april | 11 (11) | 0.025 / 0.066 / 0.113 | minutes_mean_last20 | 11 / 0 / 0 / 0 |
+| regular (the rest) | 84 (84) | 0.024 / 0.058 / 0.334 | days_rest | 44 / 1 / 0 / 0 |
+
+Seven of the ten opening dates are `insufficient` (under 500 rows in the window); the
+remaining single-feature maxima (`games_played_season` 0.33 in the Cup week, `days_rest`
+0.33 around the Christmas gap) are what the three-feature rule is for. Regular season only:
+the data has no playoffs. The season-position labels come from `SEASON_CALENDAR` (Cup
+window, trade-deadline week, All-Star break) and the first ten game dates; only the labels
+depend on that calendar, the reference does not.
+
+## ADR-0018 — WARN by default, HOLD only once calibrated, never blocking; no-schedule streak (prototyped, Phase 3)
+
+**Rule.** `HOLD` when at least `min_features` = 3 features have PSI at or above the threshold
+in one window; `WARN` when one or two do, or when three or more do while the thresholds are
+uncalibrated; `ok` otherwise; `insufficient` under 500 rows. The threshold is the smallest
+candidate of 0.05, 0.10, 0.15, 0.20, 0.25, 0.30 with zero false positives on every position:
+**0.15** (0.05 would have fired on 69 of 157 scored dates, 0.10 on one, 2026-03-05). The
+policy is pure Python with a test per branch (`nba/drift/policy.py`,
+`tests/test_drift.py`). Until `reports/drift_calibration_<season>.json` exists the job uses
+the provisional 0.20, says "uncalibrated" in every report and cannot HOLD; committing the
+calibration (this phase does) is what flips it. **HOLD never blocks the slate**: the
+predictions and decisions are written and pushed as usual, the verdict goes to
+`drift/<date>.json`, the run summary and `mart_drift`, and the workflow opens one issue
+labelled `nightly-hold` (`gh label create --force` first, so the label never has to
+pre-exist; an open issue with the same title is reused, so a HOLD that persists opens one
+issue, not one per night). The step needs `issues: write`.
+
+**No-schedule streak.** Every drift report records the slate outcome; the streak is the
+number of consecutive runs, newest first, that ended at the no-schedule line (AUDIT.md risk
+5: the Kaggle author stops publishing `LeagueScheduleYY_YY.csv`). At
+`NO_SCHEDULE_STREAK_WARN` = 14 the run is a `WARN` with an issue labelled `nightly-warn`.
+Fourteen because nothing in the repo records when `LeagueSchedule25_26.csv` first appeared
+in the dump (it was already there on 2026-09-12, the first live run); revise when 2026-27's
+file shows up. The off-season "no games" days do not count: only the season's own
+no-schedule line does.
+
+**First run.** The dispatched nightly run is an owner step (the branch is not pushed); the
+local fallback `python -m nba.nightly --date 2026-09-16 --local-dump data_dump` wrote
+`drift/2026-09-16.json`: `insufficient`, 0 rows in the window (off-season), calibrated
+threshold 0.15, streak 0, no issue, and `mart_drift` built from it holds the one run row.

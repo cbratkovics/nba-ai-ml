@@ -1,0 +1,3257 @@
+{
+  "kind": "drift_calibration",
+  "season": "2025-26",
+  "generated_at": "2026-09-16T01:10:48+00:00",
+  "git_sha": "4da1938c614a912ce5ba954c48ab188fd850ffdd",
+  "feature_version": "asof_v1",
+  "model_revision": "fb427de136e1d6c4b591ae30cf30488f44935182",
+  "reference_file": "reports/drift_reference_asof_v1_fb427de.json",
+  "window_days": 14,
+  "min_rows": 500,
+  "n_dates": 164,
+  "note": "Every date is normal data (the replay season the model was evaluated on), so a date on which the rule fires is a false positive. Regular season only; the data has no playoffs. Opening windows use the opening reference (ADR-0017).",
+  "candidates": [
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3
+  ],
+  "min_features": 3,
+  "false_positives_total": {
+    "0.05": 69,
+    "0.1": 1,
+    "0.15": 0,
+    "0.2": 0,
+    "0.25": 0,
+    "0.3": 0
+  },
+  "chosen": {
+    "threshold": 0.15,
+    "min_features": 3,
+    "false_positives": 0,
+    "rule": "HOLD when at least 3 features have PSI >= 0.15; the smallest candidate with zero false positives on every season position"
+  },
+  "positions": {
+    "opening": {
+      "n_dates": 10,
+      "n_dates_scored": 3,
+      "first_date": "2025-10-21",
+      "last_date": "2025-10-30",
+      "psi": {
+        "median": 0.020980151752559822,
+        "p90": 0.0399117361534528,
+        "max": 0.04591840141073883
+      },
+      "top_features": [
+        [
+          "pts_mean_last10",
+          0.04591840141073883
+        ],
+        [
+          "ast_mean_vs_opp",
+          0.045418641554747105
+        ],
+        [
+          "ast_mean_season",
+          0.043509885086961866
+        ],
+        [
+          "reb_mean_last10",
+          0.04325483393629362
+        ],
+        [
+          "ast_mean_last20",
+          0.04320955947228995
+        ]
+      ],
+      "false_positives": {
+        "0.05": {
+          "count": 0,
+          "dates": []
+        },
+        "0.1": {
+          "count": 0,
+          "dates": []
+        },
+        "0.15": {
+          "count": 0,
+          "dates": []
+        },
+        "0.2": {
+          "count": 0,
+          "dates": []
+        },
+        "0.25": {
+          "count": 0,
+          "dates": []
+        },
+        "0.3": {
+          "count": 0,
+          "dates": []
+        }
+      }
+    },
+    "cup": {
+      "n_dates": 45,
+      "n_dates_scored": 45,
+      "first_date": "2025-10-31",
+      "last_date": "2025-12-15",
+      "psi": {
+        "median": 0.02154619749667277,
+        "p90": 0.03998941975097389,
+        "max": 0.3247758156696529
+      },
+      "top_features": [
+        [
+          "games_played_season",
+          0.3247758156696529
+        ],
+        [
+          "minutes_mean_last20",
+          0.06448746204944752
+        ],
+        [
+          "days_rest",
+          0.05486657555976574
+        ],
+        [
+          "ast_mean_vs_opp",
+          0.047150001383126736
+        ],
+        [
+          "reb_mean_last10",
+          0.04570656143458019
+        ]
+      ],
+      "false_positives": {
+        "0.05": {
+          "count": 0,
+          "dates": []
+        },
+        "0.1": {
+          "count": 0,
+          "dates": []
+        },
+        "0.15": {
+          "count": 0,
+          "dates": []
+        },
+        "0.2": {
+          "count": 0,
+          "dates": []
+        },
+        "0.25": {
+          "count": 0,
+          "dates": []
+        },
+        "0.3": {
+          "count": 0,
+          "dates": []
+        }
+      }
+    },
+    "deadline_week": {
+      "n_dates": 7,
+      "n_dates_scored": 7,
+      "first_date": "2026-02-02",
+      "last_date": "2026-02-08",
+      "psi": {
+        "median": 0.024747492590234017,
+        "p90": 0.057591882970617396,
+        "max": 0.07729767550878593
+      },
+      "top_features": [
+        [
+          "games_played_season",
+          0.07729767550878593
+        ],
+        [
+          "minutes_mean_last5",
+          0.06540965157904469
+        ],
+        [
+          "minutes_mean_last10",
+          0.06208344611190947
+        ],
+        [
+          "pts_mean_last20",
+          0.06081899027464802
+        ],
+        [
+          "minutes_mean_season",
+          0.04846309366975335
+        ]
+      ],
+      "false_positives": {
+        "0.05": {
+          "count": 7,
+          "dates": [
+            "2026-02-02",
+            "2026-02-03",
+            "2026-02-04",
+            "2026-02-05",
+            "2026-02-06",
+            "2026-02-07",
+            "2026-02-08"
+          ]
+        },
+        "0.1": {
+          "count": 0,
+          "dates": []
+        },
+        "0.15": {
+          "count": 0,
+          "dates": []
+        },
+        "0.2": {
+          "count": 0,
+          "dates": []
+        },
+        "0.25": {
+          "count": 0,
+          "dates": []
+        },
+        "0.3": {
+          "count": 0,
+          "dates": []
+        }
+      }
+    },
+    "all_star_return": {
+      "n_dates": 7,
+      "n_dates_scored": 7,
+      "first_date": "2026-02-19",
+      "last_date": "2026-02-25",
+      "psi": {
+        "median": 0.03528496038506519,
+        "p90": 0.07786063254963377,
+        "max": 0.1606378051337552
+      },
+      "top_features": [
+        [
+          "days_rest",
+          0.1606378051337552
+        ],
+        [
+          "games_played_season",
+          0.1035427425852427
+        ],
+        [
+          "minutes_mean_last5",
+          0.10135376706997995
+        ],
+        [
+          "minutes_mean_last10",
+          0.0974785032887451
+        ],
+        [
+          "minutes_mean_last20",
+          0.08494725394657847
+        ]
+      ],
+      "false_positives": {
+        "0.05": {
+          "count": 7,
+          "dates": [
+            "2026-02-19",
+            "2026-02-20",
+            "2026-02-21",
+            "2026-02-22",
+            "2026-02-23",
+            "2026-02-24",
+            "2026-02-25"
+          ]
+        },
+        "0.1": {
+          "count": 0,
+          "dates": []
+        },
+        "0.15": {
+          "count": 0,
+          "dates": []
+        },
+        "0.2": {
+          "count": 0,
+          "dates": []
+        },
+        "0.25": {
+          "count": 0,
+          "dates": []
+        },
+        "0.3": {
+          "count": 0,
+          "dates": []
+        }
+      }
+    },
+    "april": {
+      "n_dates": 11,
+      "n_dates_scored": 11,
+      "first_date": "2026-04-01",
+      "last_date": "2026-04-12",
+      "psi": {
+        "median": 0.02536309655316988,
+        "p90": 0.06639572032917769,
+        "max": 0.11266234127493853
+      },
+      "top_features": [
+        [
+          "minutes_mean_last20",
+          0.11266234127493853
+        ],
+        [
+          "minutes_mean_last10",
+          0.10123700724716056
+        ],
+        [
+          "pts_mean_season",
+          0.07175463401447281
+        ],
+        [
+          "minutes_mean_last5",
+          0.06983003148491618
+        ],
+        [
+          "ast_mean_season",
+          0.06903328171672002
+        ]
+      ],
+      "false_positives": {
+        "0.05": {
+          "count": 11,
+          "dates": [
+            "2026-04-01",
+            "2026-04-02",
+            "2026-04-03",
+            "2026-04-04",
+            "2026-04-05",
+            "2026-04-06",
+            "2026-04-07",
+            "2026-04-08",
+            "2026-04-09",
+            "2026-04-10",
+            "2026-04-12"
+          ]
+        },
+        "0.1": {
+          "count": 0,
+          "dates": []
+        },
+        "0.15": {
+          "count": 0,
+          "dates": []
+        },
+        "0.2": {
+          "count": 0,
+          "dates": []
+        },
+        "0.25": {
+          "count": 0,
+          "dates": []
+        },
+        "0.3": {
+          "count": 0,
+          "dates": []
+        }
+      }
+    },
+    "regular": {
+      "n_dates": 84,
+      "n_dates_scored": 84,
+      "first_date": "2025-12-17",
+      "last_date": "2026-03-31",
+      "psi": {
+        "median": 0.024012174330338518,
+        "p90": 0.05756144938368087,
+        "max": 0.3340250763448698
+      },
+      "top_features": [
+        [
+          "days_rest",
+          0.3340250763448698
+        ],
+        [
+          "games_played_season",
+          0.19031739212814705
+        ],
+        [
+          "minutes_mean_last5",
+          0.13828219452217472
+        ],
+        [
+          "minutes_mean_last10",
+          0.12740175830563982
+        ],
+        [
+          "minutes_mean_last20",
+          0.12509984448748404
+        ]
+      ],
+      "false_positives": {
+        "0.05": {
+          "count": 44,
+          "dates": [
+            "2025-12-19",
+            "2025-12-20",
+            "2025-12-21",
+            "2025-12-22",
+            "2026-01-11",
+            "2026-01-30",
+            "2026-01-31",
+            "2026-02-01",
+            "2026-02-10",
+            "2026-02-11",
+            "2026-02-26",
+            "2026-02-27",
+            "2026-02-28",
+            "2026-03-01",
+            "2026-03-02",
+            "2026-03-03",
+            "2026-03-04",
+            "2026-03-05",
+            "2026-03-06",
+            "2026-03-07",
+            "2026-03-08",
+            "2026-03-09",
+            "2026-03-10",
+            "2026-03-11",
+            "2026-03-12",
+            "2026-03-13",
+            "2026-03-14",
+            "2026-03-15",
+            "2026-03-16",
+            "2026-03-17",
+            "2026-03-18",
+            "2026-03-19",
+            "2026-03-20",
+            "2026-03-21",
+            "2026-03-22",
+            "2026-03-23",
+            "2026-03-24",
+            "2026-03-25",
+            "2026-03-26",
+            "2026-03-27",
+            "2026-03-28",
+            "2026-03-29",
+            "2026-03-30",
+            "2026-03-31"
+          ]
+        },
+        "0.1": {
+          "count": 1,
+          "dates": [
+            "2026-03-05"
+          ]
+        },
+        "0.15": {
+          "count": 0,
+          "dates": []
+        },
+        "0.2": {
+          "count": 0,
+          "dates": []
+        },
+        "0.25": {
+          "count": 0,
+          "dates": []
+        },
+        "0.3": {
+          "count": 0,
+          "dates": []
+        }
+      }
+    }
+  },
+  "per_date": [
+    {
+      "date": "2025-10-21",
+      "position": "opening",
+      "reference_mode": "all",
+      "n_rows": 0,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-22",
+      "position": "opening",
+      "reference_mode": "day_001",
+      "n_rows": 0,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-23",
+      "position": "opening",
+      "reference_mode": "day_002",
+      "n_rows": 0,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-24",
+      "position": "opening",
+      "reference_mode": "day_003",
+      "n_rows": 17,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-25",
+      "position": "opening",
+      "reference_mode": "day_004",
+      "n_rows": 229,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-26",
+      "position": "opening",
+      "reference_mode": "day_005",
+      "n_rows": 319,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-27",
+      "position": "opening",
+      "reference_mode": "day_006",
+      "n_rows": 477,
+      "max_psi": null,
+      "median_psi": null,
+      "max_feature": null,
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-28",
+      "position": "opening",
+      "reference_mode": "day_007",
+      "n_rows": 673,
+      "max_psi": 0.044981141577582054,
+      "median_psi": 0.021133925527500395,
+      "max_feature": "ast_mean_vs_opp",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-29",
+      "position": "opening",
+      "reference_mode": "day_008",
+      "n_rows": 762,
+      "max_psi": 0.04591840141073883,
+      "median_psi": 0.020980151752559822,
+      "max_feature": "pts_mean_last10",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-30",
+      "position": "opening",
+      "reference_mode": "day_009",
+      "n_rows": 946,
+      "max_psi": 0.045418641554747105,
+      "median_psi": 0.02030173948708313,
+      "max_feature": "ast_mean_vs_opp",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-10-31",
+      "position": "cup",
+      "reference_mode": "day_010",
+      "n_rows": 1015,
+      "max_psi": 0.13092450022025032,
+      "median_psi": 0.029424613319571663,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-01",
+      "position": "cup",
+      "reference_mode": "day_011",
+      "n_rows": 1159,
+      "max_psi": 0.3247758156696529,
+      "median_psi": 0.025821818097881536,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 1,
+        "0.3": 1
+      }
+    },
+    {
+      "date": "2025-11-02",
+      "position": "cup",
+      "reference_mode": "day_012",
+      "n_rows": 1273,
+      "max_psi": 0.23340315535475897,
+      "median_psi": 0.02136414620287086,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-03",
+      "position": "cup",
+      "reference_mode": "day_013",
+      "n_rows": 1412,
+      "max_psi": 0.09911290643706233,
+      "median_psi": 0.021442224498681377,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-04",
+      "position": "cup",
+      "reference_mode": "day_014",
+      "n_rows": 1573,
+      "max_psi": 0.09390408893075229,
+      "median_psi": 0.022831149994324697,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-05",
+      "position": "cup",
+      "reference_mode": "day_015",
+      "n_rows": 1685,
+      "max_psi": 0.045113093188885164,
+      "median_psi": 0.022264761266191056,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-06",
+      "position": "cup",
+      "reference_mode": "day_016",
+      "n_rows": 1878,
+      "max_psi": 0.05690752019712186,
+      "median_psi": 0.022162920222037124,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-07",
+      "position": "cup",
+      "reference_mode": "day_017",
+      "n_rows": 1880,
+      "max_psi": 0.11614426291516748,
+      "median_psi": 0.022589316202905982,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-08",
+      "position": "cup",
+      "reference_mode": "day_018",
+      "n_rows": 1868,
+      "max_psi": 0.06730061117809495,
+      "median_psi": 0.020642020473894452,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-09",
+      "position": "cup",
+      "reference_mode": "day_019",
+      "n_rows": 1922,
+      "max_psi": 0.09390748367280899,
+      "median_psi": 0.01903932012604742,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-10",
+      "position": "cup",
+      "reference_mode": "day_020",
+      "n_rows": 1892,
+      "max_psi": 0.06141481769389542,
+      "median_psi": 0.018644055598803024,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-11",
+      "position": "cup",
+      "reference_mode": "day_021",
+      "n_rows": 1856,
+      "max_psi": 0.10226046244034173,
+      "median_psi": 0.01925894364844657,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-12",
+      "position": "cup",
+      "reference_mode": "day_022",
+      "n_rows": 1883,
+      "max_psi": 0.09653561625808404,
+      "median_psi": 0.020958862899953995,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-13",
+      "position": "cup",
+      "reference_mode": "day_023",
+      "n_rows": 1921,
+      "max_psi": 0.07235065969622392,
+      "median_psi": 0.01983365844076753,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-14",
+      "position": "cup",
+      "reference_mode": "day_024",
+      "n_rows": 1910,
+      "max_psi": 0.14235828462042993,
+      "median_psi": 0.01971597909742258,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-15",
+      "position": "cup",
+      "reference_mode": "day_025",
+      "n_rows": 1925,
+      "max_psi": 0.11515179189766378,
+      "median_psi": 0.022395068248454213,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-16",
+      "position": "cup",
+      "reference_mode": "day_026",
+      "n_rows": 1901,
+      "max_psi": 0.1305678798908326,
+      "median_psi": 0.02203554004962258,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-17",
+      "position": "cup",
+      "reference_mode": "day_027",
+      "n_rows": 1910,
+      "max_psi": 0.06296533531584109,
+      "median_psi": 0.023436275324091597,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-18",
+      "position": "cup",
+      "reference_mode": "day_028",
+      "n_rows": 1895,
+      "max_psi": 0.0772884216441988,
+      "median_psi": 0.021552095833593292,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-19",
+      "position": "cup",
+      "reference_mode": "day_029",
+      "n_rows": 1893,
+      "max_psi": 0.048583852882863446,
+      "median_psi": 0.024465809221507418,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-20",
+      "position": "cup",
+      "reference_mode": "day_030",
+      "n_rows": 1860,
+      "max_psi": 0.054434856937206115,
+      "median_psi": 0.023951095180204163,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-21",
+      "position": "cup",
+      "reference_mode": "day_031",
+      "n_rows": 1918,
+      "max_psi": 0.08798821835462763,
+      "median_psi": 0.02484814835530191,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-22",
+      "position": "cup",
+      "reference_mode": "day_032",
+      "n_rows": 1882,
+      "max_psi": 0.06740848723145659,
+      "median_psi": 0.023604007786357965,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-23",
+      "position": "cup",
+      "reference_mode": "day_033",
+      "n_rows": 1865,
+      "max_psi": 0.10483500578722739,
+      "median_psi": 0.02156598242167022,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-24",
+      "position": "cup",
+      "reference_mode": "day_034",
+      "n_rows": 1884,
+      "max_psi": 0.09160172657966426,
+      "median_psi": 0.02161534278273934,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-25",
+      "position": "cup",
+      "reference_mode": "day_035",
+      "n_rows": 1904,
+      "max_psi": 0.09493807029407951,
+      "median_psi": 0.0212436595240693,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-26",
+      "position": "cup",
+      "reference_mode": "day_036",
+      "n_rows": 1844,
+      "max_psi": 0.07624453876216472,
+      "median_psi": 0.021866484111189164,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-28",
+      "position": "cup",
+      "reference_mode": "day_038",
+      "n_rows": 1725,
+      "max_psi": 0.09928894584361259,
+      "median_psi": 0.02083270702993331,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-29",
+      "position": "cup",
+      "reference_mode": "day_039",
+      "n_rows": 1762,
+      "max_psi": 0.06138031936429125,
+      "median_psi": 0.018791808806139104,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-11-30",
+      "position": "cup",
+      "reference_mode": "day_040",
+      "n_rows": 1818,
+      "max_psi": 0.06059728029464552,
+      "median_psi": 0.021118250576021316,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-01",
+      "position": "cup",
+      "reference_mode": "day_041",
+      "n_rows": 1815,
+      "max_psi": 0.05675168019412755,
+      "median_psi": 0.02016162577499315,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-02",
+      "position": "cup",
+      "reference_mode": "day_042",
+      "n_rows": 1832,
+      "max_psi": 0.057826947058437515,
+      "median_psi": 0.021839782886341936,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-03",
+      "position": "cup",
+      "reference_mode": "day_043",
+      "n_rows": 1834,
+      "max_psi": 0.05706952848864947,
+      "median_psi": 0.021984690776515353,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-04",
+      "position": "cup",
+      "reference_mode": "day_044",
+      "n_rows": 1835,
+      "max_psi": 0.06892540860306928,
+      "median_psi": 0.023852943838643576,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-05",
+      "position": "cup",
+      "reference_mode": "day_045",
+      "n_rows": 1850,
+      "max_psi": 0.10544036208698104,
+      "median_psi": 0.020899204630963602,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-06",
+      "position": "cup",
+      "reference_mode": "day_046",
+      "n_rows": 1912,
+      "max_psi": 0.06448746204944752,
+      "median_psi": 0.02077940207841308,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-07",
+      "position": "cup",
+      "reference_mode": "day_047",
+      "n_rows": 1911,
+      "max_psi": 0.05795021868382923,
+      "median_psi": 0.022919676982718823,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-08",
+      "position": "cup",
+      "reference_mode": "day_048",
+      "n_rows": 1891,
+      "max_psi": 0.06380731478960563,
+      "median_psi": 0.020499297801310636,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-09",
+      "position": "cup",
+      "reference_mode": "day_049",
+      "n_rows": 1764,
+      "max_psi": 0.057946614242717846,
+      "median_psi": 0.02254576385138795,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-10",
+      "position": "cup",
+      "reference_mode": "day_050",
+      "n_rows": 1740,
+      "max_psi": 0.05989040778035764,
+      "median_psi": 0.01999831183062385,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-11",
+      "position": "cup",
+      "reference_mode": "day_051",
+      "n_rows": 1618,
+      "max_psi": 0.0573694807781866,
+      "median_psi": 0.020823932591426973,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-12",
+      "position": "cup",
+      "reference_mode": "day_052",
+      "n_rows": 1688,
+      "max_psi": 0.062030920125996286,
+      "median_psi": 0.019077395219094025,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-13",
+      "position": "cup",
+      "reference_mode": "day_053",
+      "n_rows": 1619,
+      "max_psi": 0.05466805193067657,
+      "median_psi": 0.02045351323164104,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-14",
+      "position": "cup",
+      "reference_mode": "day_054",
+      "n_rows": 1508,
+      "max_psi": 0.07227304176041426,
+      "median_psi": 0.018463750345265175,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-15",
+      "position": "cup",
+      "reference_mode": "day_055",
+      "n_rows": 1513,
+      "max_psi": 0.047150001383126736,
+      "median_psi": 0.018740682356700136,
+      "max_feature": "ast_mean_vs_opp",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-17",
+      "position": "regular",
+      "reference_mode": "day_057",
+      "n_rows": 1329,
+      "max_psi": 0.07773159416333733,
+      "median_psi": 0.020800583474474332,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-18",
+      "position": "regular",
+      "reference_mode": "day_058",
+      "n_rows": 1203,
+      "max_psi": 0.10029183227811769,
+      "median_psi": 0.02765569115673829,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-19",
+      "position": "regular",
+      "reference_mode": "day_059",
+      "n_rows": 1328,
+      "max_psi": 0.21358723818152098,
+      "median_psi": 0.026152637572644064,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-20",
+      "position": "regular",
+      "reference_mode": "day_060",
+      "n_rows": 1193,
+      "max_psi": 0.30349899542599446,
+      "median_psi": 0.026526155330328236,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 1,
+        "0.3": 1
+      }
+    },
+    {
+      "date": "2025-12-21",
+      "position": "regular",
+      "reference_mode": "day_061",
+      "n_rows": 1251,
+      "max_psi": 0.3279059585260996,
+      "median_psi": 0.025428792279535095,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 2,
+        "0.2": 1,
+        "0.25": 1,
+        "0.3": 1
+      }
+    },
+    {
+      "date": "2025-12-22",
+      "position": "regular",
+      "reference_mode": "day_062",
+      "n_rows": 1230,
+      "max_psi": 0.3340250763448698,
+      "median_psi": 0.027857954899067977,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 1,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 1,
+        "0.3": 1
+      }
+    },
+    {
+      "date": "2025-12-23",
+      "position": "regular",
+      "reference_mode": "day_063",
+      "n_rows": 1313,
+      "max_psi": 0.27002420908454916,
+      "median_psi": 0.024088870126779526,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 2,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 1,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-25",
+      "position": "regular",
+      "reference_mode": "day_065",
+      "n_rows": 1501,
+      "max_psi": 0.24641865776020078,
+      "median_psi": 0.020148273736706166,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 2,
+        "0.15": 1,
+        "0.2": 1,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-26",
+      "position": "regular",
+      "reference_mode": "day_066",
+      "n_rows": 1517,
+      "max_psi": 0.1808973760724516,
+      "median_psi": 0.02008448549760518,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 2,
+        "0.15": 1,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-27",
+      "position": "regular",
+      "reference_mode": "day_067",
+      "n_rows": 1556,
+      "max_psi": 0.1332857742746619,
+      "median_psi": 0.018233330194023845,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-28",
+      "position": "regular",
+      "reference_mode": "day_068",
+      "n_rows": 1691,
+      "max_psi": 0.10054207643598076,
+      "median_psi": 0.01711068185730197,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-29",
+      "position": "regular",
+      "reference_mode": "day_069",
+      "n_rows": 1651,
+      "max_psi": 0.08678679177126589,
+      "median_psi": 0.013838921173404557,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-30",
+      "position": "regular",
+      "reference_mode": "day_070",
+      "n_rows": 1767,
+      "max_psi": 0.061676353513198855,
+      "median_psi": 0.01627918983466065,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2025-12-31",
+      "position": "regular",
+      "reference_mode": "day_071",
+      "n_rows": 1839,
+      "max_psi": 0.09029316215480546,
+      "median_psi": 0.01860290436190749,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-01",
+      "position": "regular",
+      "reference_mode": "day_072",
+      "n_rows": 1973,
+      "max_psi": 0.10858861116412417,
+      "median_psi": 0.01604489327820415,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-02",
+      "position": "regular",
+      "reference_mode": "day_073",
+      "n_rows": 1842,
+      "max_psi": 0.12907358616313225,
+      "median_psi": 0.01725452147958513,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-03",
+      "position": "regular",
+      "reference_mode": "day_074",
+      "n_rows": 1939,
+      "max_psi": 0.11931018149009007,
+      "median_psi": 0.016966537925903743,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-04",
+      "position": "regular",
+      "reference_mode": "day_075",
+      "n_rows": 1895,
+      "max_psi": 0.15387692868855082,
+      "median_psi": 0.01702758294896363,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 1,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-05",
+      "position": "regular",
+      "reference_mode": "day_076",
+      "n_rows": 1941,
+      "max_psi": 0.13711131294929657,
+      "median_psi": 0.019982315931975463,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-06",
+      "position": "regular",
+      "reference_mode": "day_077",
+      "n_rows": 1953,
+      "max_psi": 0.10737120881515427,
+      "median_psi": 0.018914000663723236,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-07",
+      "position": "regular",
+      "reference_mode": "day_078",
+      "n_rows": 1802,
+      "max_psi": 0.078556230635219,
+      "median_psi": 0.02025459010504689,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-08",
+      "position": "regular",
+      "reference_mode": "day_079",
+      "n_rows": 2027,
+      "max_psi": 0.07920814079766339,
+      "median_psi": 0.019069134043857836,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-09",
+      "position": "regular",
+      "reference_mode": "day_080",
+      "n_rows": 1994,
+      "max_psi": 0.09432773524990508,
+      "median_psi": 0.02136007439319845,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-10",
+      "position": "regular",
+      "reference_mode": "day_081",
+      "n_rows": 2009,
+      "max_psi": 0.07831867114752789,
+      "median_psi": 0.02230352179181612,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-11",
+      "position": "regular",
+      "reference_mode": "day_082",
+      "n_rows": 1952,
+      "max_psi": 0.08143230699578437,
+      "median_psi": 0.02193058867341761,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-12",
+      "position": "regular",
+      "reference_mode": "day_083",
+      "n_rows": 2020,
+      "max_psi": 0.06352555926160727,
+      "median_psi": 0.020747558198007617,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-13",
+      "position": "regular",
+      "reference_mode": "day_084",
+      "n_rows": 1925,
+      "max_psi": 0.0716675556445949,
+      "median_psi": 0.023638867187741375,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-14",
+      "position": "regular",
+      "reference_mode": "day_085",
+      "n_rows": 1979,
+      "max_psi": 0.0652406435903814,
+      "median_psi": 0.03043353744831393,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-15",
+      "position": "regular",
+      "reference_mode": "day_086",
+      "n_rows": 1937,
+      "max_psi": 0.07710229399967489,
+      "median_psi": 0.02529654164248238,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-16",
+      "position": "regular",
+      "reference_mode": "day_087",
+      "n_rows": 2026,
+      "max_psi": 0.08664936784792401,
+      "median_psi": 0.02667330376430781,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-17",
+      "position": "regular",
+      "reference_mode": "day_088",
+      "n_rows": 1948,
+      "max_psi": 0.0772357291350771,
+      "median_psi": 0.024272638077852397,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-18",
+      "position": "regular",
+      "reference_mode": "day_089",
+      "n_rows": 1980,
+      "max_psi": 0.09496860957816224,
+      "median_psi": 0.028887160550399072,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-19",
+      "position": "regular",
+      "reference_mode": "day_090",
+      "n_rows": 1941,
+      "max_psi": 0.06589373783356861,
+      "median_psi": 0.02753834889103177,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-20",
+      "position": "regular",
+      "reference_mode": "day_091",
+      "n_rows": 1958,
+      "max_psi": 0.07452967662098334,
+      "median_psi": 0.026169937127657947,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-21",
+      "position": "regular",
+      "reference_mode": "day_092",
+      "n_rows": 1983,
+      "max_psi": 0.062585652537542,
+      "median_psi": 0.02083513068425224,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-22",
+      "position": "regular",
+      "reference_mode": "day_093",
+      "n_rows": 1894,
+      "max_psi": 0.04981265933884002,
+      "median_psi": 0.02095406951705176,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-23",
+      "position": "regular",
+      "reference_mode": "day_094",
+      "n_rows": 1990,
+      "max_psi": 0.06268060950436911,
+      "median_psi": 0.018744336795579283,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-24",
+      "position": "regular",
+      "reference_mode": "day_095",
+      "n_rows": 1950,
+      "max_psi": 0.048020877452950875,
+      "median_psi": 0.020472504082095354,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 0,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-25",
+      "position": "regular",
+      "reference_mode": "day_096",
+      "n_rows": 1945,
+      "max_psi": 0.071045687082798,
+      "median_psi": 0.019458500331905913,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-26",
+      "position": "regular",
+      "reference_mode": "day_097",
+      "n_rows": 1881,
+      "max_psi": 0.05679817387279813,
+      "median_psi": 0.019596374216041046,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-27",
+      "position": "regular",
+      "reference_mode": "day_098",
+      "n_rows": 1899,
+      "max_psi": 0.06798651663875768,
+      "median_psi": 0.016616206575223218,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-28",
+      "position": "regular",
+      "reference_mode": "day_099",
+      "n_rows": 1900,
+      "max_psi": 0.06813664461057216,
+      "median_psi": 0.0184672109891304,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-29",
+      "position": "regular",
+      "reference_mode": "day_100",
+      "n_rows": 1939,
+      "max_psi": 0.05496575315058657,
+      "median_psi": 0.017119190644047776,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 1,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-30",
+      "position": "regular",
+      "reference_mode": "day_101",
+      "n_rows": 1907,
+      "max_psi": 0.0589747861959356,
+      "median_psi": 0.019770128195703937,
+      "max_feature": "pts_mean_last20",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-01-31",
+      "position": "regular",
+      "reference_mode": "day_102",
+      "n_rows": 1967,
+      "max_psi": 0.060953942287192586,
+      "median_psi": 0.021770737502811714,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-01",
+      "position": "regular",
+      "reference_mode": "day_103",
+      "n_rows": 1903,
+      "max_psi": 0.06034994738130626,
+      "median_psi": 0.02006133774596907,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-02",
+      "position": "deadline_week",
+      "reference_mode": "day_104",
+      "n_rows": 1977,
+      "max_psi": 0.06208344611190947,
+      "median_psi": 0.023449854334259793,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-03",
+      "position": "deadline_week",
+      "reference_mode": "day_105",
+      "n_rows": 1887,
+      "max_psi": 0.06053366839002074,
+      "median_psi": 0.021200485376903173,
+      "max_feature": "pts_mean_last20",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-04",
+      "position": "deadline_week",
+      "reference_mode": "day_106",
+      "n_rows": 1942,
+      "max_psi": 0.07729767550878593,
+      "median_psi": 0.022722822535880306,
+      "max_feature": "games_played_season",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-05",
+      "position": "deadline_week",
+      "reference_mode": "day_107",
+      "n_rows": 1934,
+      "max_psi": 0.05765845763298544,
+      "median_psi": 0.025256595741819737,
+      "max_feature": "pts_mean_last20",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-06",
+      "position": "deadline_week",
+      "reference_mode": "day_108",
+      "n_rows": 1929,
+      "max_psi": 0.06269244698383707,
+      "median_psi": 0.024942541774503606,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-07",
+      "position": "deadline_week",
+      "reference_mode": "day_109",
+      "n_rows": 1898,
+      "max_psi": 0.06457227458453374,
+      "median_psi": 0.026669670914019408,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-08",
+      "position": "deadline_week",
+      "reference_mode": "day_110",
+      "n_rows": 1969,
+      "max_psi": 0.06540965157904469,
+      "median_psi": 0.025514869748512036,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-09",
+      "position": "regular",
+      "reference_mode": "day_111",
+      "n_rows": 1929,
+      "max_psi": 0.06202558085073952,
+      "median_psi": 0.027174596438041446,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-10",
+      "position": "regular",
+      "reference_mode": "day_112",
+      "n_rows": 1986,
+      "max_psi": 0.07160719067823376,
+      "median_psi": 0.026909609511066128,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-11",
+      "position": "regular",
+      "reference_mode": "day_113",
+      "n_rows": 1937,
+      "max_psi": 0.06679416449845092,
+      "median_psi": 0.026587397612408366,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-12",
+      "position": "regular",
+      "reference_mode": "day_114",
+      "n_rows": 2024,
+      "max_psi": 0.07335680223718422,
+      "median_psi": 0.02668528391218573,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 2,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-19",
+      "position": "all_star_return",
+      "reference_mode": "day_121",
+      "n_rows": 1076,
+      "max_psi": 0.1606378051337552,
+      "median_psi": 0.031031965323366828,
+      "max_feature": "days_rest",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 1,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-20",
+      "position": "all_star_return",
+      "reference_mode": "day_122",
+      "n_rows": 1122,
+      "max_psi": 0.09675571984566164,
+      "median_psi": 0.03453766030345349,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-21",
+      "position": "all_star_return",
+      "reference_mode": "day_123",
+      "n_rows": 1181,
+      "max_psi": 0.09446235446183773,
+      "median_psi": 0.03692736556206284,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-22",
+      "position": "all_star_return",
+      "reference_mode": "day_124",
+      "n_rows": 1111,
+      "max_psi": 0.0922261549475517,
+      "median_psi": 0.037505652781678764,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 7,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-23",
+      "position": "all_star_return",
+      "reference_mode": "day_125",
+      "n_rows": 1244,
+      "max_psi": 0.09143497124560027,
+      "median_psi": 0.03282996096646149,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 8,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-24",
+      "position": "all_star_return",
+      "reference_mode": "day_126",
+      "n_rows": 1112,
+      "max_psi": 0.0902367854179381,
+      "median_psi": 0.037358458598080596,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 8,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-25",
+      "position": "all_star_return",
+      "reference_mode": "day_127",
+      "n_rows": 1237,
+      "max_psi": 0.10135376706997995,
+      "median_psi": 0.035721218700515985,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 8,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-26",
+      "position": "regular",
+      "reference_mode": "day_128",
+      "n_rows": 1095,
+      "max_psi": 0.11155157227206455,
+      "median_psi": 0.04386628237415562,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 8,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-27",
+      "position": "regular",
+      "reference_mode": "day_129",
+      "n_rows": 1231,
+      "max_psi": 0.1183503199155365,
+      "median_psi": 0.04249849171258081,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-02-28",
+      "position": "regular",
+      "reference_mode": "day_130",
+      "n_rows": 1323,
+      "max_psi": 0.11531094326283606,
+      "median_psi": 0.040891761368500784,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 7,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-01",
+      "position": "regular",
+      "reference_mode": "day_131",
+      "n_rows": 1417,
+      "max_psi": 0.12173650705662073,
+      "median_psi": 0.04056315007251503,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-02",
+      "position": "regular",
+      "reference_mode": "day_132",
+      "n_rows": 1619,
+      "max_psi": 0.11801737187433345,
+      "median_psi": 0.03467652643839789,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-03",
+      "position": "regular",
+      "reference_mode": "day_133",
+      "n_rows": 1692,
+      "max_psi": 0.11570564620687517,
+      "median_psi": 0.03361758707379359,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-04",
+      "position": "regular",
+      "reference_mode": "day_134",
+      "n_rows": 1881,
+      "max_psi": 0.12019246025462973,
+      "median_psi": 0.03422216059368571,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-05",
+      "position": "regular",
+      "reference_mode": "day_135",
+      "n_rows": 1995,
+      "max_psi": 0.121983275751221,
+      "median_psi": 0.03648707623058861,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 3,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-06",
+      "position": "regular",
+      "reference_mode": "day_136",
+      "n_rows": 1967,
+      "max_psi": 0.12937580262703777,
+      "median_psi": 0.03370238282227904,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-07",
+      "position": "regular",
+      "reference_mode": "day_137",
+      "n_rows": 1928,
+      "max_psi": 0.12848501831081913,
+      "median_psi": 0.03238389500598128,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-08",
+      "position": "regular",
+      "reference_mode": "day_138",
+      "n_rows": 1928,
+      "max_psi": 0.13828219452217472,
+      "median_psi": 0.03512655394810655,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-09",
+      "position": "regular",
+      "reference_mode": "day_139",
+      "n_rows": 1905,
+      "max_psi": 0.13302811164233053,
+      "median_psi": 0.032285505518229084,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-10",
+      "position": "regular",
+      "reference_mode": "day_140",
+      "n_rows": 1943,
+      "max_psi": 0.13242969388878578,
+      "median_psi": 0.028158409013911975,
+      "max_feature": "minutes_mean_last5",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-11",
+      "position": "regular",
+      "reference_mode": "day_141",
+      "n_rows": 1942,
+      "max_psi": 0.12740175830563982,
+      "median_psi": 0.02867770025349314,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-12",
+      "position": "regular",
+      "reference_mode": "day_142",
+      "n_rows": 1939,
+      "max_psi": 0.1174060335020938,
+      "median_psi": 0.028017269299583158,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-13",
+      "position": "regular",
+      "reference_mode": "day_143",
+      "n_rows": 1919,
+      "max_psi": 0.11492111845461205,
+      "median_psi": 0.025651725986740623,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-14",
+      "position": "regular",
+      "reference_mode": "day_144",
+      "n_rows": 1970,
+      "max_psi": 0.11947004238685574,
+      "median_psi": 0.02357445471517705,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-15",
+      "position": "regular",
+      "reference_mode": "day_145",
+      "n_rows": 2003,
+      "max_psi": 0.11209826411063842,
+      "median_psi": 0.02048291347842089,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-16",
+      "position": "regular",
+      "reference_mode": "day_146",
+      "n_rows": 1930,
+      "max_psi": 0.11116419496709624,
+      "median_psi": 0.021477150239734177,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-17",
+      "position": "regular",
+      "reference_mode": "day_147",
+      "n_rows": 2006,
+      "max_psi": 0.11778023905047436,
+      "median_psi": 0.020636196030378022,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-18",
+      "position": "regular",
+      "reference_mode": "day_148",
+      "n_rows": 1970,
+      "max_psi": 0.12035194274595268,
+      "median_psi": 0.021025388510498375,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-19",
+      "position": "regular",
+      "reference_mode": "day_149",
+      "n_rows": 2024,
+      "max_psi": 0.11717745310057279,
+      "median_psi": 0.023087756503061427,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-20",
+      "position": "regular",
+      "reference_mode": "day_150",
+      "n_rows": 2011,
+      "max_psi": 0.1271745050908643,
+      "median_psi": 0.022820618575642534,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-21",
+      "position": "regular",
+      "reference_mode": "day_151",
+      "n_rows": 1991,
+      "max_psi": 0.12462397846216458,
+      "median_psi": 0.023200491142152703,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-22",
+      "position": "regular",
+      "reference_mode": "day_152",
+      "n_rows": 2066,
+      "max_psi": 0.12332034165329447,
+      "median_psi": 0.020165587540885745,
+      "max_feature": "minutes_mean_last10",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-23",
+      "position": "regular",
+      "reference_mode": "day_153",
+      "n_rows": 1977,
+      "max_psi": 0.11947562997709527,
+      "median_psi": 0.01962559748011404,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-24",
+      "position": "regular",
+      "reference_mode": "day_154",
+      "n_rows": 2071,
+      "max_psi": 0.11896958669845153,
+      "median_psi": 0.021869203040700717,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-25",
+      "position": "regular",
+      "reference_mode": "day_155",
+      "n_rows": 1939,
+      "max_psi": 0.11363053772358805,
+      "median_psi": 0.021673762150055946,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-26",
+      "position": "regular",
+      "reference_mode": "day_156",
+      "n_rows": 2048,
+      "max_psi": 0.12509984448748404,
+      "median_psi": 0.02195212498974544,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-27",
+      "position": "regular",
+      "reference_mode": "day_157",
+      "n_rows": 1934,
+      "max_psi": 0.12010549780237967,
+      "median_psi": 0.027901949122732757,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-28",
+      "position": "regular",
+      "reference_mode": "day_158",
+      "n_rows": 1975,
+      "max_psi": 0.11961031231301189,
+      "median_psi": 0.030647166711141715,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-29",
+      "position": "regular",
+      "reference_mode": "day_159",
+      "n_rows": 1959,
+      "max_psi": 0.12219283378646525,
+      "median_psi": 0.031101637330158895,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-30",
+      "position": "regular",
+      "reference_mode": "day_160",
+      "n_rows": 2003,
+      "max_psi": 0.11597862481385526,
+      "median_psi": 0.02759637172524887,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-03-31",
+      "position": "regular",
+      "reference_mode": "day_161",
+      "n_rows": 1997,
+      "max_psi": 0.11774651460872149,
+      "median_psi": 0.02754728058889637,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 5,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-01",
+      "position": "april",
+      "reference_mode": "day_162",
+      "n_rows": 1973,
+      "max_psi": 0.10890961780230837,
+      "median_psi": 0.025789640604227147,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-02",
+      "position": "april",
+      "reference_mode": "day_163",
+      "n_rows": 1965,
+      "max_psi": 0.10290575023631224,
+      "median_psi": 0.026572924408081563,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-03",
+      "position": "april",
+      "reference_mode": "day_164",
+      "n_rows": 1929,
+      "max_psi": 0.09899080097114599,
+      "median_psi": 0.025960911683990152,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 3,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-04",
+      "position": "april",
+      "reference_mode": "day_165",
+      "n_rows": 1983,
+      "max_psi": 0.09882660511311486,
+      "median_psi": 0.026954432036633322,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-05",
+      "position": "april",
+      "reference_mode": "day_166",
+      "n_rows": 1854,
+      "max_psi": 0.09127463651906151,
+      "median_psi": 0.02582432178166774,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 4,
+        "0.1": 0,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-06",
+      "position": "april",
+      "reference_mode": "day_167",
+      "n_rows": 1954,
+      "max_psi": 0.1038252886595806,
+      "median_psi": 0.025518191335687102,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 6,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-07",
+      "position": "april",
+      "reference_mode": "day_168",
+      "n_rows": 1853,
+      "max_psi": 0.10016064720116594,
+      "median_psi": 0.02281819166329154,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 7,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-08",
+      "position": "april",
+      "reference_mode": "day_169",
+      "n_rows": 1963,
+      "max_psi": 0.10530667996274361,
+      "median_psi": 0.02056840279251365,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 8,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-09",
+      "position": "april",
+      "reference_mode": "day_170",
+      "n_rows": 1871,
+      "max_psi": 0.11266234127493853,
+      "median_psi": 0.023315795757302155,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 8,
+        "0.1": 2,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-10",
+      "position": "april",
+      "reference_mode": "day_171",
+      "n_rows": 1922,
+      "max_psi": 0.11043261099399296,
+      "median_psi": 0.020497338276359852,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 7,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    },
+    {
+      "date": "2026-04-12",
+      "position": "april",
+      "reference_mode": "day_172",
+      "n_rows": 1897,
+      "max_psi": 0.10443823803255445,
+      "median_psi": 0.023087820490496496,
+      "max_feature": "minutes_mean_last20",
+      "n_flagged": {
+        "0.05": 7,
+        "0.1": 1,
+        "0.15": 0,
+        "0.2": 0,
+        "0.25": 0,
+        "0.3": 0
+      }
+    }
+  ]
+}

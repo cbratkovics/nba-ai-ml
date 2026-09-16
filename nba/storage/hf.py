@@ -170,6 +170,7 @@ PRODUCT_PREFIXES: tuple[str, ...] = (
     config.HF_DAILY_REPORTS_PREFIX,
     config.HF_BRIEF_PREFIX,
     config.HF_DECISIONS_PREFIX,
+    config.HF_DRIFT_PREFIX,
 )
 PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/**" for p in PRODUCT_PREFIXES)
 

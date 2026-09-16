@@ -45,6 +45,11 @@ sources:
         meta:
           formatter: template
           external_location: "read_json_auto('{{ var('warehouse_root') }}/daily_reports/*.json', filename = true, union_by_name = true)"
+      - name: drift_reports
+        description: drift/<date>.json, the nightly drift check per run date (PSI per feature against the day-aligned reference, the verdict, the slate outcome and the no-schedule streak; ADR-0016 to ADR-0018). Empty until the first run.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('warehouse_root') }}/drift/*.json', filename = true, union_by_name = true)"
       - name: load_manifest
         description: load_manifest.json written by the loader, with the dataset revision and file counts of this load.
         meta:

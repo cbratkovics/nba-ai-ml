@@ -345,3 +345,32 @@ models:
       - { name: season_mean_same_rows_hit_rate, data_type: double, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
       - { name: season_mean_own_n_called, data_type: integer, description: rows the season-mean sign calls at the same threshold on its own edge }
       - { name: season_mean_own_hit_rate, data_type: double, description: its hit rate as a policy at that threshold }
+
+  - name: mart_drift
+    description: One row per (run_date, model_revision, feature) with the nightly drift check's PSI against the day-aligned reference and the run's verdict (ADR-0016 to ADR-0018); every row is a committed drift/<date>.json product, nothing is recomputed.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [run_date, model_revision, feature]
+    columns:
+      - { name: run_date, data_type: date, description: run date of the nightly job, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season of the run date }
+      - { name: model_revision, data_type: varchar, description: model revision of the reference, constraints: [{ type: not_null }] }
+      - { name: feature_version, data_type: varchar, description: feature module version of the reference }
+      - { name: feature, data_type: varchar, description: "model feature; null on the one row of a run without PSI (insufficient window, off-season)" }
+      - { name: psi, data_type: double, description: population stability index of the feature in the window }
+      - { name: flagged, data_type: boolean, description: whether the feature is at or above the threshold }
+      - { name: status, data_type: varchar, description: "ok, warn, hold or insufficient", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [ok, warn, hold, insufficient] } } }] }
+      - { name: position, data_type: varchar, description: season position label of the run date }
+      - { name: reference_mode, data_type: varchar, description: "reference block used: day_NNN or all" }
+      - { name: n_rows, data_type: integer, description: training-population rows in the window }
+      - { name: psi_threshold, data_type: double, description: PSI threshold that applied }
+      - { name: min_features, data_type: integer, description: features at or above the threshold needed to fire }
+      - { name: calibrated, data_type: boolean, description: whether the threshold came from the committed calibration }
+      - { name: n_flagged, data_type: integer, description: features at or above the threshold }
+      - { name: slate_status, data_type: varchar, description: "the slate outcome of the run: ok, no_games or no_schedule" }
+      - { name: no_schedule_streak, data_type: integer, description: consecutive runs ending at the no-schedule line }
+      - { name: no_schedule_warn, data_type: boolean, description: whether the streak reached the warning length }
+      - { name: source_file, data_type: varchar, description: report file }

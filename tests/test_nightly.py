@@ -252,3 +252,7 @@ def test_products_pushed_include_daily_report_and_brief(
     assert "daily_reports/2026-01-15.json" in pushed["files"]
     assert "brief/2026-01-14.json" in pushed["files"] and "brief/latest.json" in pushed["files"]
     assert s.products_revision == "sha"
+    # The drift report is a product too (ADR-0018); the fixture window is too thin for PSI.
+    assert "drift/2026-01-15.json" in pushed["files"]
+    assert s.drift["status"] == "insufficient" and s.drift["blocks_slate"] is False
+    assert s.drift["no_schedule_streak"] == 1

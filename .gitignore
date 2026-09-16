@@ -138,6 +138,9 @@ reports/*
 !reports/replay_all_rows_*.json
 # The decision-policy evaluation (ADR-0015); the warehouse reconciles to it.
 !reports/policy_*.json
+# Drift reference (from the gold marts, keyed by feature and model version) and calibration.
+!reports/drift_reference_*.json
+!reports/drift_calibration_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git (data/warehouse/ is the loader's copy).
@@ -158,3 +161,4 @@ site/
 /daily_reports/
 /brief/
 /decisions/
+/drift/

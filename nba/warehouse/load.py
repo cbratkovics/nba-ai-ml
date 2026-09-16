@@ -32,6 +32,7 @@ PRODUCT_FAMILIES: tuple[tuple[str, str], ...] = (
     (config.HF_PREDICTIONS_PREFIX, "*.parquet"),
     (config.HF_RESIDUALS_PREFIX, "*.parquet"),
     (config.HF_DAILY_REPORTS_PREFIX, "*.json"),
+    (config.HF_DRIFT_PREFIX, "*.json"),
 )
 
 

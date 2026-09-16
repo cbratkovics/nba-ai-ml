@@ -131,6 +131,45 @@ POLICY_MIN_COVERAGE: float = 0.25
 POLICY_BAND_QUANTILES: tuple[float, ...] = (0.10, 0.25, 0.75, 0.90)
 POLICY_REPORT_TEMPLATE: str = "policy_{season}.json"
 
+# Drift monitoring (ADR-0016 to ADR-0018): PSI per model feature between the window of games
+# played before a run date and a reference built by the feature module over the training rows
+# of the gold marts (population min10, TRAIN_SEASONS), decile bins. Products: drift/<date>.json.
+DRIFT_DIR: Path = Path("drift")
+HF_DRIFT_PREFIX: str = "drift"
+DRIFT_WINDOW_DAYS: int = 14
+# Seasons whose rows form the day-aligned reference: the training seasons except the first
+# season in the data, whose career-long features (<stat>_mean_vs_opp) are missing for most
+# rows only because no earlier season exists in the data (85% missing at its day 15 against
+# 9% to 12% in every later season and in 2025-26; ADR-0017). Bin edges and the season-long
+# comparison still use every training season.
+DRIFT_REFERENCE_SEASONS: tuple[str, ...] = TRAIN_SEASONS[1:]
+DRIFT_MIN_ROWS: int = 500
+DRIFT_BINS: int = 10
+# Candidate PSI thresholds swept by the calibration; the provisional one applies until
+# reports/drift_calibration_<season>.json exists (then its chosen threshold does).
+DRIFT_CANDIDATE_THRESHOLDS: tuple[float, ...] = (0.05, 0.10, 0.15, 0.20, 0.25, 0.30)
+DRIFT_PROVISIONAL_THRESHOLD: float = 0.20
+# The rule fires (WARN uncalibrated, HOLD calibrated) when this many features are at or
+# above the threshold in one window; one flagged feature is a WARN either way.
+DRIFT_MIN_FEATURES: int = 3
+DRIFT_REFERENCE_TEMPLATE: str = "drift_reference_{feature_version}_{model_revision}.json"
+DRIFT_CALIBRATION_TEMPLATE: str = "drift_calibration_{season}.json"
+# Season positions (calendar facts for 2025-26; opening and april are generic). The opening
+# position is the season's first OPENING_GAME_DATES game dates; its windows are compared with
+# the opening windows of the training seasons (ADR-0017).
+OPENING_GAME_DATES: int = 10
+ALL_STAR_RETURN_GAME_DATES: int = 7
+SEASON_CALENDAR: dict[str, dict[str, tuple[str, str]]] = {
+    "2025-26": {
+        "cup": ("2025-10-31", "2025-12-16"),  # Emirates NBA Cup group play to the final
+        "deadline_week": ("2026-02-02", "2026-02-08"),  # trade deadline Thursday 2026-02-05
+        "all_star_break": ("2026-02-13", "2026-02-18"),  # no games; All-Star Game 2026-02-15
+    },
+}
+# Consecutive nightly runs ending at the no-schedule line before a WARN with an issue
+# (ADR-0018). The dump's schedule-file publish timing for 2025-26 is not recorded, so 14.
+NO_SCHEDULE_STREAK_WARN: int = 14
+
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"
 MODELS_DIR: Path = Path("models")

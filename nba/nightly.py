@@ -2,8 +2,8 @@
 
 One process so the files written by each step are known exactly and only those are
 uploaded. Steps: ingest -> residuals for yesterday -> analyst brief for yesterday ->
-slate for today -> decisions for today -> push. Outcomes that are not errors exit 0 with one
-explicit line each:
+slate for today -> decisions for today -> drift check -> push. Outcomes that are not errors
+exit 0 with one explicit line each:
 
     SLATE <date>: no schedule file for season <season> (...)   the dump has no schedule yet
     SLATE <date>: no games on this date (...)                   schedule exists, nothing today
@@ -32,6 +32,8 @@ from nba.agent import loop as agent_loop
 from nba.agent import tools as agent_tools
 from nba.decisions import decide
 from nba.decisions import evaluate as policy_evaluate
+from nba.drift import reference as drift_reference
+from nba.drift import run as drift_run
 from nba.ingest import kaggle_daily, schedule
 from nba.predict import model, residuals, slate
 from nba.storage import hf, local
@@ -49,6 +51,7 @@ class NightlySummary:
     agent: dict[str, Any] = field(default_factory=dict)
     slate: dict[str, Any] = field(default_factory=dict)
     decisions: dict[str, Any] = field(default_factory=dict)
+    drift: dict[str, Any] = field(default_factory=dict)
     products_pushed: list[str] = field(default_factory=list)
     products_revision: str | None = None
     lines: list[str] = field(default_factory=list)
@@ -189,6 +192,34 @@ def run(
                 f"DECISIONS {d}: {payload['n_players']} players, calls per target "
                 f"(training-population policy) {payload['n_calls']['min10']}"
             )
+
+    # 3c. Drift: the window before today against the day-aligned reference (ADR-0016 to
+    # ADR-0018). A HOLD is recorded, never a reason to skip the slate or the push.
+    report, drift_path = drift_run.run(root, d, game_logs, outcome.status.value)
+    if report is None:
+        summary.drift = {"status": "no_reference"}
+        summary.log(
+            f"DRIFT {d}: no reference at {drift_reference.reference_path()}; nothing written"
+        )
+    else:
+        written.append(drift_path)
+        summary.drift = {
+            k: report[k]
+            for k in (
+                "status",
+                "reasons",
+                "thresholds",
+                "flagged",
+                "n_flagged",
+                "position",
+                "reference_mode",
+                "no_schedule_streak",
+                "no_schedule_warn",
+                "blocks_slate",
+            )
+        }
+        summary.drift["n_rows"] = report["window"]["n_rows"]
+        summary.log(drift_run.log_line(d, report))
 
     # 4. Push exactly the product files written tonight.
     if push and written:
