@@ -1,0 +1,2109 @@
+{
+  "season": "2025-26",
+  "generated_at": "2026-09-16T00:22:30+00:00",
+  "git_sha": "6da946284845b7ec7b5416623c7ca9d6a4b3eca4",
+  "model_revision": "fb427de136e1d6c4b591ae30cf30488f44935182",
+  "model_commit": "50a3b2e33b443d1db19274cea27467072ebfb3f8",
+  "in_sample": true,
+  "in_sample_note": "Thresholds and bands were chosen on the 2025-26 replay rows they are evaluated on; the hit rates are in-sample. The coverage curve is published so any other threshold can be read off; the next untouched season is the out-of-sample test.",
+  "min_coverage": 0.25,
+  "source_file": "reports/policy_2025-26.json",
+  "source_sha256": "397fdabc5796baf15e7383b007d31bd2620140f06a1c3c7b2c488840375cd007",
+  "definitions": {
+    "edge": "prediction - baseline_last10, both from the slate row scored before tip-off",
+    "call": "over if edge > threshold; under if edge < -threshold; else no_call",
+    "outcome": "hit if actual is on the called side of baseline_last10; miss if on the other; push if actual == baseline_last10 (excluded from hit_rate)",
+    "hit_rate": "n_hit / (n_hit + n_miss) over the rows the model called",
+    "coverage": "n_called / n, the share of the population's rows the policy calls",
+    "net_correct": "n_hit - n_miss",
+    "coin_flip": "0.5 by definition; half_width_95 = 1.96 * sqrt(0.25 / n_resolved)",
+    "season_mean_sign": "over if season_mean - baseline_last10 > 0, under if < 0; scored on the same rows the model resolved (same_rows) and, own_threshold_*, as a policy with the same threshold applied to its own edge",
+    "season_mean": "the player's mean of the stat over earlier games of the same season (the feature module's <stat>_mean_season, recomputed in gold.fct_player_game)",
+    "threshold_selection": "largest grid threshold with coverage >= min_coverage, chosen on these rows (in-sample)",
+    "bands": "quantiles of actual - prediction on these rows (in-sample); band_50 = q25..q75, band_80 = q10..q90 around the prediction"
+  },
+  "populations": {
+    "min10": {
+      "description": "the training population: replayed rows with a box score, at least 10 minutes and both baselines defined",
+      "n": 22075,
+      "targets": {
+        "pts": {
+          "n": 22075,
+          "threshold": 1.75,
+          "n_called": 6748,
+          "coverage": 0.30568516421291053,
+          "n_resolved": 6680,
+          "n_push": 68,
+          "n_hit": 4457,
+          "hit_rate": 0.6672155688622754,
+          "baselines": {
+            "coin_flip": {
+              "hit_rate": 0.5,
+              "n": 6680,
+              "half_width_95": 0.01199051521369371
+            },
+            "season_mean_sign": {
+              "n": 6324,
+              "hit_rate": 0.5966160657811511,
+              "same_rows": true,
+              "own_threshold_n_called": 7639,
+              "own_threshold_hit_rate": 0.5883748517200474
+            }
+          },
+          "model_beats_both": true,
+          "verdict": "On the training population the model's pts calls hit 66.7% of 6,680 resolved calls, above the season-mean sign (59.7% on the same rows) and outside the coin flip's 95% band (0.5 \u00b1 0.012).",
+          "bands": {
+            "quantiles": {
+              "q10": -7.0452312126118235,
+              "q25": -4.113196784791294,
+              "q75": 3.6000501214221448,
+              "q90": 7.981243661420216
+            },
+            "coverage_50": 0.49997734994337484,
+            "coverage_80": 0.7999546998867497
+          },
+          "coverage_curve": [
+            {
+              "threshold": 0.0,
+              "coverage": 1.0,
+              "n_resolved": 21900,
+              "hit_rate": 0.5752511415525114,
+              "season_mean_same_rows_hit_rate": 0.5501713632901751,
+              "season_mean_own_hit_rate": 0.5501713632901751
+            },
+            {
+              "threshold": 0.25,
+              "coverage": 0.8804077010192526,
+              "n_resolved": 19278,
+              "hit_rate": 0.5865234982882042,
+              "season_mean_same_rows_hit_rate": 0.5517708220513375,
+              "season_mean_own_hit_rate": 0.555627425614489
+            },
+            {
+              "threshold": 0.5,
+              "coverage": 0.761449603624009,
+              "n_resolved": 16673,
+              "hit_rate": 0.5955736820008397,
+              "season_mean_same_rows_hit_rate": 0.5558965366067514,
+              "season_mean_own_hit_rate": 0.5637691926696384
+            },
+            {
+              "threshold": 0.75,
+              "coverage": 0.6521404303510758,
+              "n_resolved": 14277,
+              "hit_rate": 0.6077607340477691,
+              "season_mean_same_rows_hit_rate": 0.5631586651053864,
+              "season_mean_own_hit_rate": 0.5693248915131252
+            },
+            {
+              "threshold": 1.0,
+              "coverage": 0.5507587768969422,
+              "n_resolved": 12055,
+              "hit_rate": 0.6204064703442554,
+              "season_mean_same_rows_hit_rate": 0.5704365940456557,
+              "season_mean_own_hit_rate": 0.575299463031805
+            },
+            {
+              "threshold": 1.25,
+              "coverage": 0.4580294450736127,
+              "n_resolved": 10022,
+              "hit_rate": 0.6338056276192376,
+              "season_mean_same_rows_hit_rate": 0.5760527969830296,
+              "season_mean_own_hit_rate": 0.580722660003844
+            },
+            {
+              "threshold": 1.5,
+              "coverage": 0.3763533408833522,
+              "n_resolved": 8230,
+              "hit_rate": 0.6487241798298906,
+              "season_mean_same_rows_hit_rate": 0.586542151720609,
+              "season_mean_own_hit_rate": 0.5844609833107803
+            },
+            {
+              "threshold": 1.75,
+              "coverage": 0.30568516421291053,
+              "n_resolved": 6680,
+              "hit_rate": 0.6672155688622754,
+              "season_mean_same_rows_hit_rate": 0.5966160657811511,
+              "season_mean_own_hit_rate": 0.5883748517200474
+            },
+            {
+              "threshold": 2.0,
+              "coverage": 0.24661381653454134,
+              "n_resolved": 5390,
+              "hit_rate": 0.6846011131725418,
+              "season_mean_same_rows_hit_rate": 0.6063996859049863,
+              "season_mean_own_hit_rate": 0.5892690513219284
+            },
+            {
+              "threshold": 2.25,
+              "coverage": 0.19873159682899208,
+              "n_resolved": 4345,
+              "hit_rate": 0.6978135788262371,
+              "season_mean_same_rows_hit_rate": 0.6143838978890526,
+              "season_mean_own_hit_rate": 0.596076274294096
+            },
+            {
+              "threshold": 2.5,
+              "coverage": 0.15977349943374858,
+              "n_resolved": 3491,
+              "hit_rate": 0.714694929819536,
+              "season_mean_same_rows_hit_rate": 0.6216548754229468,
+              "season_mean_own_hit_rate": 0.6021786492374728
+            },
+            {
+              "threshold": 2.75,
+              "coverage": 0.12661381653454135,
+              "n_resolved": 2770,
+              "hit_rate": 0.7328519855595668,
+              "season_mean_same_rows_hit_rate": 0.6350507416081187,
+              "season_mean_own_hit_rate": 0.6060838445807771
+            },
+            {
+              "threshold": 3.0,
+              "coverage": 0.10224235560588901,
+              "n_resolved": 2240,
+              "hit_rate": 0.7522321428571429,
+              "season_mean_same_rows_hit_rate": 0.6533980582524271,
+              "season_mean_own_hit_rate": 0.6070133010882709
+            },
+            {
+              "threshold": 3.25,
+              "coverage": 0.08280860702151756,
+              "n_resolved": 1814,
+              "hit_rate": 0.7684674751929438,
+              "season_mean_same_rows_hit_rate": 0.6606389391199518,
+              "season_mean_own_hit_rate": 0.6088203657224812
+            },
+            {
+              "threshold": 3.5,
+              "coverage": 0.06568516421291053,
+              "n_resolved": 1438,
+              "hit_rate": 0.7795549374130737,
+              "season_mean_same_rows_hit_rate": 0.6809815950920245,
+              "season_mean_own_hit_rate": 0.6114622840286557
+            },
+            {
+              "threshold": 3.75,
+              "coverage": 0.05132502831257078,
+              "n_resolved": 1124,
+              "hit_rate": 0.791814946619217,
+              "season_mean_same_rows_hit_rate": 0.6855721393034826,
+              "season_mean_own_hit_rate": 0.6150832517140059
+            },
+            {
+              "threshold": 4.0,
+              "coverage": 0.04090600226500566,
+              "n_resolved": 897,
+              "hit_rate": 0.8115942028985508,
+              "season_mean_same_rows_hit_rate": 0.7169811320754716,
+              "season_mean_own_hit_rate": 0.6270797475616753
+            },
+            {
+              "threshold": 4.25,
+              "coverage": 0.03134767836919592,
+              "n_resolved": 688,
+              "hit_rate": 0.8270348837209303,
+              "season_mean_same_rows_hit_rate": 0.7321131447587355,
+              "season_mean_own_hit_rate": 0.634952766531714
+            },
+            {
+              "threshold": 4.5,
+              "coverage": 0.02346545866364666,
+              "n_resolved": 514,
+              "hit_rate": 0.8249027237354085,
+              "season_mean_same_rows_hit_rate": 0.7461368653421634,
+              "season_mean_own_hit_rate": 0.6395256916996047
+            },
+            {
+              "threshold": 4.75,
+              "coverage": 0.01780294450736127,
+              "n_resolved": 391,
+              "hit_rate": 0.8260869565217391,
+              "season_mean_same_rows_hit_rate": 0.7621776504297995,
+              "season_mean_own_hit_rate": 0.6310408921933085
+            },
+            {
+              "threshold": 5.0,
+              "coverage": 0.013499433748584371,
+              "n_resolved": 297,
+              "hit_rate": 0.8148148148148148,
+              "season_mean_same_rows_hit_rate": 0.7556390977443609,
+              "season_mean_own_hit_rate": 0.6412803532008831
+            },
+            {
+              "threshold": 5.25,
+              "coverage": 0.009331823329558325,
+              "n_resolved": 206,
+              "hit_rate": 0.8058252427184466,
+              "season_mean_same_rows_hit_rate": 0.7486338797814208,
+              "season_mean_own_hit_rate": 0.6421188630490956
+            },
+            {
+              "threshold": 5.5,
+              "coverage": 0.006477916194790487,
+              "n_resolved": 143,
+              "hit_rate": 0.7902097902097902,
+              "season_mean_same_rows_hit_rate": 0.736,
+              "season_mean_own_hit_rate": 0.6496124031007752
+            },
+            {
+              "threshold": 5.75,
+              "coverage": 0.004031710079275198,
+              "n_resolved": 89,
+              "hit_rate": 0.7415730337078652,
+              "season_mean_same_rows_hit_rate": 0.7037037037037037,
+              "season_mean_own_hit_rate": 0.6560283687943262
+            },
+            {
+              "threshold": 6.0,
+              "coverage": 0.00289920724801812,
+              "n_resolved": 64,
+              "hit_rate": 0.78125,
+              "season_mean_same_rows_hit_rate": 0.7,
+              "season_mean_own_hit_rate": 0.6721991701244814
+            },
+            {
+              "threshold": 6.25,
+              "coverage": 0.0020385050962627408,
+              "n_resolved": 45,
+              "hit_rate": 0.7777777777777778,
+              "season_mean_same_rows_hit_rate": 0.6585365853658537,
+              "season_mean_own_hit_rate": 0.6753554502369669
+            },
+            {
+              "threshold": 6.5,
+              "coverage": 0.0015855039637599094,
+              "n_resolved": 35,
+              "hit_rate": 0.7428571428571429,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.6703601108033241
+            },
+            {
+              "threshold": 6.75,
+              "coverage": 0.001494903737259343,
+              "n_resolved": 33,
+              "hit_rate": 0.7575757575757576,
+              "season_mean_same_rows_hit_rate": 0.6774193548387096,
+              "season_mean_own_hit_rate": 0.6666666666666666
+            },
+            {
+              "threshold": 7.0,
+              "coverage": 0.0013137032842582106,
+              "n_resolved": 29,
+              "hit_rate": 0.7241379310344828,
+              "season_mean_same_rows_hit_rate": 0.6296296296296297,
+              "season_mean_own_hit_rate": 0.6690909090909091
+            },
+            {
+              "threshold": 7.25,
+              "coverage": 0.001041902604756512,
+              "n_resolved": 23,
+              "hit_rate": 0.6956521739130435,
+              "season_mean_same_rows_hit_rate": 0.5714285714285714,
+              "season_mean_own_hit_rate": 0.6810344827586207
+            },
+            {
+              "threshold": 7.5,
+              "coverage": 0.0007701019252548131,
+              "n_resolved": 17,
+              "hit_rate": 0.5882352941176471,
+              "season_mean_same_rows_hit_rate": 0.4666666666666667,
+              "season_mean_own_hit_rate": 0.7014218009478673
+            },
+            {
+              "threshold": 7.75,
+              "coverage": 0.0006342015855039637,
+              "n_resolved": 14,
+              "hit_rate": 0.5,
+              "season_mean_same_rows_hit_rate": 0.4166666666666667,
+              "season_mean_own_hit_rate": 0.7252747252747253
+            },
+            {
+              "threshold": 8.0,
+              "coverage": 0.00045300113250283127,
+              "n_resolved": 10,
+              "hit_rate": 0.3,
+              "season_mean_same_rows_hit_rate": 0.25,
+              "season_mean_own_hit_rate": 0.7261146496815286
+            }
+          ]
+        },
+        "reb": {
+          "n": 22075,
+          "threshold": 0.7,
+          "n_called": 6623,
+          "coverage": 0.30002265005662515,
+          "n_resolved": 6516,
+          "n_push": 107,
+          "n_hit": 4300,
+          "hit_rate": 0.6599140577041129,
+          "baselines": {
+            "coin_flip": {
+              "hit_rate": 0.5,
+              "n": 6516,
+              "half_width_95": 0.012140471055370382
+            },
+            "season_mean_sign": {
+              "n": 6159,
+              "hit_rate": 0.5953888618282188,
+              "same_rows": true,
+              "own_threshold_n_called": 7122,
+              "own_threshold_hit_rate": 0.6009683850754771
+            }
+          },
+          "model_beats_both": true,
+          "verdict": "On the training population the model's reb calls hit 66.0% of 6,516 resolved calls, above the season-mean sign (59.5% on the same rows) and outside the coin flip's 95% band (0.5 \u00b1 0.012).",
+          "bands": {
+            "quantiles": {
+              "q10": -2.8560969278061252,
+              "q25": -1.6957680420235133,
+              "q75": 1.4105812238783924,
+              "q90": 3.279385942586389
+            },
+            "coverage_50": 0.49997734994337484,
+            "coverage_80": 0.7999546998867497
+          },
+          "coverage_curve": [
+            {
+              "threshold": 0.0,
+              "coverage": 1.0,
+              "n_resolved": 21701,
+              "hit_rate": 0.5856412146905673,
+              "season_mean_same_rows_hit_rate": 0.5537875500265201,
+              "season_mean_own_hit_rate": 0.5537875500265201
+            },
+            {
+              "threshold": 0.1,
+              "coverage": 0.8771007927519818,
+              "n_resolved": 19034,
+              "hit_rate": 0.5945150782809709,
+              "season_mean_same_rows_hit_rate": 0.5608616804967852,
+              "season_mean_own_hit_rate": 0.5611226839162372
+            },
+            {
+              "threshold": 0.2,
+              "coverage": 0.7597734994337486,
+              "n_resolved": 16477,
+              "hit_rate": 0.6044789706864113,
+              "season_mean_same_rows_hit_rate": 0.5677890724269378,
+              "season_mean_own_hit_rate": 0.5706776440785307
+            },
+            {
+              "threshold": 0.3,
+              "coverage": 0.6449377123442809,
+              "n_resolved": 13997,
+              "hit_rate": 0.613917267985997,
+              "season_mean_same_rows_hit_rate": 0.5740074906367041,
+              "season_mean_own_hit_rate": 0.5796120884077582
+            },
+            {
+              "threshold": 0.4,
+              "coverage": 0.5433295583238958,
+              "n_resolved": 11794,
+              "hit_rate": 0.6245548584025776,
+              "season_mean_same_rows_hit_rate": 0.5789567384724942,
+              "season_mean_own_hit_rate": 0.5880143268978771
+            },
+            {
+              "threshold": 0.5,
+              "coverage": 0.4491959229898075,
+              "n_resolved": 9748,
+              "hit_rate": 0.6396183832581043,
+              "season_mean_same_rows_hit_rate": 0.5863817848278838,
+              "season_mean_own_hit_rate": 0.5954904405652536
+            },
+            {
+              "threshold": 0.6,
+              "coverage": 0.36815402038505096,
+              "n_resolved": 7981,
+              "hit_rate": 0.6467861170279413,
+              "season_mean_same_rows_hit_rate": 0.5895877378435518,
+              "season_mean_own_hit_rate": 0.5999028890507405
+            },
+            {
+              "threshold": 0.7,
+              "coverage": 0.30002265005662515,
+              "n_resolved": 6516,
+              "hit_rate": 0.6599140577041129,
+              "season_mean_same_rows_hit_rate": 0.5953888618282188,
+              "season_mean_own_hit_rate": 0.6009683850754771
+            },
+            {
+              "threshold": 0.8,
+              "coverage": 0.24602491506228766,
+              "n_resolved": 5345,
+              "hit_rate": 0.6748362956033677,
+              "season_mean_same_rows_hit_rate": 0.6009538950715422,
+              "season_mean_own_hit_rate": 0.6022960932145305
+            },
+            {
+              "threshold": 0.9,
+              "coverage": 0.19900339750849377,
+              "n_resolved": 4321,
+              "hit_rate": 0.6882666049525573,
+              "season_mean_same_rows_hit_rate": 0.599406528189911,
+              "season_mean_own_hit_rate": 0.6058599237407184
+            },
+            {
+              "threshold": 1.0,
+              "coverage": 0.16226500566251414,
+              "n_resolved": 3530,
+              "hit_rate": 0.7070821529745043,
+              "season_mean_same_rows_hit_rate": 0.5991471215351812,
+              "season_mean_own_hit_rate": 0.6187605497950326
+            },
+            {
+              "threshold": 1.1,
+              "coverage": 0.1339524348810872,
+              "n_resolved": 2917,
+              "hit_rate": 0.7175179979430922,
+              "season_mean_same_rows_hit_rate": 0.5997774480712166,
+              "season_mean_own_hit_rate": 0.6196740062911067
+            },
+            {
+              "threshold": 1.2,
+              "coverage": 0.1122083805209513,
+              "n_resolved": 2442,
+              "hit_rate": 0.7227682227682227,
+              "season_mean_same_rows_hit_rate": 0.5917001338688086,
+              "season_mean_own_hit_rate": 0.6228419654714475
+            },
+            {
+              "threshold": 1.3,
+              "coverage": 0.09281993204983012,
+              "n_resolved": 2021,
+              "hit_rate": 0.7337951509153884,
+              "season_mean_same_rows_hit_rate": 0.5946825827455237,
+              "season_mean_own_hit_rate": 0.631557869443332
+            },
+            {
+              "threshold": 1.4,
+              "coverage": 0.07778029445073613,
+              "n_resolved": 1694,
+              "hit_rate": 0.7497048406139315,
+              "season_mean_same_rows_hit_rate": 0.6002604166666666,
+              "season_mean_own_hit_rate": 0.6358111266947172
+            },
+            {
+              "threshold": 1.5,
+              "coverage": 0.06650056625141564,
+              "n_resolved": 1449,
+              "hit_rate": 0.7598343685300207,
+              "season_mean_same_rows_hit_rate": 0.6061068702290077,
+              "season_mean_own_hit_rate": 0.6437224669603524
+            },
+            {
+              "threshold": 1.6,
+              "coverage": 0.05526613816534541,
+              "n_resolved": 1202,
+              "hit_rate": 0.7653910149750416,
+              "season_mean_same_rows_hit_rate": 0.6092592592592593,
+              "season_mean_own_hit_rate": 0.6512987012987013
+            },
+            {
+              "threshold": 1.7,
+              "coverage": 0.04620611551528879,
+              "n_resolved": 1003,
+              "hit_rate": 0.7776669990029911,
+              "season_mean_same_rows_hit_rate": 0.6184649610678532,
+              "season_mean_own_hit_rate": 0.6516936671575847
+            },
+            {
+              "threshold": 1.8,
+              "coverage": 0.038912797281993206,
+              "n_resolved": 845,
+              "hit_rate": 0.7905325443786982,
+              "season_mean_same_rows_hit_rate": 0.625,
+              "season_mean_own_hit_rate": 0.6574977817213842
+            },
+            {
+              "threshold": 1.9,
+              "coverage": 0.03257078142695357,
+              "n_resolved": 709,
+              "hit_rate": 0.7940761636107193,
+              "season_mean_same_rows_hit_rate": 0.6267942583732058,
+              "season_mean_own_hit_rate": 0.6576032225579054
+            },
+            {
+              "threshold": 2.0,
+              "coverage": 0.02767836919592299,
+              "n_resolved": 604,
+              "hit_rate": 0.8145695364238411,
+              "season_mean_same_rows_hit_rate": 0.6275992438563327,
+              "season_mean_own_hit_rate": 0.6556213017751479
+            },
+            {
+              "threshold": 2.1,
+              "coverage": 0.022287655719139297,
+              "n_resolved": 486,
+              "hit_rate": 0.8127572016460906,
+              "season_mean_same_rows_hit_rate": 0.6184834123222749,
+              "season_mean_own_hit_rate": 0.6621067031463749
+            },
+            {
+              "threshold": 2.2,
+              "coverage": 0.018799546998867496,
+              "n_resolved": 410,
+              "hit_rate": 0.8170731707317073,
+              "season_mean_same_rows_hit_rate": 0.6309859154929578,
+              "season_mean_own_hit_rate": 0.6708860759493671
+            },
+            {
+              "threshold": 2.3,
+              "coverage": 0.015039637599093998,
+              "n_resolved": 328,
+              "hit_rate": 0.8109756097560976,
+              "season_mean_same_rows_hit_rate": 0.6192170818505338,
+              "season_mean_own_hit_rate": 0.6750902527075813
+            },
+            {
+              "threshold": 2.4,
+              "coverage": 0.012095130237825595,
+              "n_resolved": 263,
+              "hit_rate": 0.8022813688212928,
+              "season_mean_same_rows_hit_rate": 0.6216216216216216,
+              "season_mean_own_hit_rate": 0.6825396825396826
+            },
+            {
+              "threshold": 2.5,
+              "coverage": 0.009830124575311438,
+              "n_resolved": 214,
+              "hit_rate": 0.8317757009345794,
+              "season_mean_same_rows_hit_rate": 0.6629213483146067,
+              "season_mean_own_hit_rate": 0.6810933940774487
+            },
+            {
+              "threshold": 2.6,
+              "coverage": 0.007701019252548132,
+              "n_resolved": 168,
+              "hit_rate": 0.8333333333333334,
+              "season_mean_same_rows_hit_rate": 0.6788321167883211,
+              "season_mean_own_hit_rate": 0.6947890818858561
+            },
+            {
+              "threshold": 2.7,
+              "coverage": 0.006070215175537939,
+              "n_resolved": 133,
+              "hit_rate": 0.8270676691729323,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.702247191011236
+            },
+            {
+              "threshold": 2.8,
+              "coverage": 0.004439411098527747,
+              "n_resolved": 97,
+              "hit_rate": 0.8144329896907216,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.7125382262996942
+            },
+            {
+              "threshold": 2.9,
+              "coverage": 0.0033975084937712344,
+              "n_resolved": 75,
+              "hit_rate": 0.8133333333333334,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.7266666666666667
+            },
+            {
+              "threshold": 3.0,
+              "coverage": 0.0028086070215175537,
+              "n_resolved": 62,
+              "hit_rate": 0.7903225806451613,
+              "season_mean_same_rows_hit_rate": 0.66,
+              "season_mean_own_hit_rate": 0.7351778656126482
+            },
+            {
+              "threshold": 3.1,
+              "coverage": 0.0022197055492638733,
+              "n_resolved": 49,
+              "hit_rate": 0.8163265306122449,
+              "season_mean_same_rows_hit_rate": 0.7073170731707317,
+              "season_mean_own_hit_rate": 0.7368421052631579
+            },
+            {
+              "threshold": 3.2,
+              "coverage": 0.0018573046432616082,
+              "n_resolved": 41,
+              "hit_rate": 0.8536585365853658,
+              "season_mean_same_rows_hit_rate": 0.7647058823529411,
+              "season_mean_own_hit_rate": 0.7339901477832512
+            },
+            {
+              "threshold": 3.3,
+              "coverage": 0.0012684031710079274,
+              "n_resolved": 28,
+              "hit_rate": 0.8571428571428571,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.75
+            },
+            {
+              "threshold": 3.4,
+              "coverage": 0.0009060022650056625,
+              "n_resolved": 20,
+              "hit_rate": 0.9,
+              "season_mean_same_rows_hit_rate": 0.7647058823529411,
+              "season_mean_own_hit_rate": 0.74375
+            },
+            {
+              "threshold": 3.5,
+              "coverage": 0.0006342015855039637,
+              "n_resolved": 14,
+              "hit_rate": 0.8571428571428571,
+              "season_mean_same_rows_hit_rate": 0.8333333333333334,
+              "season_mean_own_hit_rate": 0.7615384615384615
+            },
+            {
+              "threshold": 3.6,
+              "coverage": 0.0005436013590033975,
+              "n_resolved": 12,
+              "hit_rate": 0.9166666666666666,
+              "season_mean_same_rows_hit_rate": 0.9090909090909091,
+              "season_mean_own_hit_rate": 0.7767857142857143
+            },
+            {
+              "threshold": 3.7,
+              "coverage": 0.00040770101925254813,
+              "n_resolved": 9,
+              "hit_rate": 0.8888888888888888,
+              "season_mean_same_rows_hit_rate": 0.875,
+              "season_mean_own_hit_rate": 0.7857142857142857
+            },
+            {
+              "threshold": 3.8,
+              "coverage": 0.000362400906002265,
+              "n_resolved": 8,
+              "hit_rate": 0.875,
+              "season_mean_same_rows_hit_rate": 0.8571428571428571,
+              "season_mean_own_hit_rate": 0.813953488372093
+            },
+            {
+              "threshold": 3.9,
+              "coverage": 0.0001812004530011325,
+              "n_resolved": 4,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.8051948051948052
+            },
+            {
+              "threshold": 4.0,
+              "coverage": 4.5300113250283124e-05,
+              "n_resolved": 1,
+              "hit_rate": 1.0,
+              "season_mean_same_rows_hit_rate": 1.0,
+              "season_mean_own_hit_rate": 0.7878787878787878
+            }
+          ]
+        },
+        "ast": {
+          "n": 22075,
+          "threshold": 0.5,
+          "n_called": 6041,
+          "coverage": 0.27365798414496034,
+          "n_resolved": 5914,
+          "n_push": 127,
+          "n_hit": 3741,
+          "hit_rate": 0.6325667906662158,
+          "baselines": {
+            "coin_flip": {
+              "hit_rate": 0.5,
+              "n": 5914,
+              "half_width_95": 0.01274340294293931
+            },
+            "season_mean_sign": {
+              "n": 5604,
+              "hit_rate": 0.6002855103497502,
+              "same_rows": true,
+              "own_threshold_n_called": 6969,
+              "own_threshold_hit_rate": 0.6020751132544205
+            }
+          },
+          "model_beats_both": true,
+          "verdict": "On the training population the model's ast calls hit 63.3% of 5,914 resolved calls, above the season-mean sign (60.0% on the same rows) and outside the coin flip's 95% band (0.5 \u00b1 0.013).",
+          "bands": {
+            "quantiles": {
+              "q10": -2.0006209996971642,
+              "q25": -1.2119128678577398,
+              "q75": 0.9984368898287015,
+              "q90": 2.4124930015570243
+            },
+            "coverage_50": 0.49997734994337484,
+            "coverage_80": 0.7999546998867497
+          },
+          "coverage_curve": [
+            {
+              "threshold": 0.0,
+              "coverage": 1.0,
+              "n_resolved": 21548,
+              "hit_rate": 0.5629292741785781,
+              "season_mean_same_rows_hit_rate": 0.5573028237585199,
+              "season_mean_own_hit_rate": 0.5573028237585199
+            },
+            {
+              "threshold": 0.1,
+              "coverage": 0.8154020385050963,
+              "n_resolved": 17558,
+              "hit_rate": 0.5771158446292288,
+              "season_mean_same_rows_hit_rate": 0.5635266710471298,
+              "season_mean_own_hit_rate": 0.5678852709533325
+            },
+            {
+              "threshold": 0.2,
+              "coverage": 0.6450283125707814,
+              "n_resolved": 13897,
+              "hit_rate": 0.59271785277398,
+              "season_mean_same_rows_hit_rate": 0.5722155146392998,
+              "season_mean_own_hit_rate": 0.5753535057513371
+            },
+            {
+              "threshold": 0.3,
+              "coverage": 0.49648924122310306,
+              "n_resolved": 10713,
+              "hit_rate": 0.6055259964529077,
+              "season_mean_same_rows_hit_rate": 0.5809869518296871,
+              "season_mean_own_hit_rate": 0.5873001286528212
+            },
+            {
+              "threshold": 0.4,
+              "coverage": 0.3717780294450736,
+              "n_resolved": 8027,
+              "hit_rate": 0.6192849134172169,
+              "season_mean_same_rows_hit_rate": 0.5897066526977475,
+              "season_mean_own_hit_rate": 0.5967403958090803
+            },
+            {
+              "threshold": 0.5,
+              "coverage": 0.27365798414496034,
+              "n_resolved": 5914,
+              "hit_rate": 0.6325667906662158,
+              "season_mean_same_rows_hit_rate": 0.6002855103497502,
+              "season_mean_own_hit_rate": 0.6020751132544205
+            },
+            {
+              "threshold": 0.6,
+              "coverage": 0.19614949037372592,
+              "n_resolved": 4230,
+              "hit_rate": 0.6460992907801418,
+              "season_mean_same_rows_hit_rate": 0.6084893882646691,
+              "season_mean_own_hit_rate": 0.6011457214464734
+            },
+            {
+              "threshold": 0.7,
+              "coverage": 0.14024915062287654,
+              "n_resolved": 3026,
+              "hit_rate": 0.6566424322538004,
+              "season_mean_same_rows_hit_rate": 0.6225096120237679,
+              "season_mean_own_hit_rate": 0.6044624746450304
+            },
+            {
+              "threshold": 0.8,
+              "coverage": 0.10242355605889014,
+              "n_resolved": 2213,
+              "hit_rate": 0.6791685494803434,
+              "season_mean_same_rows_hit_rate": 0.6411596958174905,
+              "season_mean_own_hit_rate": 0.6088319088319089
+            },
+            {
+              "threshold": 0.9,
+              "coverage": 0.07660249150622876,
+              "n_resolved": 1660,
+              "hit_rate": 0.6855421686746987,
+              "season_mean_same_rows_hit_rate": 0.6449778900821226,
+              "season_mean_own_hit_rate": 0.6150104239054899
+            },
+            {
+              "threshold": 1.0,
+              "coverage": 0.05716874292185731,
+              "n_resolved": 1236,
+              "hit_rate": 0.6796116504854369,
+              "season_mean_same_rows_hit_rate": 0.6412213740458015,
+              "season_mean_own_hit_rate": 0.6242974492001729
+            },
+            {
+              "threshold": 1.1,
+              "coverage": 0.043397508493771234,
+              "n_resolved": 941,
+              "hit_rate": 0.6854410201912858,
+              "season_mean_same_rows_hit_rate": 0.6537180910099889,
+              "season_mean_own_hit_rate": 0.6352067868504772
+            },
+            {
+              "threshold": 1.2,
+              "coverage": 0.03320498301245753,
+              "n_resolved": 721,
+              "hit_rate": 0.7004160887656034,
+              "season_mean_same_rows_hit_rate": 0.660431654676259,
+              "season_mean_own_hit_rate": 0.635519801980198
+            },
+            {
+              "threshold": 1.3,
+              "coverage": 0.025322763306908268,
+              "n_resolved": 551,
+              "hit_rate": 0.7005444646098004,
+              "season_mean_same_rows_hit_rate": 0.6760299625468165,
+              "season_mean_own_hit_rate": 0.6375478927203065
+            },
+            {
+              "threshold": 1.4,
+              "coverage": 0.019524348810872026,
+              "n_resolved": 427,
+              "hit_rate": 0.7072599531615925,
+              "season_mean_same_rows_hit_rate": 0.6802884615384616,
+              "season_mean_own_hit_rate": 0.6533457249070632
+            },
+            {
+              "threshold": 1.5,
+              "coverage": 0.015311438278595697,
+              "n_resolved": 334,
+              "hit_rate": 0.7005988023952096,
+              "season_mean_same_rows_hit_rate": 0.6984615384615385,
+              "season_mean_own_hit_rate": 0.664071190211346
+            },
+            {
+              "threshold": 1.6,
+              "coverage": 0.012684031710079275,
+              "n_resolved": 278,
+              "hit_rate": 0.6942446043165468,
+              "season_mean_same_rows_hit_rate": 0.6974169741697417,
+              "season_mean_own_hit_rate": 0.6680216802168022
+            },
+            {
+              "threshold": 1.7,
+              "coverage": 0.009920724801812005,
+              "n_resolved": 217,
+              "hit_rate": 0.7096774193548387,
+              "season_mean_same_rows_hit_rate": 0.7028301886792453,
+              "season_mean_own_hit_rate": 0.671875
+            },
+            {
+              "threshold": 1.8,
+              "coverage": 0.007746319365798415,
+              "n_resolved": 171,
+              "hit_rate": 0.7251461988304093,
+              "season_mean_same_rows_hit_rate": 0.7202380952380952,
+              "season_mean_own_hit_rate": 0.693050193050193
+            },
+            {
+              "threshold": 1.9,
+              "coverage": 0.006432616081540204,
+              "n_resolved": 142,
+              "hit_rate": 0.7112676056338029,
+              "season_mean_same_rows_hit_rate": 0.7071428571428572,
+              "season_mean_own_hit_rate": 0.6990950226244343
+            },
+            {
+              "threshold": 2.0,
+              "coverage": 0.005300113250283125,
+              "n_resolved": 117,
+              "hit_rate": 0.6923076923076923,
+              "season_mean_same_rows_hit_rate": 0.6869565217391305,
+              "season_mean_own_hit_rate": 0.6986301369863014
+            },
+            {
+              "threshold": 2.1,
+              "coverage": 0.0040770101925254815,
+              "n_resolved": 90,
+              "hit_rate": 0.7444444444444445,
+              "season_mean_same_rows_hit_rate": 0.7078651685393258,
+              "season_mean_own_hit_rate": 0.7165605095541401
+            },
+            {
+              "threshold": 2.2,
+              "coverage": 0.0033522083805209513,
+              "n_resolved": 74,
+              "hit_rate": 0.7837837837837838,
+              "season_mean_same_rows_hit_rate": 0.7534246575342466,
+              "season_mean_own_hit_rate": 0.7256317689530686
+            },
+            {
+              "threshold": 2.3,
+              "coverage": 0.0030351075877689693,
+              "n_resolved": 67,
+              "hit_rate": 0.7611940298507462,
+              "season_mean_same_rows_hit_rate": 0.7424242424242424,
+              "season_mean_own_hit_rate": 0.7296137339055794
+            },
+            {
+              "threshold": 2.4,
+              "coverage": 0.002536806342015855,
+              "n_resolved": 56,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.7272727272727273,
+              "season_mean_own_hit_rate": 0.7193877551020408
+            },
+            {
+              "threshold": 2.5,
+              "coverage": 0.0023103057757644396,
+              "n_resolved": 51,
+              "hit_rate": 0.7254901960784313,
+              "season_mean_same_rows_hit_rate": 0.7,
+              "season_mean_own_hit_rate": 0.710691823899371
+            },
+            {
+              "threshold": 2.6,
+              "coverage": 0.0019479048697621745,
+              "n_resolved": 43,
+              "hit_rate": 0.7441860465116279,
+              "season_mean_same_rows_hit_rate": 0.7380952380952381,
+              "season_mean_own_hit_rate": 0.7013888888888888
+            },
+            {
+              "threshold": 2.7,
+              "coverage": 0.0015402038505096262,
+              "n_resolved": 34,
+              "hit_rate": 0.7058823529411765,
+              "season_mean_same_rows_hit_rate": 0.7058823529411765,
+              "season_mean_own_hit_rate": 0.7165354330708661
+            },
+            {
+              "threshold": 2.8,
+              "coverage": 0.0011778029445073614,
+              "n_resolved": 26,
+              "hit_rate": 0.6923076923076923,
+              "season_mean_same_rows_hit_rate": 0.6923076923076923,
+              "season_mean_own_hit_rate": 0.7247706422018348
+            },
+            {
+              "threshold": 2.9,
+              "coverage": 0.0009513023782559457,
+              "n_resolved": 21,
+              "hit_rate": 0.6666666666666666,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.7171717171717171
+            },
+            {
+              "threshold": 3.0,
+              "coverage": 0.0008154020385050963,
+              "n_resolved": 18,
+              "hit_rate": 0.6666666666666666,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.7108433734939759
+            },
+            {
+              "threshold": 3.1,
+              "coverage": 0.0007701019252548131,
+              "n_resolved": 17,
+              "hit_rate": 0.7058823529411765,
+              "season_mean_same_rows_hit_rate": 0.7058823529411765,
+              "season_mean_own_hit_rate": 0.7027027027027027
+            },
+            {
+              "threshold": 3.2,
+              "coverage": 0.00072480181200453,
+              "n_resolved": 16,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.703125
+            },
+            {
+              "threshold": 3.3,
+              "coverage": 0.0005889014722536807,
+              "n_resolved": 13,
+              "hit_rate": 0.7692307692307693,
+              "season_mean_same_rows_hit_rate": 0.7692307692307693,
+              "season_mean_own_hit_rate": 0.7166666666666667
+            },
+            {
+              "threshold": 3.4,
+              "coverage": 0.0005436013590033975,
+              "n_resolved": 12,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.75
+            },
+            {
+              "threshold": 3.5,
+              "coverage": 0.00045300113250283127,
+              "n_resolved": 10,
+              "hit_rate": 0.8,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.7619047619047619
+            },
+            {
+              "threshold": 3.6,
+              "coverage": 0.00045300113250283127,
+              "n_resolved": 10,
+              "hit_rate": 0.8,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.75
+            },
+            {
+              "threshold": 3.7,
+              "coverage": 0.00045300113250283127,
+              "n_resolved": 10,
+              "hit_rate": 0.8,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.7647058823529411
+            },
+            {
+              "threshold": 3.8,
+              "coverage": 0.00045300113250283127,
+              "n_resolved": 10,
+              "hit_rate": 0.8,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.7857142857142857
+            },
+            {
+              "threshold": 3.9,
+              "coverage": 0.000362400906002265,
+              "n_resolved": 8,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.8076923076923077
+            },
+            {
+              "threshold": 4.0,
+              "coverage": 0.000362400906002265,
+              "n_resolved": 8,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.8125
+            }
+          ]
+        }
+      },
+      "model_beats_both_everywhere": true
+    },
+    "all": {
+      "description": "every replayed row with a box score and a last-10 baseline (all rows)",
+      "n": 26031,
+      "targets": {
+        "pts": {
+          "n": 26031,
+          "threshold": 2.25,
+          "n_called": 6982,
+          "coverage": 0.26821866236410435,
+          "n_resolved": 6890,
+          "n_push": 92,
+          "n_hit": 3766,
+          "hit_rate": 0.546589259796807,
+          "baselines": {
+            "coin_flip": {
+              "hit_rate": 0.5,
+              "n": 6890,
+              "half_width_95": 0.011806372046477904
+            },
+            "season_mean_sign": {
+              "n": 6128,
+              "hit_rate": 0.5737597911227154,
+              "same_rows": true,
+              "own_threshold_n_called": 6086,
+              "own_threshold_hit_rate": 0.6034739454094293
+            }
+          },
+          "model_beats_both": false,
+          "verdict": "On all rows the model's pts calls hit 54.7% of 6,890 resolved calls, but the season-mean sign hits 57.4% on the same rows; the model policy is not recommended there.",
+          "bands": {
+            "quantiles": {
+              "q10": -7.303780614047128,
+              "q25": -5.111142587741056,
+              "q75": 2.767295353656852,
+              "q90": 7.3051361372807975
+            },
+            "coverage_50": 0.49998079213245744,
+            "coverage_80": 0.800007683147017
+          },
+          "coverage_curve": [
+            {
+              "threshold": 0.0,
+              "coverage": 1.0,
+              "n_resolved": 25803,
+              "hit_rate": 0.5309072588458706,
+              "season_mean_same_rows_hit_rate": 0.5518636232302803,
+              "season_mean_own_hit_rate": 0.5518636232302803
+            },
+            {
+              "threshold": 0.25,
+              "coverage": 0.8942414813107449,
+              "n_resolved": 23068,
+              "hit_rate": 0.5361106294433847,
+              "season_mean_same_rows_hit_rate": 0.5521793505952105,
+              "season_mean_own_hit_rate": 0.5578962317742852
+            },
+            {
+              "threshold": 0.5,
+              "coverage": 0.787714647919788,
+              "n_resolved": 20316,
+              "hit_rate": 0.5386887182516243,
+              "season_mean_same_rows_hit_rate": 0.5541082164328658,
+              "season_mean_own_hit_rate": 0.5653795524352786
+            },
+            {
+              "threshold": 0.75,
+              "coverage": 0.6889477930160194,
+              "n_resolved": 17763,
+              "hit_rate": 0.5427011203062546,
+              "season_mean_same_rows_hit_rate": 0.5582929782082324,
+              "season_mean_own_hit_rate": 0.5712107737263372
+            },
+            {
+              "threshold": 1.0,
+              "coverage": 0.5978256693941839,
+              "n_resolved": 15408,
+              "hit_rate": 0.5451064382139148,
+              "season_mean_same_rows_hit_rate": 0.5627059235892043,
+              "season_mean_own_hit_rate": 0.5784284655300223
+            },
+            {
+              "threshold": 1.25,
+              "coverage": 0.5132342207368138,
+              "n_resolved": 13221,
+              "hit_rate": 0.5476892822025565,
+              "season_mean_same_rows_hit_rate": 0.5653998025666338,
+              "season_mean_own_hit_rate": 0.5853215767634855
+            },
+            {
+              "threshold": 1.5,
+              "coverage": 0.437632054089355,
+              "n_resolved": 11264,
+              "hit_rate": 0.5498046875,
+              "season_mean_same_rows_hit_rate": 0.5697617890131259,
+              "season_mean_own_hit_rate": 0.5906040268456376
+            },
+            {
+              "threshold": 1.75,
+              "coverage": 0.37148015827282854,
+              "n_resolved": 9552,
+              "hit_rate": 0.5510887772194305,
+              "season_mean_same_rows_hit_rate": 0.5733256351039261,
+              "season_mean_own_hit_rate": 0.5952013303242666
+            },
+            {
+              "threshold": 2.0,
+              "coverage": 0.314586454611809,
+              "n_resolved": 8085,
+              "hit_rate": 0.55139146567718,
+              "season_mean_same_rows_hit_rate": 0.574351228889194,
+              "season_mean_own_hit_rate": 0.5969773299748111
+            },
+            {
+              "threshold": 2.25,
+              "coverage": 0.26821866236410435,
+              "n_resolved": 6890,
+              "hit_rate": 0.546589259796807,
+              "season_mean_same_rows_hit_rate": 0.5737597911227154,
+              "season_mean_own_hit_rate": 0.6034739454094293
+            },
+            {
+              "threshold": 2.5,
+              "coverage": 0.22753639890899313,
+              "n_resolved": 5839,
+              "hit_rate": 0.5485528343894502,
+              "season_mean_same_rows_hit_rate": 0.5717624148003895,
+              "season_mean_own_hit_rate": 0.6109362706530291
+            },
+            {
+              "threshold": 2.75,
+              "coverage": 0.19207867542545426,
+              "n_resolved": 4928,
+              "hit_rate": 0.5474837662337663,
+              "season_mean_same_rows_hit_rate": 0.5707613264829519,
+              "season_mean_own_hit_rate": 0.6179125202499421
+            },
+            {
+              "threshold": 3.0,
+              "coverage": 0.16361261572740193,
+              "n_resolved": 4195,
+              "hit_rate": 0.5494636471990465,
+              "season_mean_same_rows_hit_rate": 0.5778393351800554,
+              "season_mean_own_hit_rate": 0.6204819277108434
+            },
+            {
+              "threshold": 3.25,
+              "coverage": 0.1397948599746456,
+              "n_resolved": 3582,
+              "hit_rate": 0.5510887772194305,
+              "season_mean_same_rows_hit_rate": 0.5729747458183011,
+              "season_mean_own_hit_rate": 0.6256077795786061
+            },
+            {
+              "threshold": 3.5,
+              "coverage": 0.11693749759901656,
+              "n_resolved": 2991,
+              "hit_rate": 0.5509862922099632,
+              "season_mean_same_rows_hit_rate": 0.5762779552715654,
+              "season_mean_own_hit_rate": 0.6318007662835249
+            },
+            {
+              "threshold": 3.75,
+              "coverage": 0.09634666359340786,
+              "n_resolved": 2462,
+              "hit_rate": 0.5548334687246141,
+              "season_mean_same_rows_hit_rate": 0.5685304304799604,
+              "season_mean_own_hit_rate": 0.6361607142857143
+            },
+            {
+              "threshold": 4.0,
+              "coverage": 0.08048096500326533,
+              "n_resolved": 2058,
+              "hit_rate": 0.5631681243926142,
+              "season_mean_same_rows_hit_rate": 0.5822328931572629,
+              "season_mean_own_hit_rate": 0.6494252873563219
+            },
+            {
+              "threshold": 4.25,
+              "coverage": 0.06403903038684645,
+              "n_resolved": 1636,
+              "hit_rate": 0.5721271393643031,
+              "season_mean_same_rows_hit_rate": 0.5844155844155844,
+              "season_mean_own_hit_rate": 0.6570552147239264
+            },
+            {
+              "threshold": 4.5,
+              "coverage": 0.049018477968575926,
+              "n_resolved": 1249,
+              "hit_rate": 0.5740592473979184,
+              "season_mean_same_rows_hit_rate": 0.5864811133200796,
+              "season_mean_own_hit_rate": 0.6635514018691588
+            },
+            {
+              "threshold": 4.75,
+              "coverage": 0.036763858476431946,
+              "n_resolved": 932,
+              "hit_rate": 0.5815450643776824,
+              "season_mean_same_rows_hit_rate": 0.5965608465608465,
+              "season_mean_own_hit_rate": 0.6599326599326599
+            },
+            {
+              "threshold": 5.0,
+              "coverage": 0.02612269985786178,
+              "n_resolved": 656,
+              "hit_rate": 0.5884146341463414,
+              "season_mean_same_rows_hit_rate": 0.5943396226415094,
+              "season_mean_own_hit_rate": 0.6706467661691542
+            },
+            {
+              "threshold": 5.25,
+              "coverage": 0.0176328224040567,
+              "n_resolved": 438,
+              "hit_rate": 0.6073059360730594,
+              "season_mean_same_rows_hit_rate": 0.6085714285714285,
+              "season_mean_own_hit_rate": 0.6758938869665513
+            },
+            {
+              "threshold": 5.5,
+              "coverage": 0.011524720525527256,
+              "n_resolved": 282,
+              "hit_rate": 0.6312056737588653,
+              "season_mean_same_rows_hit_rate": 0.5925925925925926,
+              "season_mean_own_hit_rate": 0.684931506849315
+            },
+            {
+              "threshold": 5.75,
+              "coverage": 0.006838000845146172,
+              "n_resolved": 166,
+              "hit_rate": 0.6265060240963856,
+              "season_mean_same_rows_hit_rate": 0.59375,
+              "season_mean_own_hit_rate": 0.690625
+            },
+            {
+              "threshold": 6.0,
+              "coverage": 0.004264146594445085,
+              "n_resolved": 109,
+              "hit_rate": 0.6513761467889908,
+              "season_mean_same_rows_hit_rate": 0.6206896551724138,
+              "season_mean_own_hit_rate": 0.7075812274368231
+            },
+            {
+              "threshold": 6.25,
+              "coverage": 0.0026506857208712688,
+              "n_resolved": 68,
+              "hit_rate": 0.7058823529411765,
+              "season_mean_same_rows_hit_rate": 0.5964912280701754,
+              "season_mean_own_hit_rate": 0.7139917695473251
+            },
+            {
+              "threshold": 6.5,
+              "coverage": 0.001843955284084361,
+              "n_resolved": 48,
+              "hit_rate": 0.6666666666666666,
+              "season_mean_same_rows_hit_rate": 0.5909090909090909,
+              "season_mean_own_hit_rate": 0.709832134292566
+            },
+            {
+              "threshold": 6.75,
+              "coverage": 0.0016134608735738159,
+              "n_resolved": 42,
+              "hit_rate": 0.6904761904761905,
+              "season_mean_same_rows_hit_rate": 0.6153846153846154,
+              "season_mean_own_hit_rate": 0.7063492063492064
+            },
+            {
+              "threshold": 7.0,
+              "coverage": 0.001306134992893089,
+              "n_resolved": 34,
+              "hit_rate": 0.7058823529411765,
+              "season_mean_same_rows_hit_rate": 0.6129032258064516,
+              "season_mean_own_hit_rate": 0.7111801242236024
+            },
+            {
+              "threshold": 7.25,
+              "coverage": 0.0009988091122123623,
+              "n_resolved": 26,
+              "hit_rate": 0.6923076923076923,
+              "season_mean_same_rows_hit_rate": 0.5652173913043478,
+              "season_mean_own_hit_rate": 0.7282608695652174
+            },
+            {
+              "threshold": 7.5,
+              "coverage": 0.0006914832315316353,
+              "n_resolved": 18,
+              "hit_rate": 0.6111111111111112,
+              "season_mean_same_rows_hit_rate": 0.5,
+              "season_mean_own_hit_rate": 0.746031746031746
+            },
+            {
+              "threshold": 7.75,
+              "coverage": 0.0005762360262763627,
+              "n_resolved": 15,
+              "hit_rate": 0.5333333333333333,
+              "season_mean_same_rows_hit_rate": 0.46153846153846156,
+              "season_mean_own_hit_rate": 0.7702702702702703
+            },
+            {
+              "threshold": 8.0,
+              "coverage": 0.00038415735085090854,
+              "n_resolved": 10,
+              "hit_rate": 0.3,
+              "season_mean_same_rows_hit_rate": 0.25,
+              "season_mean_own_hit_rate": 0.7731958762886598
+            }
+          ]
+        },
+        "reb": {
+          "n": 26031,
+          "threshold": 0.9,
+          "n_called": 6943,
+          "coverage": 0.2667204486957858,
+          "n_resolved": 6780,
+          "n_push": 163,
+          "n_hit": 3651,
+          "hit_rate": 0.5384955752212389,
+          "baselines": {
+            "coin_flip": {
+              "hit_rate": 0.5,
+              "n": 6780,
+              "half_width_95": 0.011901761105152875
+            },
+            "season_mean_sign": {
+              "n": 6066,
+              "hit_rate": 0.5731948565776459,
+              "same_rows": true,
+              "own_threshold_n_called": 5660,
+              "own_threshold_hit_rate": 0.6171163123101662
+            }
+          },
+          "model_beats_both": false,
+          "verdict": "On all rows the model's reb calls hit 53.8% of 6,780 resolved calls, but the season-mean sign hits 57.3% on the same rows; the model policy is not recommended there.",
+          "bands": {
+            "quantiles": {
+              "q10": -3.181660324928967,
+              "q25": -2.104995084570276,
+              "q75": 1.0729975523938091,
+              "q90": 2.983888277048277
+            },
+            "coverage_50": 0.49998079213245744,
+            "coverage_80": 0.800007683147017
+          },
+          "coverage_curve": [
+            {
+              "threshold": 0.0,
+              "coverage": 1.0,
+              "n_resolved": 25548,
+              "hit_rate": 0.5414905276342571,
+              "season_mean_same_rows_hit_rate": 0.5575202742245632,
+              "season_mean_own_hit_rate": 0.5575202742245632
+            },
+            {
+              "threshold": 0.1,
+              "coverage": 0.8900541661864699,
+              "n_resolved": 22732,
+              "hit_rate": 0.5445187401020588,
+              "season_mean_same_rows_hit_rate": 0.5623030246013453,
+              "season_mean_own_hit_rate": 0.5650286259541984
+            },
+            {
+              "threshold": 0.2,
+              "coverage": 0.7858322769006185,
+              "n_resolved": 20055,
+              "hit_rate": 0.5471453502867115,
+              "season_mean_same_rows_hit_rate": 0.5670907730140062,
+              "season_mean_own_hit_rate": 0.5746508534692972
+            },
+            {
+              "threshold": 0.3,
+              "coverage": 0.6824171180515539,
+              "n_resolved": 17420,
+              "hit_rate": 0.5475315729047072,
+              "season_mean_same_rows_hit_rate": 0.5707756916996047,
+              "season_mean_own_hit_rate": 0.5837780852605917
+            },
+            {
+              "threshold": 0.4,
+              "coverage": 0.5904114325227613,
+              "n_resolved": 15065,
+              "hit_rate": 0.5480252240292067,
+              "season_mean_same_rows_hit_rate": 0.5729435368300373,
+              "season_mean_own_hit_rate": 0.5923183711244794
+            },
+            {
+              "threshold": 0.5,
+              "coverage": 0.5038223656409665,
+              "n_resolved": 12844,
+              "hit_rate": 0.5503737153534725,
+              "season_mean_same_rows_hit_rate": 0.5765073467319709,
+              "season_mean_own_hit_rate": 0.6000550761887278
+            },
+            {
+              "threshold": 0.6,
+              "coverage": 0.4289116822250394,
+              "n_resolved": 10917,
+              "hit_rate": 0.5451131263167537,
+              "season_mean_same_rows_hit_rate": 0.5764,
+              "season_mean_own_hit_rate": 0.604918384879725
+            },
+            {
+              "threshold": 0.7,
+              "coverage": 0.3642964158119166,
+              "n_resolved": 9276,
+              "hit_rate": 0.5435532557136696,
+              "season_mean_same_rows_hit_rate": 0.5779067013971111,
+              "season_mean_own_hit_rate": 0.6093611638203669
+            },
+            {
+              "threshold": 0.8,
+              "coverage": 0.3123199262417886,
+              "n_resolved": 7949,
+              "hit_rate": 0.5433387847527991,
+              "season_mean_same_rows_hit_rate": 0.5788887341595877,
+              "season_mean_own_hit_rate": 0.612279098110908
+            },
+            {
+              "threshold": 0.9,
+              "coverage": 0.2667204486957858,
+              "n_resolved": 6780,
+              "hit_rate": 0.5384955752212389,
+              "season_mean_same_rows_hit_rate": 0.5731948565776459,
+              "season_mean_own_hit_rate": 0.6171163123101662
+            },
+            {
+              "threshold": 1.0,
+              "coverage": 0.22780530905458876,
+              "n_resolved": 5790,
+              "hit_rate": 0.5414507772020726,
+              "season_mean_same_rows_hit_rate": 0.5710105345298478,
+              "season_mean_own_hit_rate": 0.6305978144418256
+            },
+            {
+              "threshold": 1.1,
+              "coverage": 0.1981867773039837,
+              "n_resolved": 5035,
+              "hit_rate": 0.5364448857994042,
+              "season_mean_same_rows_hit_rate": 0.5669309173272933,
+              "season_mean_own_hit_rate": 0.6333164042661249
+            },
+            {
+              "threshold": 1.2,
+              "coverage": 0.17360070684952555,
+              "n_resolved": 4400,
+              "hit_rate": 0.5315909090909091,
+              "season_mean_same_rows_hit_rate": 0.5580298663872151,
+              "season_mean_own_hit_rate": 0.636069432185937
+            },
+            {
+              "threshold": 1.3,
+              "coverage": 0.1520110637317045,
+              "n_resolved": 3847,
+              "hit_rate": 0.5263841954769951,
+              "season_mean_same_rows_hit_rate": 0.553133514986376,
+              "season_mean_own_hit_rate": 0.6446017699115044
+            },
+            {
+              "threshold": 1.4,
+              "coverage": 0.1343782413276478,
+              "n_resolved": 3395,
+              "hit_rate": 0.5240058910162003,
+              "season_mean_same_rows_hit_rate": 0.5521663778162912,
+              "season_mean_own_hit_rate": 0.6522098306484924
+            },
+            {
+              "threshold": 1.5,
+              "coverage": 0.11954976758480274,
+              "n_resolved": 3015,
+              "hit_rate": 0.527363184079602,
+              "season_mean_same_rows_hit_rate": 0.5553367467506892,
+              "season_mean_own_hit_rate": 0.6624636275460718
+            },
+            {
+              "threshold": 1.6,
+              "coverage": 0.10479812531212784,
+              "n_resolved": 2637,
+              "hit_rate": 0.5252180508153205,
+              "season_mean_same_rows_hit_rate": 0.5532786885245902,
+              "season_mean_own_hit_rate": 0.6716417910447762
+            },
+            {
+              "threshold": 1.7,
+              "coverage": 0.09085321347623987,
+              "n_resolved": 2279,
+              "hit_rate": 0.5265467310223783,
+              "season_mean_same_rows_hit_rate": 0.5566790846194785,
+              "season_mean_own_hit_rate": 0.6766428106701367
+            },
+            {
+              "threshold": 1.8,
+              "coverage": 0.07879067265952135,
+              "n_resolved": 1970,
+              "hit_rate": 0.5309644670050762,
+              "season_mean_same_rows_hit_rate": 0.5516169154228856,
+              "season_mean_own_hit_rate": 0.6820673453406422
+            },
+            {
+              "threshold": 1.9,
+              "coverage": 0.06795743536552572,
+              "n_resolved": 1696,
+              "hit_rate": 0.5318396226415094,
+              "season_mean_same_rows_hit_rate": 0.5537673738112655,
+              "season_mean_own_hit_rate": 0.6838365896980462
+            },
+            {
+              "threshold": 2.0,
+              "coverage": 0.059006569090699554,
+              "n_resolved": 1472,
+              "hit_rate": 0.5387228260869565,
+              "season_mean_same_rows_hit_rate": 0.5542372881355933,
+              "season_mean_own_hit_rate": 0.6859504132231405
+            },
+            {
+              "threshold": 2.1,
+              "coverage": 0.049902039875533016,
+              "n_resolved": 1242,
+              "hit_rate": 0.5370370370370371,
+              "season_mean_same_rows_hit_rate": 0.5401015228426396,
+              "season_mean_own_hit_rate": 0.6942148760330579
+            },
+            {
+              "threshold": 2.2,
+              "coverage": 0.042910376090046484,
+              "n_resolved": 1067,
+              "hit_rate": 0.542642924086223,
+              "season_mean_same_rows_hit_rate": 0.544047619047619,
+              "season_mean_own_hit_rate": 0.7067567567567568
+            },
+            {
+              "threshold": 2.3,
+              "coverage": 0.0352656448081134,
+              "n_resolved": 871,
+              "hit_rate": 0.5464982778415615,
+              "season_mean_same_rows_hit_rate": 0.5323529411764706,
+              "season_mean_own_hit_rate": 0.7140672782874617
+            },
+            {
+              "threshold": 2.4,
+              "coverage": 0.028888632783988323,
+              "n_resolved": 710,
+              "hit_rate": 0.547887323943662,
+              "season_mean_same_rows_hit_rate": 0.5274725274725275,
+              "season_mean_own_hit_rate": 0.7214765100671141
+            },
+            {
+              "threshold": 2.5,
+              "coverage": 0.02381775575275633,
+              "n_resolved": 583,
+              "hit_rate": 0.5746140651801029,
+              "season_mean_same_rows_hit_rate": 0.5417607223476298,
+              "season_mean_own_hit_rate": 0.7216890595009597
+            },
+            {
+              "threshold": 2.6,
+              "coverage": 0.01924628327763052,
+              "n_resolved": 468,
+              "hit_rate": 0.5747863247863247,
+              "season_mean_same_rows_hit_rate": 0.54,
+              "season_mean_own_hit_rate": 0.735966735966736
+            },
+            {
+              "threshold": 2.7,
+              "coverage": 0.015904114325227613,
+              "n_resolved": 385,
+              "hit_rate": 0.5818181818181818,
+              "season_mean_same_rows_hit_rate": 0.5294117647058824,
+              "season_mean_own_hit_rate": 0.7453271028037384
+            },
+            {
+              "threshold": 2.8,
+              "coverage": 0.0126003611079098,
+              "n_resolved": 302,
+              "hit_rate": 0.5993377483443708,
+              "season_mean_same_rows_hit_rate": 0.5301724137931034,
+              "season_mean_own_hit_rate": 0.7531806615776081
+            },
+            {
+              "threshold": 2.9,
+              "coverage": 0.009988091122123621,
+              "n_resolved": 239,
+              "hit_rate": 0.5983263598326359,
+              "season_mean_same_rows_hit_rate": 0.5434782608695652,
+              "season_mean_own_hit_rate": 0.7673130193905817
+            },
+            {
+              "threshold": 3.0,
+              "coverage": 0.007798394222273443,
+              "n_resolved": 187,
+              "hit_rate": 0.5989304812834224,
+              "season_mean_same_rows_hit_rate": 0.5448275862068965,
+              "season_mean_own_hit_rate": 0.7752442996742671
+            },
+            {
+              "threshold": 3.1,
+              "coverage": 0.005800775997848719,
+              "n_resolved": 137,
+              "hit_rate": 0.6277372262773723,
+              "season_mean_same_rows_hit_rate": 0.5700934579439252,
+              "season_mean_own_hit_rate": 0.7769784172661871
+            },
+            {
+              "threshold": 3.2,
+              "coverage": 0.004340978064615267,
+              "n_resolved": 103,
+              "hit_rate": 0.6601941747572816,
+              "season_mean_same_rows_hit_rate": 0.5975609756097561,
+              "season_mean_own_hit_rate": 0.776
+            },
+            {
+              "threshold": 3.3,
+              "coverage": 0.0029580116015519957,
+              "n_resolved": 70,
+              "hit_rate": 0.6571428571428571,
+              "season_mean_same_rows_hit_rate": 0.6481481481481481,
+              "season_mean_own_hit_rate": 0.7963800904977375
+            },
+            {
+              "threshold": 3.4,
+              "coverage": 0.0020360339595098154,
+              "n_resolved": 52,
+              "hit_rate": 0.6538461538461539,
+              "season_mean_same_rows_hit_rate": 0.625,
+              "season_mean_own_hit_rate": 0.7931034482758621
+            },
+            {
+              "threshold": 3.5,
+              "coverage": 0.0015366294034036341,
+              "n_resolved": 39,
+              "hit_rate": 0.6410256410256411,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.8106508875739645
+            },
+            {
+              "threshold": 3.6,
+              "coverage": 0.0011524720525527255,
+              "n_resolved": 30,
+              "hit_rate": 0.7,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.825503355704698
+            },
+            {
+              "threshold": 3.7,
+              "coverage": 0.0008835619069570897,
+              "n_resolved": 23,
+              "hit_rate": 0.782608695652174,
+              "season_mean_same_rows_hit_rate": 0.8235294117647058,
+              "season_mean_own_hit_rate": 0.8333333333333334
+            },
+            {
+              "threshold": 3.8,
+              "coverage": 0.0006914832315316353,
+              "n_resolved": 18,
+              "hit_rate": 0.7777777777777778,
+              "season_mean_same_rows_hit_rate": 0.8571428571428571,
+              "season_mean_own_hit_rate": 0.8632478632478633
+            },
+            {
+              "threshold": 3.9,
+              "coverage": 0.0004225730859359994,
+              "n_resolved": 11,
+              "hit_rate": 0.7272727272727273,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.8584905660377359
+            },
+            {
+              "threshold": 4.0,
+              "coverage": 0.00023049441051054513,
+              "n_resolved": 6,
+              "hit_rate": 0.8333333333333334,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.851063829787234
+            }
+          ]
+        },
+        "ast": {
+          "n": 26031,
+          "threshold": 0.5,
+          "n_called": 8399,
+          "coverage": 0.3226537589796781,
+          "n_resolved": 8108,
+          "n_push": 291,
+          "n_hit": 4357,
+          "hit_rate": 0.5373704982733103,
+          "baselines": {
+            "coin_flip": {
+              "hit_rate": 0.5,
+              "n": 8108,
+              "half_width_95": 0.01088351563966514
+            },
+            "season_mean_sign": {
+              "n": 7377,
+              "hit_rate": 0.5705571370475803,
+              "same_rows": true,
+              "own_threshold_n_called": 7606,
+              "own_threshold_hit_rate": 0.6051398741801634
+            }
+          },
+          "model_beats_both": false,
+          "verdict": "On all rows the model's ast calls hit 53.7% of 8,108 resolved calls, but the season-mean sign hits 57.1% on the same rows; the model policy is not recommended there.",
+          "bands": {
+            "quantiles": {
+              "q10": -2.0352878148574405,
+              "q25": -1.2782686239205066,
+              "q75": 0.7696475517600652,
+              "q90": 2.180224035573799
+            },
+            "coverage_50": 0.49998079213245744,
+            "coverage_80": 0.800007683147017
+          },
+          "coverage_curve": [
+            {
+              "threshold": 0.0,
+              "coverage": 1.0,
+              "n_resolved": 25300,
+              "hit_rate": 0.5250197628458498,
+              "season_mean_same_rows_hit_rate": 0.5586568552820773,
+              "season_mean_own_hit_rate": 0.5586568552820773
+            },
+            {
+              "threshold": 0.1,
+              "coverage": 0.8327378894395144,
+              "n_resolved": 21038,
+              "hit_rate": 0.5301359444814145,
+              "season_mean_same_rows_hit_rate": 0.5608114996431849,
+              "season_mean_own_hit_rate": 0.569684691704327
+            },
+            {
+              "threshold": 0.2,
+              "coverage": 0.6759248588221736,
+              "n_resolved": 17063,
+              "hit_rate": 0.5363066283771905,
+              "season_mean_same_rows_hit_rate": 0.5641478491232497,
+              "season_mean_own_hit_rate": 0.5775229357798165
+            },
+            {
+              "threshold": 0.3,
+              "coverage": 0.5378587069263571,
+              "n_resolved": 13579,
+              "hit_rate": 0.5378893880256278,
+              "season_mean_same_rows_hit_rate": 0.5677702433187076,
+              "season_mean_own_hit_rate": 0.5906306902830657
+            },
+            {
+              "threshold": 0.4,
+              "coverage": 0.41934616418885173,
+              "n_resolved": 10563,
+              "hit_rate": 0.538104705102717,
+              "season_mean_same_rows_hit_rate": 0.5692497938994229,
+              "season_mean_own_hit_rate": 0.6004452454150323
+            },
+            {
+              "threshold": 0.5,
+              "coverage": 0.3226537589796781,
+              "n_resolved": 8108,
+              "hit_rate": 0.5373704982733103,
+              "season_mean_same_rows_hit_rate": 0.5705571370475803,
+              "season_mean_own_hit_rate": 0.6051398741801634
+            },
+            {
+              "threshold": 0.6,
+              "coverage": 0.24078982751334946,
+              "n_resolved": 6010,
+              "hit_rate": 0.540765391014975,
+              "season_mean_same_rows_hit_rate": 0.5721411416959172,
+              "season_mean_own_hit_rate": 0.6055363321799307
+            },
+            {
+              "threshold": 0.7,
+              "coverage": 0.17870999961584266,
+              "n_resolved": 4430,
+              "hit_rate": 0.5404063205417607,
+              "season_mean_same_rows_hit_rate": 0.5772049532474096,
+              "season_mean_own_hit_rate": 0.6094822208359326
+            },
+            {
+              "threshold": 0.8,
+              "coverage": 0.1331105220698398,
+              "n_resolved": 3272,
+              "hit_rate": 0.5568459657701712,
+              "season_mean_same_rows_hit_rate": 0.5860068259385666,
+              "season_mean_own_hit_rate": 0.6137440758293838
+            },
+            {
+              "threshold": 0.9,
+              "coverage": 0.09980407975106603,
+              "n_resolved": 2440,
+              "hit_rate": 0.5672131147540984,
+              "season_mean_same_rows_hit_rate": 0.5878037597432371,
+              "season_mean_own_hit_rate": 0.6187419768934531
+            },
+            {
+              "threshold": 1.0,
+              "coverage": 0.07383504283354463,
+              "n_resolved": 1796,
+              "hit_rate": 0.5729398663697105,
+              "season_mean_same_rows_hit_rate": 0.585,
+              "season_mean_own_hit_rate": 0.6278420422816114
+            },
+            {
+              "threshold": 1.1,
+              "coverage": 0.05335945603319119,
+              "n_resolved": 1325,
+              "hit_rate": 0.5962264150943396,
+              "season_mean_same_rows_hit_rate": 0.5929941618015012,
+              "season_mean_own_hit_rate": 0.6384125428711416
+            },
+            {
+              "threshold": 1.2,
+              "coverage": 0.03933771272713303,
+              "n_resolved": 991,
+              "hit_rate": 0.6115035317860746,
+              "season_mean_same_rows_hit_rate": 0.5984598459845984,
+              "season_mean_own_hit_rate": 0.6377726750861079
+            },
+            {
+              "threshold": 1.3,
+              "coverage": 0.02923437439975414,
+              "n_resolved": 752,
+              "hit_rate": 0.6103723404255319,
+              "season_mean_same_rows_hit_rate": 0.6050775740479548,
+              "season_mean_own_hit_rate": 0.6445868945868946
+            },
+            {
+              "threshold": 1.4,
+              "coverage": 0.022357957819522878,
+              "n_resolved": 577,
+              "hit_rate": 0.6291161178509532,
+              "season_mean_same_rows_hit_rate": 0.6153846153846154,
+              "season_mean_own_hit_rate": 0.6608996539792388
+            },
+            {
+              "threshold": 1.5,
+              "coverage": 0.01751757519880143,
+              "n_resolved": 452,
+              "hit_rate": 0.6261061946902655,
+              "season_mean_same_rows_hit_rate": 0.6346604215456675,
+              "season_mean_own_hit_rate": 0.6690946930280958
+            },
+            {
+              "threshold": 1.6,
+              "coverage": 0.013983327570973071,
+              "n_resolved": 362,
+              "hit_rate": 0.6353591160220995,
+              "season_mean_same_rows_hit_rate": 0.6411764705882353,
+              "season_mean_own_hit_rate": 0.6733668341708543
+            },
+            {
+              "threshold": 1.7,
+              "coverage": 0.010717990088740349,
+              "n_resolved": 277,
+              "hit_rate": 0.6570397111913358,
+              "season_mean_same_rows_hit_rate": 0.65,
+              "season_mean_own_hit_rate": 0.6782608695652174
+            },
+            {
+              "threshold": 1.8,
+              "coverage": 0.008297798778379625,
+              "n_resolved": 216,
+              "hit_rate": 0.6759259259259259,
+              "season_mean_same_rows_hit_rate": 0.6683168316831684,
+              "season_mean_own_hit_rate": 0.7
+            },
+            {
+              "threshold": 1.9,
+              "coverage": 0.006415427759210173,
+              "n_resolved": 167,
+              "hit_rate": 0.6946107784431138,
+              "season_mean_same_rows_hit_rate": 0.6883116883116883,
+              "season_mean_own_hit_rate": 0.7035490605427975
+            },
+            {
+              "threshold": 2.0,
+              "coverage": 0.005224539971572356,
+              "n_resolved": 136,
+              "hit_rate": 0.6911764705882353,
+              "season_mean_same_rows_hit_rate": 0.6829268292682927,
+              "season_mean_own_hit_rate": 0.7042606516290727
+            },
+            {
+              "threshold": 2.1,
+              "coverage": 0.003995236448849449,
+              "n_resolved": 104,
+              "hit_rate": 0.7403846153846154,
+              "season_mean_same_rows_hit_rate": 0.7065217391304348,
+              "season_mean_own_hit_rate": 0.7209302325581395
+            },
+            {
+              "threshold": 2.2,
+              "coverage": 0.0032653374822327226,
+              "n_resolved": 85,
+              "hit_rate": 0.7764705882352941,
+              "season_mean_same_rows_hit_rate": 0.7534246575342466,
+              "season_mean_own_hit_rate": 0.7248322147651006
+            },
+            {
+              "threshold": 2.3,
+              "coverage": 0.0029964273366370866,
+              "n_resolved": 78,
+              "hit_rate": 0.7564102564102564,
+              "season_mean_same_rows_hit_rate": 0.7424242424242424,
+              "season_mean_own_hit_rate": 0.732
+            },
+            {
+              "threshold": 2.4,
+              "coverage": 0.002535438515615996,
+              "n_resolved": 66,
+              "hit_rate": 0.7424242424242424,
+              "season_mean_same_rows_hit_rate": 0.7272727272727273,
+              "season_mean_own_hit_rate": 0.7203791469194313
+            },
+            {
+              "threshold": 2.5,
+              "coverage": 0.002304944105105451,
+              "n_resolved": 60,
+              "hit_rate": 0.7166666666666667,
+              "season_mean_same_rows_hit_rate": 0.7,
+              "season_mean_own_hit_rate": 0.7126436781609196
+            },
+            {
+              "threshold": 2.6,
+              "coverage": 0.0019976182244247245,
+              "n_resolved": 52,
+              "hit_rate": 0.7307692307692307,
+              "season_mean_same_rows_hit_rate": 0.7380952380952381,
+              "season_mean_own_hit_rate": 0.7088607594936709
+            },
+            {
+              "threshold": 2.7,
+              "coverage": 0.0016134608735738159,
+              "n_resolved": 42,
+              "hit_rate": 0.6904761904761905,
+              "season_mean_same_rows_hit_rate": 0.7058823529411765,
+              "season_mean_own_hit_rate": 0.7285714285714285
+            },
+            {
+              "threshold": 2.8,
+              "coverage": 0.001306134992893089,
+              "n_resolved": 34,
+              "hit_rate": 0.6764705882352942,
+              "season_mean_same_rows_hit_rate": 0.6923076923076923,
+              "season_mean_own_hit_rate": 0.7478991596638656
+            },
+            {
+              "threshold": 2.9,
+              "coverage": 0.001075640582382544,
+              "n_resolved": 28,
+              "hit_rate": 0.6785714285714286,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.7407407407407407
+            },
+            {
+              "threshold": 3.0,
+              "coverage": 0.0009603933771272713,
+              "n_resolved": 25,
+              "hit_rate": 0.68,
+              "season_mean_same_rows_hit_rate": 0.6666666666666666,
+              "season_mean_own_hit_rate": 0.7391304347826086
+            },
+            {
+              "threshold": 3.1,
+              "coverage": 0.0008451461718719988,
+              "n_resolved": 22,
+              "hit_rate": 0.7272727272727273,
+              "season_mean_same_rows_hit_rate": 0.7058823529411765,
+              "season_mean_own_hit_rate": 0.7317073170731707
+            },
+            {
+              "threshold": 3.2,
+              "coverage": 0.0007298989666167262,
+              "n_resolved": 19,
+              "hit_rate": 0.7368421052631579,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.7361111111111112
+            },
+            {
+              "threshold": 3.3,
+              "coverage": 0.0006146517613614536,
+              "n_resolved": 16,
+              "hit_rate": 0.75,
+              "season_mean_same_rows_hit_rate": 0.7692307692307693,
+              "season_mean_own_hit_rate": 0.75
+            },
+            {
+              "threshold": 3.4,
+              "coverage": 0.000537820291191272,
+              "n_resolved": 14,
+              "hit_rate": 0.7142857142857143,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.7758620689655172
+            },
+            {
+              "threshold": 3.5,
+              "coverage": 0.0004225730859359994,
+              "n_resolved": 11,
+              "hit_rate": 0.7272727272727273,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.7916666666666666
+            },
+            {
+              "threshold": 3.6,
+              "coverage": 0.0004225730859359994,
+              "n_resolved": 11,
+              "hit_rate": 0.7272727272727273,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.782608695652174
+            },
+            {
+              "threshold": 3.7,
+              "coverage": 0.0004225730859359994,
+              "n_resolved": 11,
+              "hit_rate": 0.7272727272727273,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.8
+            },
+            {
+              "threshold": 3.8,
+              "coverage": 0.0004225730859359994,
+              "n_resolved": 11,
+              "hit_rate": 0.7272727272727273,
+              "season_mean_same_rows_hit_rate": 0.8,
+              "season_mean_own_hit_rate": 0.8235294117647058
+            },
+            {
+              "threshold": 3.9,
+              "coverage": 0.00034574161576581767,
+              "n_resolved": 9,
+              "hit_rate": 0.6666666666666666,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.8387096774193549
+            },
+            {
+              "threshold": 4.0,
+              "coverage": 0.00034574161576581767,
+              "n_resolved": 9,
+              "hit_rate": 0.6666666666666666,
+              "season_mean_same_rows_hit_rate": 0.75,
+              "season_mean_own_hit_rate": 0.85
+            }
+          ]
+        }
+      },
+      "model_beats_both_everywhere": false
+    }
+  }
+}

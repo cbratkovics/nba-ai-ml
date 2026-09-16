@@ -51,6 +51,9 @@ vars:
   # rows the roster rule never slated, so the tolerance is the observed gap plus margin.
   tol_replay: 0.000001
   tol_metrics_json: 0.005
+  # The policy marts recompute reports/policy_<season>.json from the same rows with the same
+  # thresholds (ADR-0015), so the tolerance is float noise.
+  tol_policy: 0.000001
 
 seeds:
   nba_dbt:

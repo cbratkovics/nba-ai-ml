@@ -15,7 +15,7 @@ models:
       - { name: player_name, description: player name as stored }
       - { name: team, description: team abbreviation as stored for that season }
       - { name: opponent, description: opponent abbreviation }
-      - { name: home, description: true when the player's team was at home }
+      - { name: home, description: "true when the player's team was at home" }
       - { name: minutes, description: minutes played, data_tests: [{ accepted_range: { arguments: { min_value: 0, max_value: 70 } } }] }
       - { name: pts, description: points }
       - { name: reb, description: total rebounds }
@@ -101,7 +101,7 @@ models:
       - { name: ast_mean_last10, description: last-10 baseline for assists }
       - { name: has_actual, description: true when the box score exists }
       - { name: game_ingested, description: true when the game is in the stored logs }
-      - { name: in_metrics_population, description: the writer's training-population flag (minutes >= 10 and both baselines defined) }
+      - { name: in_metrics_population, description: "the writer's training-population flag (minutes >= 10 and both baselines defined)" }
       - { name: dataset_revision, description: dataset revision the features were built from }
       - { name: source_file, description: file the row came from }
 
@@ -122,7 +122,7 @@ models:
       - { name: n_changed, description: changed (restated) rows }
       - { name: n_unchanged, description: unchanged rows }
       - { name: n_changed_examples, description: changed examples kept in the report (at most 20) }
-      - { name: schedule_file, description: schedule file found for the run date's season }
+      - { name: schedule_file, description: "schedule file found for the run date's season" }
       - { name: pushed, description: whether the run pushed to the dataset repo }
       - { name: source_file, description: report file }
 
@@ -135,5 +135,5 @@ models:
       - { name: game_date, description: date of the restated game }
       - { name: player_name, description: player name }
       - { name: restatement_lag_days, description: run date minus game date in days }
-      - { name: changed_fields, description: stored and incoming values per changed field, as JSON }
+      - { name: changed_fields, description: "stored and incoming values per changed field, as JSON" }
       - { name: source_file, description: report file }

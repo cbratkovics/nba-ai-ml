@@ -20,7 +20,22 @@ with history as (
         count(*) over (
             partition by player_id, season order by game_date, game_id
             rows between unbounded preceding and 1 preceding
-        ) as prior_games_season
+        ) as prior_games_season,
+        -- The feature module's <stat>_mean_season: mean over the player's earlier games of the
+        -- same season, every row counted as history (games under 10 minutes included). The
+        -- decision policy's second causal baseline (ADR-0015); null on the first game.
+        avg(pts) over (
+            partition by player_id, season order by game_date, game_id
+            rows between unbounded preceding and 1 preceding
+        ) as pts_mean_season_prior,
+        avg(reb) over (
+            partition by player_id, season order by game_date, game_id
+            rows between unbounded preceding and 1 preceding
+        ) as reb_mean_season_prior,
+        avg(ast) over (
+            partition by player_id, season order by game_date, game_id
+            rows between unbounded preceding and 1 preceding
+        ) as ast_mean_season_prior
     from {{ ref('slv_game_logs') }}
 )
 
@@ -54,6 +69,9 @@ select
     cast(dataset_revision as varchar) as dataset_revision,
     cast(coalesce(prior_games, 0) as integer) as prior_games,
     cast(coalesce(prior_games_season, 0) as integer) as prior_games_season,
+    cast(pts_mean_season_prior as double) as pts_mean_season_prior,
+    cast(reb_mean_season_prior as double) as reb_mean_season_prior,
+    cast(ast_mean_season_prior as double) as ast_mean_season_prior,
     cast(
         case
             when minutes >= {{ var('min_minutes') }} and coalesce(prior_games_season, 0) >= 1 then 'min10'

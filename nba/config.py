@@ -109,6 +109,27 @@ BRIEF_DIR: Path = Path("brief")
 HF_BRIEF_PREFIX: str = "brief"
 # Exported gold marts from the warehouse: gold/<mart>.parquet, gold/_export_manifest.json.
 HF_GOLD_PREFIX: str = "gold"
+# Decision products: decisions/<date>.json and decisions/latest.json, the directional calls
+# for the slate under the committed policy (nba/decisions/decide.py).
+DECISIONS_DIR: Path = Path("decisions")
+HF_DECISIONS_PREFIX: str = "decisions"
+
+# Decision policy (ADR-0001, ADR-0006, ADR-0015): a line-free directional call per
+# (player, game, target) against the last-10 mean. `over` when the model's prediction exceeds
+# the last-10 mean by more than the threshold, `under` when it falls short by more, else
+# `no_call`. Thresholds are chosen per target and population on the holdout-season replay
+# rows (in-sample) from this grid: (start, stop, step) in the target's unit.
+POLICY_THRESHOLD_GRID: dict[str, tuple[float, float, float]] = {
+    "pts": (0.0, 8.0, 0.25),
+    "reb": (0.0, 4.0, 0.1),
+    "ast": (0.0, 4.0, 0.1),
+}
+# The chosen threshold is the largest grid value that still calls at least this share of
+# the population's rows (the strictest policy that keeps a quarter of the slate).
+POLICY_MIN_COVERAGE: float = 0.25
+# Residual quantiles (actual - prediction) that bound the 50% and 80% bands around a prediction.
+POLICY_BAND_QUANTILES: tuple[float, ...] = (0.10, 0.25, 0.75, 0.90)
+POLICY_REPORT_TEMPLATE: str = "policy_{season}.json"
 
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"

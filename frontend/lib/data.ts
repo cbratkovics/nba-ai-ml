@@ -8,6 +8,7 @@
  */
 
 import allRowsBaseline from './all_rows_baseline.json'
+import policySummary from './policy_summary.json'
 
 export const DATASET_REPO = 'cbratkovics/nba-game-logs'
 export const MODEL_REPO = 'cbratkovics/nba-stat-predictor'
@@ -66,6 +67,7 @@ export const DATASET_PATHS = {
   briefIndex: 'brief/index.json',
   briefLatest: 'brief/latest.json',
   brief: (date: string) => `brief/${date}.json`,
+  decisionsLatest: 'decisions/latest.json',
 }
 /** Path read from the model repo. */
 export const MODEL_PATHS = { metrics: 'metrics.json' }
@@ -183,6 +185,130 @@ export interface AllRowsBaseline {
 }
 export const ALL_ROWS_BASELINE = allRowsBaseline as AllRowsBaseline
 
+// ---------- the decision policy (ADR-0001, ADR-0015) ----------
+
+export type Population = 'min10' | 'all'
+export const POPULATIONS: Population[] = ['min10', 'all']
+export const POPULATION_LABEL: Record<Population, string> = {
+  min10: 'Training population',
+  all: 'All rows',
+}
+export type Call = 'over' | 'under' | 'no_call'
+
+export interface CoveragePoint {
+  threshold: number
+  coverage: number
+  n_resolved: number
+  hit_rate: number | null
+  season_mean_same_rows_hit_rate: number | null
+  season_mean_own_hit_rate: number | null
+}
+
+export interface PolicyTarget {
+  n: number
+  threshold: number
+  n_called: number
+  coverage: number
+  n_resolved: number
+  n_push: number
+  n_hit: number
+  hit_rate: number | null
+  baselines: {
+    coin_flip: { hit_rate: number; n: number; half_width_95: number | null }
+    season_mean_sign: {
+      n: number
+      hit_rate: number | null
+      same_rows: boolean
+      own_threshold_n_called: number
+      own_threshold_hit_rate: number | null
+    }
+  }
+  model_beats_both: boolean
+  verdict: string
+  bands: {
+    quantiles: { q10: number; q25: number; q75: number; q90: number }
+    coverage_50: number | null
+    coverage_80: number | null
+  }
+  coverage_curve: CoveragePoint[]
+}
+
+/**
+ * The policy evaluation the page imports, derived from the committed artifact
+ * reports/policy_<season>.json by `python -m nba.decisions.evaluate` and checked against it
+ * by a test. Thresholds and bands are in-sample on the replay season; the file says so.
+ */
+export interface PolicySummary {
+  season: string
+  generated_at: string
+  git_sha: string
+  model_revision: string
+  model_commit: string
+  in_sample: boolean
+  in_sample_note: string
+  min_coverage: number
+  source_file: string
+  source_sha256: string
+  definitions: Record<string, string>
+  populations: Record<
+    Population,
+    { description: string; n: number; targets: Record<Target, PolicyTarget>; model_beats_both_everywhere: boolean }
+  >
+}
+export const POLICY_SUMMARY = policySummary as PolicySummary
+
+export interface DecisionTarget {
+  prediction: number
+  baseline_last10: number
+  edge: number | null
+  populations: Record<Population, { call: Call; band_50: [number, number]; band_80: [number, number] }>
+}
+
+export interface DecisionRow {
+  game_id: string
+  player_id: number
+  player_name: string
+  team: string
+  opponent: string
+  home: boolean
+  targets: Record<Target, DecisionTarget>
+}
+
+/** decisions/latest.json: the slate's calls under the committed policy (nba/decisions/decide.py). */
+export interface DecisionsLatest {
+  date: string
+  model_revision: string
+  dataset_revision: string
+  generated_at: string
+  policy: {
+    season: string
+    report: string
+    git_sha: string
+    in_sample: boolean
+    populations: Record<
+      Population,
+      {
+        description: string
+        targets: Record<
+          Target,
+          {
+            threshold: number
+            hit_rate_in_sample: number | null
+            coverage_in_sample: number
+            model_beats_both: boolean
+            verdict: string
+            band_quantiles: { q10: number; q25: number; q75: number; q90: number }
+          }
+        >
+      }
+    >
+  }
+  n_games: number
+  n_players: number
+  n_calls: Record<Population, Record<Target, number>>
+  rows: DecisionRow[]
+}
+
 export interface ReplayDaily {
   season: string
   population: string
@@ -294,3 +420,5 @@ export const getMetricsReport = () => fetchJson<MetricsReport>(`${MODEL_BASE}/${
 export const getBriefIndex = () => fetchJson<BriefIndex>(`${DATASET_BASE}/${DATASET_PATHS.briefIndex}`)
 export const getLatestBrief = () => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.briefLatest}`)
 export const getBrief = (date: string) => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.brief(date)}`)
+export const getLatestDecisions = () =>
+  fetchJson<DecisionsLatest>(`${DATASET_BASE}/${DATASET_PATHS.decisionsLatest}`)

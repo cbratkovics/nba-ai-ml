@@ -72,3 +72,8 @@ sources:
         meta:
           formatter: template
           external_location: "read_json_auto('{{ var('reports_root') }}/replay_all_rows_{{ var('holdout_season') }}.json', filename = true)"
+      - name: policy_report
+        description: reports/policy_<season>.json, the decision policy evaluated per population on the holdout-season replay rows (thresholds, bands, hit rates against both causal baselines, coverage curves; ADR-0015). Optional until written.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('reports_root') }}/policy_{{ var('holdout_season') }}.json', filename = true, maximum_object_size = 33554432)"

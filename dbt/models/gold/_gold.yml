@@ -33,8 +33,8 @@ models:
       - { name: last_game_date, data_type: date, description: last game of the stint }
       - { name: games, data_type: integer, description: games in the stint }
       - { name: effective_from_date, data_type: date, description: the stint applies to dates strictly after this date (its first game) }
-      - { name: effective_to_date, data_type: date, description: the stint applies to dates up to and including this date (the next stint's first game); null for the current stint }
-      - { name: is_current, data_type: boolean, description: true for the player's latest stint, constraints: [{ type: not_null }] }
+      - { name: effective_to_date, data_type: date, description: "the stint applies to dates up to and including this date (the next stint's first game); null for the current stint" }
+      - { name: is_current, data_type: boolean, description: "true for the player's latest stint", constraints: [{ type: not_null }] }
 
   - name: dim_game
     description: One row per game with date, season, both teams, player counts and the Cup-final flag (always false; the ingest excludes the final).
@@ -54,7 +54,7 @@ models:
       - { name: n_away_players, data_type: integer, description: away players with a box score }
       - { name: home_pts, data_type: integer, description: home team points summed from player rows }
       - { name: away_pts, data_type: integer, description: away team points summed from player rows }
-      - { name: is_cup_final, data_type: boolean, description: game id with season-type code 006 (the NBA Cup final, excluded from the regular season), data_tests: [{ accepted_values: { arguments: { values: [false] } } }] }
+      - { name: is_cup_final, data_type: boolean, description: "game id with season-type code 006 (the NBA Cup final, excluded from the regular season)", data_tests: [{ accepted_values: { arguments: { values: [false] } } }] }
 
   - name: dim_team
     description: One row per (team, season) with coverage counts; abbreviations as stored for the season.
@@ -108,8 +108,11 @@ models:
       - { name: plus_minus, data_type: integer, description: plus/minus }
       - { name: source, data_type: varchar, description: ingest that produced the row }
       - { name: dataset_revision, data_type: varchar, description: dataset-repo revision of the load }
-      - { name: prior_games, data_type: integer, description: the player's earlier games in the warehouse }
-      - { name: prior_games_season, data_type: integer, description: the player's earlier games in the same season }
+      - { name: prior_games, data_type: integer, description: "the player's earlier games in the warehouse" }
+      - { name: prior_games_season, data_type: integer, description: "the player's earlier games in the same season" }
+      - { name: pts_mean_season_prior, data_type: double, description: "mean points over the player's earlier games of the season (the feature module's pts_mean_season); null on the first game" }
+      - { name: reb_mean_season_prior, data_type: double, description: "mean rebounds over the player's earlier games of the season; null on the first game" }
+      - { name: ast_mean_season_prior, data_type: double, description: "mean assists over the player's earlier games of the season; null on the first game" }
       - { name: population, data_type: varchar, description: min10 (training population) or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
 
   - name: fct_prediction
@@ -144,7 +147,7 @@ models:
       - { name: minutes, data_type: double, description: minutes played }
       - { name: has_actual, data_type: boolean, description: box score exists, constraints: [{ type: not_null }] }
       - { name: baseline_defined, data_type: boolean, description: last-10 baseline defined for every target, constraints: [{ type: not_null }] }
-      - { name: in_metrics_population, data_type: boolean, description: the writer's training-population flag, constraints: [{ type: not_null }] }
+      - { name: in_metrics_population, data_type: boolean, description: "the writer's training-population flag", constraints: [{ type: not_null }] }
       - { name: population, data_type: varchar, description: min10 (training population) or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
       - { name: abs_error_pts, data_type: double, description: "|actual - predicted| points" }
       - { name: abs_error_reb, data_type: double, description: "|actual - predicted| rebounds" }
@@ -168,7 +171,7 @@ models:
       - { name: feature_version, data_type: varchar, description: feature module version }
       - { name: dataset_revision, data_type: varchar, description: dataset revision }
       - { name: population, data_type: varchar, description: min10 or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
-      - { name: target, data_type: varchar, description: pts, reb or ast, constraints: [{ type: not_null }] }
+      - { name: target, data_type: varchar, description: "pts, reb or ast", constraints: [{ type: not_null }] }
       - { name: n, data_type: integer, description: rows scored, constraints: [{ type: not_null }] }
       - { name: model_mae, data_type: double, description: model mean absolute error }
       - { name: model_rmse, data_type: double, description: model root mean squared error }
@@ -190,7 +193,7 @@ models:
       - { name: feature_version, data_type: varchar, description: feature module version }
       - { name: game_date, data_type: date, description: game date, constraints: [{ type: not_null }] }
       - { name: population, data_type: varchar, description: min10 or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
-      - { name: target, data_type: varchar, description: pts, reb or ast, constraints: [{ type: not_null }] }
+      - { name: target, data_type: varchar, description: "pts, reb or ast", constraints: [{ type: not_null }] }
       - { name: n, data_type: integer, description: rows scored on the date, constraints: [{ type: not_null }] }
       - { name: model_mae, data_type: double, description: model mean absolute error }
       - { name: baseline_last10_mae, data_type: double, description: last-10 baseline mean absolute error }
@@ -230,4 +233,107 @@ models:
       - { name: lookback_days, data_type: integer, description: the silver incremental lookback }
       - { name: within_lookback, data_type: boolean, description: max lag within the lookback (true when nothing was restated) }
       - { name: stored_max_game_date, data_type: date, description: newest stored game date at the run }
-      - { name: window_start_exclusive, data_type: date, description: start of the ingest's re-read window }
+      - { name: window_start_exclusive, data_type: date, description: "start of the ingest's re-read window" }
+
+  - name: fct_decision_policy
+    latest_version: 1
+    description: One row per (player_id, game_id, model_revision, population, target) with the decision policy applied (ADR-0001, ADR-0015) - the edge against the last-10 mean, the over / under / no_call decision at the population's threshold, the residual-quantile bands, and once the box score exists the outcome and the season-mean sign baseline's outcome. Population is a column, every training-population row appears under both. Version 1 is aliased to the plain name; a later version is additive and exports as fct_decision_policy_v2.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, game_id, model_revision, population, target]
+    columns:
+      - { name: player_id, data_type: bigint, description: nba.com player id, constraints: [{ type: not_null }] }
+      - { name: game_id, data_type: varchar, description: game id, constraints: [{ type: not_null }] }
+      - { name: model_revision, data_type: varchar, description: model revision, constraints: [{ type: not_null }] }
+      - { name: feature_version, data_type: varchar, description: feature module version }
+      - { name: dataset_revision, data_type: varchar, description: dataset revision of the slate }
+      - { name: run_kind, data_type: varchar, description: nightly or replay, constraints: [{ type: not_null }] }
+      - { name: game_date, data_type: date, description: game date, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: player_name, data_type: varchar, description: player name on the slate }
+      - { name: team, data_type: varchar, description: team on the slate }
+      - { name: opponent, data_type: varchar, description: opponent }
+      - { name: home, data_type: boolean, description: home game }
+      - { name: population, data_type: varchar, description: min10 (training population) or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
+      - { name: target, data_type: varchar, description: "pts, reb or ast", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [pts, reb, ast] } } }] }
+      - { name: prediction, data_type: double, description: "the model's prediction", constraints: [{ type: not_null }] }
+      - { name: baseline_last10, data_type: double, description: last-10 mean from the slate row, constraints: [{ type: not_null }] }
+      - { name: baseline_season, data_type: double, description: season-to-date mean before the game (fct_player_game); null before the box score or on a season debut }
+      - { name: edge, data_type: double, description: prediction minus baseline_last10, constraints: [{ type: not_null }] }
+      - { name: threshold, data_type: double, description: "the population's threshold from the policy artifact; null until it exists" }
+      - { name: decision, data_type: varchar, description: "over, under or no_call; null until the artifact exists", data_tests: [{ accepted_values: { arguments: { values: [over, under, no_call] } } }] }
+      - { name: band_low_50, data_type: double, description: "prediction plus the population's 25th residual percentile" }
+      - { name: band_high_50, data_type: double, description: prediction plus the 75th residual percentile }
+      - { name: band_low_80, data_type: double, description: prediction plus the 10th residual percentile }
+      - { name: band_high_80, data_type: double, description: prediction plus the 90th residual percentile }
+      - { name: actual, data_type: double, description: the box-score value; null until it exists }
+      - { name: has_actual, data_type: boolean, description: whether the box score exists, constraints: [{ type: not_null }] }
+      - { name: outcome, data_type: varchar, description: "hit, miss or push for a called row with a box score; else null", data_tests: [{ accepted_values: { arguments: { values: [hit, miss, push] } } }] }
+      - { name: season_mean_decision, data_type: varchar, description: "the season-mean sign baseline's call (over if season mean above the last-10 mean, under if below, else no_call)", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [over, under, no_call] } } }] }
+      - { name: season_mean_outcome, data_type: varchar, description: "hit, miss or push for that baseline; null when it made no call or the box score is missing", data_tests: [{ accepted_values: { arguments: { values: [hit, miss, push] } } }] }
+      - { name: within_band_50, data_type: boolean, description: actual inside the 50% band; null without a box score or bands }
+      - { name: within_band_80, data_type: boolean, description: actual inside the 80% band; null without a box score or bands }
+    versions:
+      - v: 1
+
+  - name: mart_policy_metrics
+    description: One row per (season, run_kind, model_revision, population, target) with the decision policy's coverage and hit rate at the chosen threshold, both causal baselines, and the band coverages, recomputed from fct_decision_policy; the replay rows reconcile to reports/policy_<season>.json (ADR-0015).
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, run_kind, model_revision, population, target]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: run_kind, data_type: varchar, description: nightly or replay, constraints: [{ type: not_null }] }
+      - { name: model_revision, data_type: varchar, description: model revision, constraints: [{ type: not_null }] }
+      - { name: population, data_type: varchar, description: min10 or all, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [min10, all] } } }] }
+      - { name: target, data_type: varchar, description: "pts, reb or ast", constraints: [{ type: not_null }] }
+      - { name: threshold, data_type: double, description: "the population's threshold; null until the artifact exists" }
+      - { name: n, data_type: integer, description: rows with a box score and a baseline, constraints: [{ type: not_null }] }
+      - { name: n_called, data_type: integer, description: rows called over or under }
+      - { name: coverage, data_type: double, description: n_called / n }
+      - { name: n_resolved, data_type: integer, description: called rows with a side }
+      - { name: n_push, data_type: integer, description: called rows where actual equals the last-10 mean }
+      - { name: n_hit, data_type: integer, description: hits }
+      - { name: hit_rate, data_type: double, description: n_hit / n_resolved }
+      - { name: net_correct, data_type: integer, description: hits minus misses }
+      - { name: coin_flip_hit_rate, data_type: double, description: 0.5 by definition }
+      - { name: coin_flip_half_width_95, data_type: double, description: 1.96 * sqrt(0.25 / n_resolved) }
+      - { name: season_mean_same_rows_n, data_type: integer, description: resolved rows where the season-mean sign takes a side }
+      - { name: season_mean_same_rows_hit_rate, data_type: double, description: season-mean sign hit rate on those rows }
+      - { name: model_beats_both, data_type: boolean, description: "model hit rate above the season-mean sign and outside the coin flip's 95% band" }
+      - { name: band_coverage_50, data_type: double, description: share of actuals inside the 50% band }
+      - { name: band_coverage_80, data_type: double, description: share of actuals inside the 80% band }
+
+  - name: mart_policy_sweep
+    description: One row per (season, run_kind, model_revision, population, target, threshold), the coverage curve of the decision policy over the artifact's threshold grid with both causal baselines; the replay rows reconcile point for point to reports/policy_<season>.json.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, run_kind, model_revision, population, target, threshold]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: run_kind, data_type: varchar, description: nightly or replay, constraints: [{ type: not_null }] }
+      - { name: model_revision, data_type: varchar, description: model revision, constraints: [{ type: not_null }] }
+      - { name: population, data_type: varchar, description: min10 or all, constraints: [{ type: not_null }] }
+      - { name: target, data_type: varchar, description: "pts, reb or ast", constraints: [{ type: not_null }] }
+      - { name: threshold, data_type: double, description: grid threshold, constraints: [{ type: not_null }] }
+      - { name: n, data_type: integer, description: rows with a box score and a baseline }
+      - { name: n_called, data_type: integer, description: rows called at the threshold }
+      - { name: coverage, data_type: double, description: n_called / n }
+      - { name: n_resolved, data_type: integer, description: called rows with a side }
+      - { name: n_push, data_type: integer, description: called rows where actual equals the last-10 mean }
+      - { name: n_hit, data_type: integer, description: hits }
+      - { name: hit_rate, data_type: double, description: n_hit / n_resolved }
+      - { name: net_correct, data_type: integer, description: hits minus misses }
+      - { name: season_mean_same_rows_n, data_type: integer, description: resolved rows where the season-mean sign takes a side }
+      - { name: season_mean_same_rows_hit_rate, data_type: double, description: season-mean sign hit rate on those rows }
+      - { name: season_mean_own_n_called, data_type: integer, description: rows the season-mean sign calls at the same threshold on its own edge }
+      - { name: season_mean_own_hit_rate, data_type: double, description: its hit rate as a policy at that threshold }

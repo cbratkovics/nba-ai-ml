@@ -2,7 +2,8 @@
 
 One process so the files written by each step are known exactly and only those are
 uploaded. Steps: ingest -> residuals for yesterday -> analyst brief for yesterday ->
-slate for today -> push. Outcomes that are not errors exit 0 with one explicit line each:
+slate for today -> decisions for today -> push. Outcomes that are not errors exit 0 with one
+explicit line each:
 
     SLATE <date>: no schedule file for season <season> (...)   the dump has no schedule yet
     SLATE <date>: no games on this date (...)                   schedule exists, nothing today
@@ -29,6 +30,8 @@ import pandas as pd
 from nba import config
 from nba.agent import loop as agent_loop
 from nba.agent import tools as agent_tools
+from nba.decisions import decide
+from nba.decisions import evaluate as policy_evaluate
 from nba.ingest import kaggle_daily, schedule
 from nba.predict import model, residuals, slate
 from nba.storage import hf, local
@@ -45,6 +48,7 @@ class NightlySummary:
     residuals: dict[str, Any] = field(default_factory=dict)
     agent: dict[str, Any] = field(default_factory=dict)
     slate: dict[str, Any] = field(default_factory=dict)
+    decisions: dict[str, Any] = field(default_factory=dict)
     products_pushed: list[str] = field(default_factory=list)
     products_revision: str | None = None
     lines: list[str] = field(default_factory=list)
@@ -163,6 +167,28 @@ def run(
     if outcome.status is slate.SlateStatus.OK:
         parquet, latest = slate.write_outputs(outcome, predictions_dir)
         written += [parquet, latest]
+        # 3b. Decisions for today's slate under the committed policy (ADR-0001).
+        artifact = decide.load_artifact()
+        if artifact is None:
+            summary.decisions = {"status": "no_policy_report"}
+            summary.log(
+                f"DECISIONS {d}: no policy report at {policy_evaluate.report_path()}; none written"
+            )
+        else:
+            decision_files = decide.write_outputs(
+                outcome.predictions, d, root / config.DECISIONS_DIR, artifact
+            )
+            written += decision_files
+            payload = json.loads(decision_files[0].read_text())
+            summary.decisions = {
+                "status": "ok",
+                "policy_season": payload["policy"]["season"],
+                "n_calls": payload["n_calls"],
+            }
+            summary.log(
+                f"DECISIONS {d}: {payload['n_players']} players, calls per target "
+                f"(training-population policy) {payload['n_calls']['min10']}"
+            )
 
     # 4. Push exactly the product files written tonight.
     if push and written:

@@ -127,13 +127,13 @@ models:
     columns:
       - { name: source_file, description: report file }
       - { name: model_commit, description: git commit of the training code (metrics.json git_sha) }
-      - { name: dataset_version, description: dataset version string (hf:<revision>) }
+      - { name: dataset_version, description: "dataset version string (hf:<revision>)" }
       - { name: season, description: holdout season }
       - { name: min_minutes, description: minutes threshold of the population }
       - { name: n_train_rows, description: training rows }
       - { name: n_holdout_rows, description: holdout rows before the baseline filter }
-      - { name: target, description: pts, reb or ast }
-      - { name: predictor, description: model, baseline_last10 or baseline_season }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: predictor, description: "model, baseline_last10 or baseline_season" }
       - { name: n, description: rows scored }
       - { name: mae, description: mean absolute error }
       - { name: rmse, description: root mean squared error }
@@ -147,7 +147,7 @@ models:
       - { name: model_revision, description: model revision used }
       - { name: dataset_revision, description: dataset revision recorded by the replay }
       - { name: model_commit, description: training-code commit of the reference metrics.json }
-      - { name: target, description: pts, reb or ast }
+      - { name: target, description: "pts, reb or ast" }
       - { name: n_dates, description: replayed game dates }
       - { name: n_predicted, description: slated player-games }
       - { name: n_with_actuals, description: slated player-games with a box score }
@@ -165,7 +165,59 @@ models:
       - { name: season, description: replayed season }
       - { name: population_label, description: population string from the report }
       - { name: game_date, description: replayed date }
-      - { name: target, description: pts, reb or ast }
+      - { name: target, description: "pts, reb or ast" }
       - { name: n, description: rows with a box score and a baseline on the date }
       - { name: model_mae, description: model MAE on the date }
       - { name: baseline_last10_mae, description: last-10 baseline MAE on the date }
+  - name: brz_policy_report
+    description: reports/policy_<season>.json unpivoted to one row per (population, target) with the chosen threshold, the in-sample hit rates of the model and both causal baselines, and the band quantiles. Empty (typed) until the artifact exists.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: season, description: evaluated season }
+      - { name: policy_commit, description: git commit that wrote the artifact }
+      - { name: model_revision, description: model revision the replay used }
+      - { name: model_commit, description: training-code commit of the model }
+      - { name: in_sample, description: "true, the thresholds and bands were chosen on these rows" }
+      - { name: min_coverage, description: coverage floor of the threshold rule }
+      - { name: population, description: min10 or all }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: n, description: rows of the population with a box score and a baseline }
+      - { name: threshold, description: "chosen threshold in the target's unit" }
+      - { name: n_called, description: rows called over or under at the threshold }
+      - { name: coverage, description: n_called / n }
+      - { name: n_resolved, description: called rows with a side (hit or miss) }
+      - { name: n_push, description: called rows where actual equals the last-10 mean }
+      - { name: n_hit, description: hits }
+      - { name: hit_rate, description: n_hit / n_resolved }
+      - { name: coin_flip_hit_rate, description: 0.5 by definition }
+      - { name: coin_flip_half_width_95, description: 1.96 * sqrt(0.25 / n_resolved) }
+      - { name: season_mean_same_rows_n, description: resolved rows where the season-mean sign takes a side }
+      - { name: season_mean_same_rows_hit_rate, description: season-mean sign hit rate on those rows }
+      - { name: model_beats_both, description: "model hit rate above the season-mean sign and outside the coin flip's band" }
+      - { name: verdict, description: one sentence stating whether the model policy is recommended on the population }
+      - { name: band_q10, description: 10th percentile of actual minus prediction }
+      - { name: band_q25, description: 25th percentile of actual minus prediction }
+      - { name: band_q75, description: 75th percentile of actual minus prediction }
+      - { name: band_q90, description: 90th percentile of actual minus prediction }
+      - { name: band_coverage_50, description: in-sample share of actuals inside the 50% band }
+      - { name: band_coverage_80, description: in-sample share of actuals inside the 80% band }
+  - name: brz_policy_curve
+    description: The coverage curves of reports/policy_<season>.json, one row per (population, target, threshold). Empty (typed) until the artifact exists.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: season, description: evaluated season }
+      - { name: model_revision, description: model revision the replay used }
+      - { name: population, description: min10 or all }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: threshold, description: grid threshold }
+      - { name: n_called, description: rows called at the threshold }
+      - { name: coverage, description: n_called / n }
+      - { name: n_resolved, description: called rows with a side }
+      - { name: n_push, description: called rows where actual equals the last-10 mean }
+      - { name: n_hit, description: hits }
+      - { name: hit_rate, description: n_hit / n_resolved }
+      - { name: net_correct, description: hits minus misses }
+      - { name: season_mean_same_rows_n, description: resolved rows where the season-mean sign takes a side }
+      - { name: season_mean_same_rows_hit_rate, description: season-mean sign hit rate on those rows }
+      - { name: season_mean_own_n_called, description: rows the season-mean sign calls at the same threshold on its own edge }
+      - { name: season_mean_own_hit_rate, description: its hit rate as a policy at that threshold }

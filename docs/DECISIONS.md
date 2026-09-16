@@ -6,10 +6,24 @@ what building the warehouse decided. Each ADR says whether it is implemented (co
 and has run in GitHub Actions), prototyped (code and tests exist, has not run in Actions),
 or planned.
 
-## ADR-0001 — Decision unit: line-free directional calls (planned, Phase 2)
+## ADR-0001 — Decision unit: line-free directional calls (prototyped, Phase 2)
 
-Not yet written: Phase 2 defines the `over` / `under` / `no_call` policy against the last-10
-mean with residual-quantile bands and two causal baselines. No sportsbook lines.
+The decision is one call per (player, game, target) against the player's own last-10-game
+mean, the number every slate row already carries: `edge = prediction − baseline_last10`;
+`over` when `edge > threshold`, `under` when `edge < −threshold`, else `no_call`. Once the
+box score exists the call resolves against the same last-10 mean: `hit` on the called side,
+`miss` on the other, `push` when the actual equals the mean (pushes are excluded from the hit
+rate and counted). There are no sportsbook lines anywhere in the repo. Two causal baselines
+are scored on the rows the model calls: a coin flip (0.5 by definition, with its 95% half
+width at that many resolved calls) and the sign of `season_mean − baseline_last10`, the
+direction a mean-reverting forecaster would call from the player's season-to-date mean,
+also known before tip-off. The rule lives in `nba/decisions/policy.py`; the warehouse
+reimplements it in `fct_decision_policy` (v1, aliased to the plain name, exported to
+`gold/fct_decision_policy.parquet`) and the nightly job writes `decisions/<date>.json` and
+`decisions/latest.json` for the slate from the committed artifact (`nba/decisions/decide.py`),
+which `/decisions` reads; off-season it renders the replay evaluation from the artifact and
+says so. Population is a column: every row appears under `all`, training-population rows
+again under `min10` with that population's threshold and bands (ADR-0009).
 
 ## ADR-0002 — Two populations, headline stays minutes ≥ 10 (implemented, Phase 0)
 
@@ -55,14 +69,23 @@ identity is displayed everywhere: `commit 50a3b2e / HF fb427de` (`nba/config.py`
 `MODEL_COMMIT`, `MODEL_REVISION`, mirrored in `frontend/lib/data.ts` and `dbt_project.yml`,
 checked by tests).
 
-## ADR-0006 — Thresholds and bands are in-sample on 2025-26 (planned, Phase 2)
+## ADR-0006 — Thresholds and bands are in-sample on 2025-26 (prototyped, Phase 2)
 
-Not yet written.
+There is one evaluated season, so the thresholds and bands are chosen on the same replay
+rows they are scored on: 22,075 training-population rows and 26,031 all rows
+(`reports/replay_2025-26.json` `n_restricted` / `n_with_actuals`; a test pins both).
+`reports/policy_2025-26.json` says `in_sample: true` in its own words, and every hit rate
+on `/decisions` is labelled in-sample. Bands are quantiles of `actual − prediction` per
+target and population (q10, q25, q75, q90 → the 80% and 50% bands around a prediction), so
+their in-sample coverage is 0.800 and 0.500 by construction, which the mart recomputes and
+the artifact records rather than presents as evidence. The selection rule is ADR-0015. The
+first untouched season (2026-27, scored nightly with the same thresholds) is the
+out-of-sample test; `mart_policy_metrics` reports the nightly rows next to the replay rows.
 
 ## ADR-0007 — MotherDuck compute guard (prototyped)
 
 The nightly job builds only the incremental silver models with their parents (bronze copies
-of the loaded files, seconds of work) and children (snapshot, gold, tests), plus the three
+of the loaded files, seconds of work) and children (snapshot, gold, tests), plus the five
 tiny report copies; a full refresh is the weekly `warehouse.yml` (Sundays 06:00 UTC, or
 dispatch). The build runs only when the night ingested, scored or slated something
 (`python -m nba.warehouse.gate` reads `data/nightly_summary.json`); an off-season zero-row
@@ -150,3 +173,60 @@ The project ships its own two generic tests (`unique_combination`, `accepted_ran
 of dbt_utils / dbt_expectations: two macros are cheaper than a package install in every job
 and the `dbt deps` quirks the template documents. Revisit if a third package feature is
 needed.
+
+## ADR-0015 — Threshold selection by a coverage floor, reconciled in both directions (prototyped, Phase 2)
+
+**Rule.** Per target and population the threshold is the largest value on a fixed grid
+(`POLICY_THRESHOLD_GRID`: pts 0–8 by 0.25, reb and ast 0–4 by 0.1) whose coverage, the
+share of the population's rows called, is still at least `POLICY_MIN_COVERAGE` = 0.25: the
+strictest policy that keeps a quarter of the slate. The rule has one constant and no
+objective that rewards the model: maximising net correct calls picks threshold 0 (call
+everything) on every target because coverage falls faster than the hit rate rises, and
+maximising the hit rate picks a handful of rows. The whole coverage curve (every grid
+point, both baselines) is in the artifact and on the page so any other point can be read
+off. Measured 2026-09-15 on the first local build (`reports/policy_2025-26.json`):
+
+| Population | Target | Threshold | Coverage | Resolved | Model hit | Season-mean sign, same rows | Season-mean sign, own threshold | Coin flip ±95% |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| min10 (22,075) | pts | 1.75 | 0.306 | 6,680 | 0.667 | 0.597 (n 6,324) | 0.588 | 0.012 |
+| min10 | reb | 0.70 | 0.300 | 6,516 | 0.660 | 0.595 (n 6,159) | 0.601 | 0.012 |
+| min10 | ast | 0.50 | 0.274 | 5,914 | 0.633 | 0.600 (n 5,604) | 0.602 | 0.013 |
+| all (26,031) | pts | 2.25 | 0.268 | 6,890 | 0.547 | 0.574 (n 6,128) | 0.604 | 0.012 |
+| all | reb | 0.90 | 0.267 | 6,780 | 0.539 | 0.573 (n 6,066) | 0.617 | 0.012 |
+| all | ast | 0.50 | 0.323 | 8,108 | 0.537 | 0.571 (n 7,377) | 0.605 | 0.011 |
+
+On the training population the model's calls beat both baselines on every target. On all
+rows they do not: the season-mean sign hits more often on the very rows the model calls,
+and as a policy with its own threshold it is the better call on all rows (0.60–0.62 at a
+similar coverage). The artifact's `verdict` says so in one sentence per target and
+`/decisions` prints it; the nightly decisions file carries both populations' calls and the
+page labels which policy it shows.
+
+**Bands** (residual quantiles, in-sample): min10 pts q10/q25/q75/q90 = −7.05 / −4.11 /
++3.60 / +7.98, reb −2.86 / −1.70 / +1.41 / +3.28, ast −2.00 / −1.21 / +1.00 / +2.41; all
+rows pts −7.30 / −5.11 / +2.77 / +7.31, reb −3.18 / −2.10 / +1.07 / +2.98, ast −2.04 /
+−1.28 / +0.77 / +2.18. The asymmetry (the model over-predicts on all rows: the median
+residual is negative) is the same finding as the all-rows MAE (ADR-0002).
+
+**Where the numbers are computed.** The artifact is written by
+`python -m nba.decisions.evaluate` from the built gold marts, `fct_prediction` joined to
+`fct_player_game` for the season-to-date mean (not from raw replay files), in pandas.
+`fct_player_game.<stat>_mean_season_prior` is the feature module's `<stat>_mean_season`
+recomputed in SQL; checked equal on all 130,414 game-log rows (null pattern identical,
+maximum difference 0.0) and on the fixture in `tests/test_dbt_gold.py`. The dbt marts
+read the artifact through `brz_policy_report` / `brz_policy_curve` (optional, empty typed
+relations until the file exists, so a fresh warehouse builds before the artifact and again
+after it), apply the thresholds row by row in `fct_decision_policy`, and recompute every
+published number in `mart_policy_metrics` and `mart_policy_sweep` (all 230 curve points).
+`assert_policy_metrics_reconcile_to_policy_report` and
+`assert_policy_sweep_reconciles_to_policy_report` compare counts exactly and rates within
+1e-6 (`tol_policy`; the observed difference is 0) and pass on the real build and, inside
+`pytest`, on fixture residuals with a fixture artifact, so CI proves SQL and pandas agree
+without the Hugging Face load. `frontend/lib/policy_summary.json` is derived from the
+artifact and a test recomputes it, as for the all-rows baseline.
+
+**Sequence.** `make dbt-full` → `make policy` → `make dbt-full`: the first build makes the
+inputs, the artifact is written from them, the second build reconciles to it. The nightly
+selection adds `brz_policy_report+` and `brz_policy_curve+`. The artifact records the code
+commit that wrote it (`git_sha`), which is the commit before the one that adds it; the same
+is true of every committed report.

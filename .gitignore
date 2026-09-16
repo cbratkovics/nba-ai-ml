@@ -74,6 +74,8 @@ data/cache/
 !package-lock.json
 # Derived from reports/replay_all_rows_<season>.json; checked by tests/test_all_rows_baseline.py.
 !frontend/lib/all_rows_baseline.json
+# Derived from reports/policy_<season>.json; checked by tests/test_policy.py.
+!frontend/lib/policy_summary.json
 # dbt seeds are committed CSV; the warehouse loader's copies and dbt's own outputs are not.
 !dbt/seeds/*.csv
 !dbt/package-lock.yml
@@ -134,6 +136,8 @@ reports/*
 !reports/provenance_*.json
 # The all-rows replay baseline the site shows (already matched by replay_*; explicit on purpose).
 !reports/replay_all_rows_*.json
+# The decision-policy evaluation (ADR-0015); the warehouse reconciles to it.
+!reports/policy_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git (data/warehouse/ is the loader's copy).
@@ -153,3 +157,4 @@ site/
 /replay/
 /daily_reports/
 /brief/
+/decisions/

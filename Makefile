@@ -1,4 +1,4 @@
-.PHONY: help install test lint dbt-load dbt-build dbt-full dbt-nightly dbt-docs dbt-export check-docs frontend-build
+.PHONY: help install test lint dbt-load dbt-build dbt-full dbt-nightly dbt-docs dbt-export policy check-docs frontend-build
 
 PY ?= .venv/bin/python
 DBT ?= .venv/bin/dbt
@@ -15,6 +15,7 @@ help:
 	@echo "dbt-nightly  - the nightly selection: incremental silver with parents and children"
 	@echo "dbt-docs     - dbt docs generate --static, then the description check"
 	@echo "dbt-export   - export gold marts to data/warehouse/export"
+	@echo "policy       - write reports/policy_<season>.json from the built gold marts, then rebuild (dbt-full) so the policy marts reconcile"
 	@echo "Set DBT_TARGET=motherduck and MOTHERDUCK_TOKEN to build on MotherDuck (database nba)."
 
 install:
@@ -38,7 +39,10 @@ dbt-full:
 	$(DBT) build $(DBT_FLAGS) --full-refresh
 
 dbt-nightly:
-	$(DBT) build $(DBT_FLAGS) --select "+slv_game_logs+" "+slv_predictions+" "+slv_residuals+" "+slv_daily_reports+" "brz_metrics+" "brz_replay_report+" "brz_replay_all_rows+"
+	$(DBT) build $(DBT_FLAGS) --select "+slv_game_logs+" "+slv_predictions+" "+slv_residuals+" "+slv_daily_reports+" "brz_metrics+" "brz_replay_report+" "brz_replay_all_rows+" "brz_policy_report+" "brz_policy_curve+"
+
+policy:
+	$(PY) -m nba.decisions.evaluate --duckdb $(NBA_DUCKDB_PATH)
 
 dbt-docs:
 	$(DBT) docs generate $(DBT_FLAGS) --static
