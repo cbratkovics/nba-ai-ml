@@ -22,8 +22,10 @@ agg as (
         count(*) filter (where outcome = 'push') as n_push,
         count(*) filter (where outcome = 'hit') as n_hit,
         count(*) filter (where outcome = 'miss') as n_miss,
-        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome in ('hit', 'miss')) as season_mean_same_rows_n,
-        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'hit') as season_mean_same_rows_hit,
+        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'hit') as season_mean_same_rows_n_hit,
+        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'miss') as season_mean_same_rows_n_miss,
+        count(*) filter (where outcome in ('hit', 'miss') and season_mean_decision = 'no_call' and baseline_season is not null) as season_mean_same_rows_n_tie,
+        count(*) filter (where outcome in ('hit', 'miss') and baseline_season is null) as season_mean_same_rows_n_missing,
         avg(case when within_band_50 then 1.0 else 0.0 end) filter (where within_band_50 is not null) as band_coverage_50,
         avg(case when within_band_80 then 1.0 else 0.0 end) filter (where within_band_80 is not null) as band_coverage_80
     from resolved
@@ -37,7 +39,13 @@ rates as (
         case when n_resolved > 0 then n_hit / n_resolved end as hit_rate,
         n_hit - n_miss as net_correct,
         case when n_resolved > 0 then 1.96 * sqrt(0.25 / n_resolved) end as coin_flip_half_width_95,
-        case when season_mean_same_rows_n > 0 then season_mean_same_rows_hit / season_mean_same_rows_n end as season_mean_same_rows_hit_rate
+        n_resolved as season_mean_same_rows_n,
+        -- the season-mean sign on exactly the model's resolved rows; a tie or a missing season
+        -- mean has no side and is scored as a coin flip (ADR-0015)
+        case
+            when n_resolved > 0
+                then (season_mean_same_rows_n_hit + 0.5 * (season_mean_same_rows_n_tie + season_mean_same_rows_n_missing)) / n_resolved
+        end as season_mean_same_rows_hit_rate
     from agg
 )
 
@@ -59,6 +67,10 @@ select
     cast(0.5 as double) as coin_flip_hit_rate,
     cast(coin_flip_half_width_95 as double) as coin_flip_half_width_95,
     cast(season_mean_same_rows_n as integer) as season_mean_same_rows_n,
+    cast(season_mean_same_rows_n_hit as integer) as season_mean_same_rows_n_hit,
+    cast(season_mean_same_rows_n_miss as integer) as season_mean_same_rows_n_miss,
+    cast(season_mean_same_rows_n_tie as integer) as season_mean_same_rows_n_tie,
+    cast(season_mean_same_rows_n_missing as integer) as season_mean_same_rows_n_missing,
     cast(season_mean_same_rows_hit_rate as double) as season_mean_same_rows_hit_rate,
     cast(
         hit_rate is not null and season_mean_same_rows_hit_rate is not null

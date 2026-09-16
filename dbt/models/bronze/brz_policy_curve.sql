@@ -22,6 +22,10 @@
     cast(c.hit_rate as double) as hit_rate,
     cast(c.net_correct as integer) as net_correct,
     cast(c.season_mean_same_rows_n as integer) as season_mean_same_rows_n,
+    cast(c.season_mean_same_rows_n_hit as integer) as season_mean_same_rows_n_hit,
+    cast(c.season_mean_same_rows_n_miss as integer) as season_mean_same_rows_n_miss,
+    cast(c.season_mean_same_rows_n_tie as integer) as season_mean_same_rows_n_tie,
+    cast(c.season_mean_same_rows_n_missing as integer) as season_mean_same_rows_n_missing,
     cast(c.season_mean_same_rows_hit_rate as double) as season_mean_same_rows_hit_rate,
     cast(c.season_mean_own_n_called as integer) as season_mean_own_n_called,
     cast(c.season_mean_own_hit_rate as double) as season_mean_own_hit_rate

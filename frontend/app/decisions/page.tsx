@@ -51,7 +51,8 @@ function PolicyTable({ population }: { population: Population }) {
                 </td>
                 <td className="py-2 pr-4 text-right tabular-nums">{pct(tb.hit_rate)}</td>
                 <td className="py-2 pr-4 text-right tabular-nums">
-                  {pct(tb.baselines.season_mean_sign.hit_rate)} (n {tb.baselines.season_mean_sign.n.toLocaleString()})
+                  {pct(tb.baselines.season_mean_sign.hit_rate)} ({tb.baselines.season_mean_sign.n_tie + tb.baselines.season_mean_sign.n_missing}{' '}
+                  abstentions)
                 </td>
                 <td className="py-2 pr-4 text-right tabular-nums">
                   {half === null ? '–' : `50% ± ${(half * 100).toFixed(1)}`}
@@ -173,8 +174,10 @@ export default async function DecisionsPage() {
             <p className="mt-2 text-sm text-text-secondary">
               Population: {block.description}. Two causal baselines are scored on the rows the model calls: a coin flip
               (50% by definition, with its 95% band at that many calls) and the sign of the player&apos;s season-to-date mean
-              minus the last-10 mean, which is also known before tip-off. Threshold rule: the largest grid value that still
-              calls at least {(s.min_coverage * 100).toFixed(0)}% of the rows.
+              minus the last-10 mean, which is also known before tip-off. Both are scored on exactly the rows the model
+              resolved, one n per comparison; where the season-mean sign has no side (a tie with the last-10 mean, or no
+              season mean on a season debut) it is scored as a coin flip, 0.5, and those abstentions are counted. Threshold
+              rule: the largest grid value that still calls at least {(s.min_coverage * 100).toFixed(0)}% of the rows.
             </p>
             {!block.model_beats_both_everywhere && (
               <p className="mt-3 text-sm text-danger">

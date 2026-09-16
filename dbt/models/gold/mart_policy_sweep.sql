@@ -33,8 +33,10 @@ scored as (
         abs(r.edge) > g.threshold and r.side <> 0 as resolved,
         abs(r.edge) > g.threshold and r.side <> 0 and sign(r.edge) = r.side as hit,
         abs(r.edge) > g.threshold and r.side = 0 as push,
-        abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is not null and r.season_edge <> 0 as sm_same,
         abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is not null and sign(r.season_edge) = r.side as sm_same_hit,
+        abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is not null and r.season_edge <> 0 and sign(r.season_edge) <> r.side as sm_same_miss,
+        abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge = 0 as sm_same_tie,
+        abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is null as sm_same_missing,
         r.season_edge is not null and abs(r.season_edge) > g.threshold as sm_called,
         r.season_edge is not null and abs(r.season_edge) > g.threshold and r.side <> 0 as sm_resolved,
         r.season_edge is not null and abs(r.season_edge) > g.threshold and r.side <> 0 and sign(r.season_edge) = r.side as sm_hit
@@ -55,8 +57,10 @@ agg as (
         count(*) filter (where resolved) as n_resolved,
         count(*) filter (where push) as n_push,
         count(*) filter (where hit) as n_hit,
-        count(*) filter (where sm_same) as season_mean_same_rows_n,
-        count(*) filter (where sm_same_hit) as season_mean_same_rows_hit,
+        count(*) filter (where sm_same_hit) as season_mean_same_rows_n_hit,
+        count(*) filter (where sm_same_miss) as season_mean_same_rows_n_miss,
+        count(*) filter (where sm_same_tie) as season_mean_same_rows_n_tie,
+        count(*) filter (where sm_same_missing) as season_mean_same_rows_n_missing,
         count(*) filter (where sm_called) as season_mean_own_n_called,
         count(*) filter (where sm_resolved) as season_mean_own_resolved,
         count(*) filter (where sm_hit) as season_mean_own_hit
@@ -79,8 +83,17 @@ select
     cast(n_hit as integer) as n_hit,
     cast(case when n_resolved > 0 then n_hit / n_resolved end as double) as hit_rate,
     cast(n_hit - (n_resolved - n_hit) as integer) as net_correct,
-    cast(season_mean_same_rows_n as integer) as season_mean_same_rows_n,
-    cast(case when season_mean_same_rows_n > 0 then season_mean_same_rows_hit / season_mean_same_rows_n end as double) as season_mean_same_rows_hit_rate,
+    cast(n_resolved as integer) as season_mean_same_rows_n,
+    cast(season_mean_same_rows_n_hit as integer) as season_mean_same_rows_n_hit,
+    cast(season_mean_same_rows_n_miss as integer) as season_mean_same_rows_n_miss,
+    cast(season_mean_same_rows_n_tie as integer) as season_mean_same_rows_n_tie,
+    cast(season_mean_same_rows_n_missing as integer) as season_mean_same_rows_n_missing,
+    cast(
+        case
+            when n_resolved > 0
+                then (season_mean_same_rows_n_hit + 0.5 * (season_mean_same_rows_n_tie + season_mean_same_rows_n_missing)) / n_resolved
+        end as double
+    ) as season_mean_same_rows_hit_rate,
     cast(season_mean_own_n_called as integer) as season_mean_own_n_called,
     cast(case when season_mean_own_resolved > 0 then season_mean_own_hit / season_mean_own_resolved end as double) as season_mean_own_hit_rate
 from agg

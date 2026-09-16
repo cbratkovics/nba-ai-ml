@@ -186,21 +186,28 @@ maximising the hit rate picks a handful of rows. The whole coverage curve (every
 point, both baselines) is in the artifact and on the page so any other point can be read
 off. Measured 2026-09-15 on the first local build (`reports/policy_2025-26.json`):
 
-| Population | Target | Threshold | Coverage | Resolved | Model hit | Season-mean sign, same rows | Season-mean sign, own threshold | Coin flip ±95% |
+| Population | Target | Threshold | Coverage | Resolved (the one n) | Model hit | Season-mean sign, same rows (abstentions) | Season-mean sign, own threshold (own n) | Coin flip ±95% |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| min10 (22,075) | pts | 1.75 | 0.306 | 6,680 | 0.667 | 0.597 (n 6,324) | 0.588 | 0.012 |
-| min10 | reb | 0.70 | 0.300 | 6,516 | 0.660 | 0.595 (n 6,159) | 0.601 | 0.012 |
-| min10 | ast | 0.50 | 0.274 | 5,914 | 0.633 | 0.600 (n 5,604) | 0.602 | 0.013 |
-| all (26,031) | pts | 2.25 | 0.268 | 6,890 | 0.547 | 0.574 (n 6,128) | 0.604 | 0.012 |
-| all | reb | 0.90 | 0.267 | 6,780 | 0.539 | 0.573 (n 6,066) | 0.617 | 0.012 |
-| all | ast | 0.50 | 0.323 | 8,108 | 0.537 | 0.571 (n 7,377) | 0.605 | 0.011 |
+| min10 (22,075) | pts | 1.75 | 0.306 | 6,680 | 0.667 | 0.592 (356 ties) | 0.588 (7,639 called) | 0.012 |
+| min10 | reb | 0.70 | 0.300 | 6,516 | 0.660 | 0.590 (357 ties) | 0.601 (7,122) | 0.012 |
+| min10 | ast | 0.50 | 0.274 | 5,914 | 0.633 | 0.595 (310 ties) | 0.602 (6,969) | 0.013 |
+| all (26,031) | pts | 2.25 | 0.268 | 6,890 | 0.547 | 0.566 (642 ties, 120 missing) | 0.604 (6,086) | 0.012 |
+| all | reb | 0.90 | 0.267 | 6,780 | 0.539 | 0.566 (627 ties, 87 missing) | 0.617 (5,660) | 0.012 |
+| all | ast | 0.50 | 0.323 | 8,108 | 0.537 | 0.564 (612 ties, 119 missing) | 0.605 (7,606) | 0.011 |
 
-On the training population the model's calls beat both baselines on every target. On all
-rows they do not: the season-mean sign hits more often on the very rows the model calls,
-and as a policy with its own threshold it is the better call on all rows (0.60–0.62 at a
-similar coverage). The artifact's `verdict` says so in one sentence per target and
-`/decisions` prints it; the nightly decisions file carries both populations' calls and the
-page labels which policy it shows.
+Both baselines are scored on exactly the model's resolved rows, so each comparison has one
+n. Where the season-mean sign has no side it abstains and is scored as a coin flip (0.5):
+a *tie* when the season-to-date mean equals the last-10 mean (mostly players whose season
+is ten games or fewer, where the two means coincide), and *missing* when there is no season
+mean (a season debut; impossible on `min10`, which requires an earlier game in the season).
+Both counts are in the artifact (`n_tie`, `n_missing`) and `hit_rate = (n_hit + 0.5 ×
+(n_tie + n_missing)) / n`. Scoring abstentions as misses instead would move the baseline by
+at most 0.03 and change no verdict. On the training population the model's calls beat both
+baselines on every target. On all rows they do not: the season-mean sign hits more often on
+the very rows the model calls, and as a policy with its own threshold it is the better call
+on all rows (0.60–0.62 at a similar coverage). The artifact's `verdict` says so in one
+sentence per target and `/decisions` prints it; the nightly decisions file carries both
+populations' calls and the page labels which policy it shows.
 
 **Bands** (residual quantiles, in-sample): min10 pts q10/q25/q75/q90 = −7.05 / −4.11 /
 +3.60 / +7.98, reb −2.86 / −1.70 / +1.41 / +3.28, ast −2.00 / −1.21 / +1.00 / +2.41; all

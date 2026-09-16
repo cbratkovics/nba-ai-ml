@@ -304,8 +304,12 @@ models:
       - { name: net_correct, data_type: integer, description: hits minus misses }
       - { name: coin_flip_hit_rate, data_type: double, description: 0.5 by definition }
       - { name: coin_flip_half_width_95, data_type: double, description: 1.96 * sqrt(0.25 / n_resolved) }
-      - { name: season_mean_same_rows_n, data_type: integer, description: resolved rows where the season-mean sign takes a side }
-      - { name: season_mean_same_rows_hit_rate, data_type: double, description: season-mean sign hit rate on those rows }
+      - { name: season_mean_same_rows_n, data_type: integer, description: "the model's resolved rows, the one n of this comparison (equals n_resolved)" }
+      - { name: season_mean_same_rows_n_hit, data_type: integer, description: season-mean sign hits on those rows }
+      - { name: season_mean_same_rows_n_miss, data_type: integer, description: season-mean sign misses on those rows }
+      - { name: season_mean_same_rows_n_tie, data_type: integer, description: rows where the season mean equals the last-10 mean (no side, scored 0.5) }
+      - { name: season_mean_same_rows_n_missing, data_type: integer, description: rows with no season mean (season debut; no side, scored 0.5) }
+      - { name: season_mean_same_rows_hit_rate, data_type: double, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
       - { name: model_beats_both, data_type: boolean, description: "model hit rate above the season-mean sign and outside the coin flip's 95% band" }
       - { name: band_coverage_50, data_type: double, description: share of actuals inside the 50% band }
       - { name: band_coverage_80, data_type: double, description: share of actuals inside the 80% band }
@@ -333,7 +337,11 @@ models:
       - { name: n_hit, data_type: integer, description: hits }
       - { name: hit_rate, data_type: double, description: n_hit / n_resolved }
       - { name: net_correct, data_type: integer, description: hits minus misses }
-      - { name: season_mean_same_rows_n, data_type: integer, description: resolved rows where the season-mean sign takes a side }
-      - { name: season_mean_same_rows_hit_rate, data_type: double, description: season-mean sign hit rate on those rows }
+      - { name: season_mean_same_rows_n, data_type: integer, description: "the model's resolved rows, the one n of this comparison (equals n_resolved)" }
+      - { name: season_mean_same_rows_n_hit, data_type: integer, description: season-mean sign hits on those rows }
+      - { name: season_mean_same_rows_n_miss, data_type: integer, description: season-mean sign misses on those rows }
+      - { name: season_mean_same_rows_n_tie, data_type: integer, description: rows where the season mean equals the last-10 mean (no side, scored 0.5) }
+      - { name: season_mean_same_rows_n_missing, data_type: integer, description: rows with no season mean (season debut; no side, scored 0.5) }
+      - { name: season_mean_same_rows_hit_rate, data_type: double, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
       - { name: season_mean_own_n_called, data_type: integer, description: rows the season-mean sign calls at the same threshold on its own edge }
       - { name: season_mean_own_hit_rate, data_type: double, description: its hit rate as a policy at that threshold }

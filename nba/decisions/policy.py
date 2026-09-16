@@ -101,11 +101,16 @@ def curve_point(
     n_called = int(call.isin(("over", "under")).sum())
     n_hit, n_miss, n_push = (int((out == k).sum()) for k in ("hit", "miss", "push"))
     n_resolved = n_hit + n_miss
-    # Season-mean sign on the same rows the model resolved, where that baseline takes a side.
+    # Season-mean sign on exactly the rows the model resolved: where the baseline has no side
+    # (a tie, season mean == last-10 mean, or no season mean on a season debut) it is scored
+    # as a coin flip, 0.5, so the comparison has one n. Both abstention kinds are counted.
     same = out.isin(("hit", "miss"))
     sm_call = sign_calls(season_diff)
     sm_out = outcomes(sm_call.where(same, "no_call"), actual, baseline)
     sm_hit, sm_miss = int((sm_out == "hit").sum()), int((sm_out == "miss").sum())
+    sm_missing = int((same & season_diff.isna()).sum())
+    sm_tie = int((same & (season_diff == 0)).sum())
+    assert sm_hit + sm_miss + sm_missing + sm_tie == n_resolved
     # Season-mean sign as a policy with its own threshold on the same population.
     own_call = calls(season_diff, threshold)
     own_out = outcomes(own_call, actual, baseline)
@@ -119,8 +124,12 @@ def curve_point(
         "n_hit": n_hit,
         "hit_rate": _rate(n_hit, n_resolved),
         "net_correct": n_hit - n_miss,
-        "season_mean_same_rows_n": sm_hit + sm_miss,
-        "season_mean_same_rows_hit_rate": _rate(sm_hit, sm_hit + sm_miss),
+        "season_mean_same_rows_n": n_resolved,
+        "season_mean_same_rows_n_hit": sm_hit,
+        "season_mean_same_rows_n_miss": sm_miss,
+        "season_mean_same_rows_n_tie": sm_tie,
+        "season_mean_same_rows_n_missing": sm_missing,
+        "season_mean_same_rows_hit_rate": _rate(sm_hit + 0.5 * (sm_tie + sm_missing), n_resolved),
         "season_mean_own_n_called": int(own_call.isin(("over", "under")).sum()),
         "season_mean_own_hit_rate": _rate(own_hit, own_hit + own_miss),
     }
@@ -224,8 +233,13 @@ def evaluate_target(frame: pd.DataFrame, target: str, population: str) -> dict[s
             },
             "season_mean_sign": {
                 "n": chosen["season_mean_same_rows_n"],
+                "n_hit": chosen["season_mean_same_rows_n_hit"],
+                "n_miss": chosen["season_mean_same_rows_n_miss"],
+                "n_tie": chosen["season_mean_same_rows_n_tie"],
+                "n_missing": chosen["season_mean_same_rows_n_missing"],
                 "hit_rate": chosen["season_mean_same_rows_hit_rate"],
                 "same_rows": True,
+                "abstentions_scored_as": 0.5,
                 "own_threshold_n_called": chosen["season_mean_own_n_called"],
                 "own_threshold_hit_rate": chosen["season_mean_own_hit_rate"],
             },
@@ -264,9 +278,12 @@ DEFINITIONS: dict[str, str] = {
     "coverage": "n_called / n, the share of the population's rows the policy calls",
     "net_correct": "n_hit - n_miss",
     "coin_flip": "0.5 by definition; half_width_95 = 1.96 * sqrt(0.25 / n_resolved)",
-    "season_mean_sign": "over if season_mean - baseline_last10 > 0, under if < 0; scored on the "
-    "same rows the model resolved (same_rows) and, own_threshold_*, as a policy with the same "
-    "threshold applied to its own edge",
+    "season_mean_sign": "over if season_mean - baseline_last10 > 0, under if < 0; scored on "
+    "exactly the n_resolved rows the model resolved (n == n_resolved): a tie (season_mean == "
+    "baseline_last10, n_tie) or a missing season mean (season debut, n_missing) has no side and "
+    "is scored as a coin flip, 0.5; hit_rate = (n_hit + 0.5 * (n_tie + n_missing)) / n. "
+    "own_threshold_*: the same sign as a policy with the same threshold applied to its own "
+    "edge, on its own rows (its own n_called)",
     "season_mean": "the player's mean of the stat over earlier games of the same season "
     "(the feature module's <stat>_mean_season, recomputed in gold.fct_player_game)",
     "threshold_selection": "largest grid threshold with coverage >= min_coverage, chosen on "
@@ -350,6 +367,11 @@ def validate_artifact(artifact: dict[str, Any]) -> list[str]:
                 problems.append(f"{p}.{t}: n_resolved != n_hit + n_miss")
             if tb["n_called"] != tb["n_resolved"] + tb["n_push"]:
                 problems.append(f"{p}.{t}: n_called != n_resolved + n_push")
+            sm = tb["baselines"]["season_mean_sign"]
+            if sm["n"] != tb["n_resolved"] or sm["n"] != (
+                sm["n_hit"] + sm["n_miss"] + sm["n_tie"] + sm["n_missing"]
+            ):
+                problems.append(f"{p}.{t}: season-mean sign is not scored on n_resolved rows")
             if tb["coverage"] < artifact["min_coverage"] and tb["threshold"] != min(
                 artifact["threshold_grid"][t]
             ):

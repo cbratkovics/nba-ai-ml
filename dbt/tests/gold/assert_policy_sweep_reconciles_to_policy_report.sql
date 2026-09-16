@@ -35,6 +35,10 @@ where
     or p.n_hit <> c.n_hit
     or p.net_correct <> c.net_correct
     or p.season_mean_same_rows_n <> c.season_mean_same_rows_n
+    or p.season_mean_same_rows_n_hit <> c.season_mean_same_rows_n_hit
+    or p.season_mean_same_rows_n_miss <> c.season_mean_same_rows_n_miss
+    or p.season_mean_same_rows_n_tie <> c.season_mean_same_rows_n_tie
+    or p.season_mean_same_rows_n_missing <> c.season_mean_same_rows_n_missing
     or p.season_mean_own_n_called <> c.season_mean_own_n_called
     or abs(p.coverage - c.coverage) > {{ var('tol_policy') }}
     or coalesce(abs(p.hit_rate - c.hit_rate) > {{ var('tol_policy') }}, p.hit_rate is not null or c.hit_rate is not null)

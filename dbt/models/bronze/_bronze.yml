@@ -191,8 +191,12 @@ models:
       - { name: hit_rate, description: n_hit / n_resolved }
       - { name: coin_flip_hit_rate, description: 0.5 by definition }
       - { name: coin_flip_half_width_95, description: 1.96 * sqrt(0.25 / n_resolved) }
-      - { name: season_mean_same_rows_n, description: resolved rows where the season-mean sign takes a side }
-      - { name: season_mean_same_rows_hit_rate, description: season-mean sign hit rate on those rows }
+      - { name: season_mean_same_rows_n, description: "the model's resolved rows, the one n of this comparison (equals n_resolved)" }
+      - { name: season_mean_same_rows_n_hit, description: season-mean sign hits on those rows }
+      - { name: season_mean_same_rows_n_miss, description: season-mean sign misses on those rows }
+      - { name: season_mean_same_rows_n_tie, description: rows where the season mean equals the last-10 mean (no side, scored 0.5) }
+      - { name: season_mean_same_rows_n_missing, description: rows with no season mean (season debut; no side, scored 0.5) }
+      - { name: season_mean_same_rows_hit_rate, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
       - { name: model_beats_both, description: "model hit rate above the season-mean sign and outside the coin flip's band" }
       - { name: verdict, description: one sentence stating whether the model policy is recommended on the population }
       - { name: band_q10, description: 10th percentile of actual minus prediction }
@@ -217,7 +221,11 @@ models:
       - { name: n_hit, description: hits }
       - { name: hit_rate, description: n_hit / n_resolved }
       - { name: net_correct, description: hits minus misses }
-      - { name: season_mean_same_rows_n, description: resolved rows where the season-mean sign takes a side }
-      - { name: season_mean_same_rows_hit_rate, description: season-mean sign hit rate on those rows }
+      - { name: season_mean_same_rows_n, description: "the model's resolved rows, the one n of this comparison (equals n_resolved)" }
+      - { name: season_mean_same_rows_n_hit, description: season-mean sign hits on those rows }
+      - { name: season_mean_same_rows_n_miss, description: season-mean sign misses on those rows }
+      - { name: season_mean_same_rows_n_tie, description: rows where the season mean equals the last-10 mean (no side, scored 0.5) }
+      - { name: season_mean_same_rows_n_missing, description: rows with no season mean (season debut; no side, scored 0.5) }
+      - { name: season_mean_same_rows_hit_rate, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
       - { name: season_mean_own_n_called, description: rows the season-mean sign calls at the same threshold on its own edge }
       - { name: season_mean_own_hit_rate, description: its hit rate as a policy at that threshold }

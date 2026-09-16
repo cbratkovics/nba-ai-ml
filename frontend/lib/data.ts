@@ -217,8 +217,13 @@ export interface PolicyTarget {
     coin_flip: { hit_rate: number; n: number; half_width_95: number | null }
     season_mean_sign: {
       n: number
+      n_hit: number
+      n_miss: number
+      n_tie: number
+      n_missing: number
       hit_rate: number | null
       same_rows: boolean
+      abstentions_scored_as: number
       own_threshold_n_called: number
       own_threshold_hit_rate: number | null
     }
