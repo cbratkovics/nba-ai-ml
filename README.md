@@ -108,7 +108,7 @@ Agent evals ([reports/agent_evals.json](reports/agent_evals.json) keys `groundin
 |---|---|
 | Grounding: every number in a finding matches its cited tool output within 0.01 | 6 of 6 briefs (23 of 23 findings) |
 | Golden set (version 2): a finding names the day's largest-points-residual player, a finding carries the decision policy's hit rate to date, a finding names the drift status | 5 of 5 dates, all three facts each |
-| Pass rates over repeated runs (`agent-eval.yml`, 5 per date; row rendered from the report) | <!-- pass-rates -->incomplete: 0 of 25 briefs completed under the current golden set (5 rate-limited; 4 dates measured under an older golden set, not counted)<!-- /pass-rates -->; see [docs/agent.md](docs/agent.md#reliability) |
+| Pass rates over repeated runs (`agent-eval.yml`, 5 per date; row rendered from the report) | <!-- pass-rates -->incomplete: 5 of 25 briefs completed (1 of 5 dates; 0 rate-limited; 4 dates measured under an older golden set, not counted); of those, grounding 5 of 5, golden 5 of 5<!-- /pass-rates -->; see [docs/agent.md](docs/agent.md#reliability) |
 
 <details>
 <summary>Running it locally</summary>
