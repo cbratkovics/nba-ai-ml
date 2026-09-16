@@ -114,7 +114,11 @@ float noise (DuckDB's parallel aggregation differs from pandas' mean at the 1e-1
 `NBA_DUCKDB_THREADS=1` makes a build reproducible). `metrics.json` scored every holdout row
 with both baselines; the replay only the rows the roster rule slated, so the 169 rows never
 slated (post-trade debuts, players absent from their team's previous ten games) keep the two
-apart by up to 0.0021 and exact equality is not the target. The site's pinning asymmetry is
+apart by up to 0.0021 and exact equality is not the target. Stated plainly: the warehouse
+cannot recompute `metrics.json`, because the training evaluation scored 169 rows the slate
+path never produces; `assert_holdout_metrics_reconcile_to_metrics_json` is a
+population-restricted comparison, and its 0.005 tolerance was set after observing 0.0021,
+not before. The site's pinning asymmetry is
 left as-is and recorded here: `metrics.json` is read at the model revision `fb427de`, the
 replay files at the dataset repo's `resolve/main`, which holds a later run of the same replay
 with identical numbers (provenance file, `hub_replay_json_equals_committed_report: false`).
