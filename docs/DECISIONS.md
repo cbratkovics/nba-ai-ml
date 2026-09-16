@@ -334,3 +334,20 @@ no-schedule line does.
 local fallback `python -m nba.nightly --date 2026-09-16 --local-dump data_dump` wrote
 `drift/2026-09-16.json`: `insufficient`, 0 rows in the window (off-season), calibrated
 threshold 0.15, streak 0, no issue, and `mart_drift` built from it holds the one run row.
+
+**Sensitivity and the insufficient dates.** The calibration carries an injected-drift probe
+(`sensitivity`): on 2026-03-24 (regular position, 2,071 rows) shifting three features
+(`pts_mean_last10`, `reb_mean_last10`, `ast_mean_last10`) up by half their reference
+q10-to-q90 range gives PSI 3.3 to 4.4 and the rule HOLDs naming all three; shifting only
+`pts_mean_last10` gives a WARN that names it and does not HOLD. Writing the calibration
+fails if either outcome changes. The seven opening dates with fewer than 500 rows in the
+window report `insufficient` (no PSI, no verdict) and count as neither a false positive
+nor a pass; the artifact lists them per position and the validator refuses one counted as
+a false positive.
+
+**The first out-of-sample test.** The rule was calibrated on 2025-26 only. The 2026-27
+opening (the first windows with 500 rows, about the season's second week) is the first
+time it runs on a season it has not seen. A HOLD there is to be reviewed against the
+reference and the calibration, not treated as a bug in the rule or in the data: the
+opening reference comes from three prior openings and a fourth may sit outside them.
+

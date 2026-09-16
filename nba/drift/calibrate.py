@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from nba import config
-from nba.drift import check, reference
+from nba.drift import check, policy, reference
 from nba.drift.check import POSITIONS
 from nba.models.evaluate import git_sha
 
@@ -86,6 +86,8 @@ def summarise(
         positions[pos] = {
             "n_dates": len(rows),
             "n_dates_scored": len(scored),
+            "n_dates_insufficient": len(rows) - len(scored),
+            "insufficient_dates": [p["date"] for p in rows if p["max_psi"] is None],
             "first_date": rows[0]["date"] if rows else None,
             "last_date": rows[-1]["date"] if rows else None,
             "psi": {
@@ -111,6 +113,12 @@ def summarise(
     return {
         "candidates": list(candidates),
         "min_features": min_features,
+        "n_dates_scored": sum(1 for p in per_date if p["max_psi"] is not None),
+        "n_dates_insufficient": sum(1 for p in per_date if p["max_psi"] is None),
+        "insufficient_note": (
+            "dates with fewer than min_rows rows in the window report `insufficient`: no PSI, "
+            "no verdict, and they count as neither a false positive nor a pass"
+        ),
         "false_positives_total": totals,
         "chosen": {
             "threshold": float(chosen),
@@ -128,6 +136,64 @@ def summarise(
     }
 
 
+def _shift_size(ref: dict[str, Any], feature: str) -> float:
+    """Half the reference's 10th-to-90th percentile range (one bin per value: one step)."""
+    spec = ref["bins"][feature]
+    if spec["kind"] == "quantile":
+        return (spec["edges"][-1] - spec["edges"][0]) / 2
+    values = spec["values"]
+    return float(values[1] - values[0]) if len(values) > 1 else 1.0
+
+
+def sensitivity_probe(
+    feats: pd.DataFrame,
+    ref: dict[str, Any],
+    summary: dict[str, Any],
+    season: str,
+    dates: list[date],
+    *,
+    three: tuple[str, ...] = ("pts_mean_last10", "reb_mean_last10", "ast_mean_last10"),
+) -> dict[str, Any]:
+    """Injected drift on one normal date: three shifted features must HOLD under the chosen
+    rule, one shifted feature alone must WARN naming it. The date is the regular-position
+    date with the most rows in its window (deterministic)."""
+    scored = [p for p in summary["per_date"] if p["position"] == "regular" and p["max_psi"]]
+    pick = max(scored, key=lambda p: (p["n_rows"], p["date"]))
+    d = date.fromisoformat(pick["date"])
+    cal = {"chosen": summary["chosen"], "file": "(this calibration)"}
+    out: dict[str, Any] = {
+        "date": pick["date"],
+        "position": pick["position"],
+        "n_rows": pick["n_rows"],
+        "shift_rule": "each shifted feature moved up by half its reference q10-q90 range",
+        "features_three": list(three),
+        "feature_one": three[0],
+    }
+    for label, shifted in (("three", three), ("one", three[:1])):
+        probe = feats.copy()
+        window = check.window_rows(probe, d).index
+        shifts = {f: _shift_size(ref, f) for f in shifted}
+        for f, amount in shifts.items():
+            probe.loc[window, f] = probe.loc[window, f] + amount
+        result = check.check(probe, d, ref, season_game_dates=dates)
+        verdict = policy.decide(result, calibration=cal, slate_status="ok", streak=0)
+        out[label] = {
+            "shifts": shifts,
+            "psi_shifted": {f: result["psi"][f] for f in shifted},
+            "n_flagged": verdict["n_flagged"],
+            "flagged": verdict["flagged"],
+            "status": verdict["status"],
+            "reasons": verdict["reasons"],
+        }
+    out["expected"] = {"three": "hold", "one": "warn"}
+    out["passed"] = (
+        out["three"]["status"] == "hold"
+        and out["one"]["status"] == "warn"
+        and (three[0] in out["one"]["reasons"][0])
+    )
+    return out
+
+
 def build_calibration(
     feats: pd.DataFrame,
     ref: dict[str, Any],
@@ -140,6 +206,7 @@ def build_calibration(
     dates = sorted({t.date() for t in in_season["game_date"].unique()})
     checks = run_checks(feats, ref, season, dates)
     summary = summarise(checks)
+    summary["sensitivity"] = sensitivity_probe(feats, ref, summary, season, dates)
     return {
         "kind": "drift_calibration",
         "season": season,
@@ -173,6 +240,20 @@ def validate_calibration(cal: dict[str, Any]) -> list[str]:
         for pos in POSITIONS:
             if pos not in cal["positions"]:
                 problems.append(f"missing position {pos}")
+        sens = cal.get("sensitivity")
+        if not sens:
+            problems.append("missing sensitivity probe")
+        elif not sens.get("passed"):
+            problems.append(
+                f"sensitivity probe failed: three -> {sens['three']['status']}, "
+                f"one -> {sens['one']['status']}"
+            )
+        for pos, block in cal["positions"].items():
+            if block["n_dates"] != block["n_dates_scored"] + block["n_dates_insufficient"]:
+                problems.append(f"{pos}: scored + insufficient != dates")
+            for t, fp in block["false_positives"].items():
+                if set(fp["dates"]) & set(block["insufficient_dates"]):
+                    problems.append(f"{pos}: insufficient date counted as a false positive at {t}")
     return problems
 
 
@@ -214,6 +295,12 @@ def main(argv: list[str] | None = None) -> int:
     cal = write_calibration(args.duckdb, args.season, args.out)
     print(f"DRIFT calibration {args.season}: wrote {args.out or calibration_path(args.season)}")
     print(f"DRIFT chosen: {cal['chosen']}")
+    sens = cal["sensitivity"]
+    print(
+        f"DRIFT sensitivity on {sens['date']}: three shifted -> {sens['three']['status']} "
+        f"(flagged {sens['three']['flagged']}), one shifted -> {sens['one']['status']} "
+        f"(flagged {sens['one']['flagged']}); passed={sens['passed']}"
+    )
     for pos, block in cal["positions"].items():
         fps = {t: v["count"] for t, v in block["false_positives"].items()}
         print(
