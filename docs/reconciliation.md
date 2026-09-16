@@ -116,6 +116,13 @@ carries a plausibility warning for box scores above 70 points, 30 rebounds or 25
 with this game listed as a known exception, so the warning cites the verification instead
 of reopening it.
 
+The four other box scores above those thresholds were verified the same way on 2026-09-15
+(`boxscoretraditionalv3`, one call per game id) and seeded alongside it:
+Donovan Mitchell CLE 49:48, 71 pts 8 reb 11 ast (game `0022200552`, 2023-01-02);
+Damian Lillard POR 39:11, 71 pts 6 reb 6 ast (game `0022200917`, 2023-02-26);
+Luka Dončić DAL 44:43, 73 pts 10 reb 7 ast (game `0022300634`, 2024-01-26);
+Jusuf Nurkić PHX 32:20, 14 pts 31 reb 4 ast (game `0022300878`, 2024-03-03).
+
 ### 10. Other observations
 
 - `gameDate` is `YYYY-MM-DD HH:MM:SS` and parsed with `format="ISO8601"`; it is empty

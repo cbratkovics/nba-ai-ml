@@ -138,9 +138,9 @@ box score (`accepted_range` on `dim_game.n_players`; observed 16 to 26).
 `assert_plausible_box_scores` warns (never fails) on a box score above 70 points, 30 rebounds
 or 25 assists unless `known_stat_exceptions.csv` lists it with a verification. Seeded: game
 `0022500938`, player `1628389`, 83 points, verified with `nba_api boxscoretraditionalv3` on
-2026-09-15. Four further rows warn today (Mitchell 71 on 2023-01-02, Lillard 71 on
-2023-02-26, Dončić 73 on 2024-01-26, Nurkić 31 rebounds on 2024-03-03); they are added to the
-seed only once the owner has verified them.
+2026-09-15. The four other rows above the thresholds (Mitchell 71 on 2023-01-02, Lillard 71
+on 2023-02-26, Dončić 73 on 2024-01-26, Nurkić 31 rebounds on 2024-03-03) were verified the
+same way on 2026-09-15 and seeded; the warning now reports nothing.
 
 ## ADR-0014 — No dbt packages (prototyped)
 
