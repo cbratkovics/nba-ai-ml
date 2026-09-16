@@ -1,0 +1,253 @@
+version: 2
+
+models:
+  - name: brz_load_manifest
+    description: One row per load, the dataset-repo revision and file counts the loader pulled into data/warehouse.
+    columns:
+      - { name: source_file, description: manifest file }
+      - { name: loaded_at, description: when the loader ran }
+      - { name: dataset_repo, description: Hugging Face dataset repo }
+      - { name: dataset_revision, description: commit of the dataset repo every file was pulled at, data_tests: [not_null] }
+      - { name: replay_season, description: season whose replay residuals were pulled }
+      - { name: model_revision, description: model revision pinned in nba/config.py at load time }
+      - { name: model_commit, description: training-code commit pinned in nba/config.py at load time }
+      - { name: n_game_log_files, description: per-season parquet files pulled }
+      - { name: n_prediction_files, description: nightly prediction files pulled }
+      - { name: n_residual_files, description: nightly residual files pulled }
+      - { name: n_daily_report_files, description: daily report files pulled }
+  - name: brz_game_logs
+    description: Typed one-to-one copy of the per-season game-log parquet files.
+    columns:
+      - { name: source_file, description: parquet file }
+      - { name: dataset_revision, description: dataset-repo revision of the load }
+      - { name: game_id, description: game id }
+      - { name: game_date, description: game date }
+      - { name: season, description: season label }
+      - { name: player_id, description: player id }
+      - { name: player_name, description: player name }
+      - { name: team, description: team abbreviation }
+      - { name: opponent, description: opponent abbreviation }
+      - { name: home, description: home flag }
+      - { name: minutes, description: minutes played }
+      - { name: pts, description: points }
+      - { name: reb, description: rebounds }
+      - { name: ast, description: assists }
+      - { name: fgm, description: field goals made }
+      - { name: fga, description: field goals attempted }
+      - { name: fg3m, description: threes made }
+      - { name: fg3a, description: threes attempted }
+      - { name: ftm, description: free throws made }
+      - { name: fta, description: free throws attempted }
+      - { name: oreb, description: offensive rebounds }
+      - { name: dreb, description: defensive rebounds }
+      - { name: stl, description: steals }
+      - { name: blk, description: blocks }
+      - { name: tov, description: turnovers }
+      - { name: pf, description: fouls }
+      - { name: plus_minus, description: plus/minus }
+      - { name: source, description: ingest that produced the row }
+  - name: brz_predictions
+    description: Typed copy of the nightly slate files; empty until the first in-season run.
+    columns: &prediction_columns
+      - { name: source_file, description: parquet file }
+      - { name: date, description: slate date }
+      - { name: game_id, description: game id }
+      - { name: player_id, description: player id }
+      - { name: player_name, description: player name }
+      - { name: team, description: team assigned by the roster rule }
+      - { name: opponent, description: opponent }
+      - { name: home, description: home flag }
+      - { name: pred_pts, description: predicted points }
+      - { name: pred_reb, description: predicted rebounds }
+      - { name: pred_ast, description: predicted assists }
+      - { name: pts_mean_last10, description: last-10 mean of points }
+      - { name: reb_mean_last10, description: last-10 mean of rebounds }
+      - { name: ast_mean_last10, description: last-10 mean of assists }
+      - { name: pts_mean_season, description: season-to-date mean of points }
+      - { name: reb_mean_season, description: season-to-date mean of rebounds }
+      - { name: ast_mean_season, description: season-to-date mean of assists }
+      - { name: games_played_season, description: earlier games in the season }
+      - { name: model_revision, description: model revision }
+      - { name: dataset_revision, description: dataset revision }
+      - { name: generated_at, description: when the slate was scored }
+  - name: brz_residuals
+    description: Typed copy of the nightly residual files; empty until the first in-season run.
+    columns: &residual_columns
+      - { name: source_file, description: parquet file }
+      - { name: date, description: game date }
+      - { name: game_id, description: game id }
+      - { name: player_id, description: player id }
+      - { name: player_name, description: player name }
+      - { name: team, description: team assigned by the roster rule }
+      - { name: opponent, description: opponent }
+      - { name: home, description: home flag }
+      - { name: pred_pts, description: predicted points }
+      - { name: pred_reb, description: predicted rebounds }
+      - { name: pred_ast, description: predicted assists }
+      - { name: actual_pts, description: actual points }
+      - { name: actual_reb, description: actual rebounds }
+      - { name: actual_ast, description: actual assists }
+      - { name: resid_pts, description: actual minus predicted points }
+      - { name: resid_reb, description: actual minus predicted rebounds }
+      - { name: resid_ast, description: actual minus predicted assists }
+      - { name: minutes, description: minutes played }
+      - { name: pts_mean_last10, description: last-10 mean of points }
+      - { name: reb_mean_last10, description: last-10 mean of rebounds }
+      - { name: ast_mean_last10, description: last-10 mean of assists }
+      - { name: has_actual, description: box score exists }
+      - { name: game_ingested, description: game is in the stored logs }
+      - { name: in_metrics_population, description: training-population flag }
+      - { name: model_revision, description: model revision }
+      - { name: dataset_revision, description: dataset revision }
+  - name: brz_replay_residuals
+    description: Typed copy of the holdout-season replay residual files (one per replayed date).
+    columns: *residual_columns
+  - name: brz_daily_reports
+    description: One row per nightly ingest report with the reconciliation counts; changed examples kept as JSON.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: report_date, description: run date }
+      - { name: generated_at, description: when the report was written }
+      - { name: dataset_revision_before, description: dataset revision before the run }
+      - { name: dataset_revision_after, description: dataset revision after the run }
+      - { name: stored_rows, description: stored rows before the run }
+      - { name: stored_max_game_date, description: newest stored game date }
+      - { name: window_start_exclusive, description: start of the re-read window }
+      - { name: window_rows_in_dump, description: dump rows in the window }
+      - { name: window_rows_after_rules, description: rows after the ingest rules }
+      - { name: dnp_dropped_in_window, description: DNP rows dropped in the window }
+      - { name: n_new, description: new rows }
+      - { name: n_changed, description: changed rows }
+      - { name: n_unchanged, description: unchanged rows }
+      - { name: changed_examples, description: changed-row examples as JSON }
+      - { name: schedule_file, description: schedule file found }
+      - { name: pushed, description: whether the run pushed }
+  - name: brz_metrics
+    description: reports/metrics.json unpivoted to one row per (target, predictor).
+    columns:
+      - { name: source_file, description: report file }
+      - { name: model_commit, description: git commit of the training code (metrics.json git_sha) }
+      - { name: dataset_version, description: "dataset version string (hf:<revision>)" }
+      - { name: season, description: holdout season }
+      - { name: min_minutes, description: minutes threshold of the population }
+      - { name: n_train_rows, description: training rows }
+      - { name: n_holdout_rows, description: holdout rows before the baseline filter }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: predictor, description: "model, baseline_last10 or baseline_season" }
+      - { name: n, description: rows scored }
+      - { name: mae, description: mean absolute error }
+      - { name: rmse, description: root mean squared error }
+      - { name: r2, description: R squared }
+  - name: brz_replay_report
+    description: reports/replay_<season>.json summary, one row per target.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: season, description: replayed season }
+      - { name: replay_commit, description: git commit of the replay run }
+      - { name: model_revision, description: model revision used }
+      - { name: dataset_revision, description: dataset revision recorded by the replay }
+      - { name: model_commit, description: training-code commit of the reference metrics.json }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: n_dates, description: replayed game dates }
+      - { name: n_predicted, description: slated player-games }
+      - { name: n_with_actuals, description: slated player-games with a box score }
+      - { name: n_restricted, description: rows in the training population }
+      - { name: mae_restricted, description: model MAE on the training population }
+      - { name: mae_unrestricted, description: model MAE on all rows with a box score }
+      - { name: metrics_json_mae, description: model MAE published in metrics.json }
+      - { name: diff_vs_metrics_json, description: mae_restricted minus metrics_json_mae }
+      - { name: tolerance, description: tolerance the replay passed under }
+      - { name: passed, description: whether the replay passed }
+  - name: brz_replay_all_rows
+    description: reports/replay_all_rows_<season>.json unnested, one row per (date, target).
+    columns:
+      - { name: source_file, description: report file }
+      - { name: season, description: replayed season }
+      - { name: population_label, description: population string from the report }
+      - { name: game_date, description: replayed date }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: n, description: rows with a box score and a baseline on the date }
+      - { name: model_mae, description: model MAE on the date }
+      - { name: baseline_last10_mae, description: last-10 baseline MAE on the date }
+  - name: brz_policy_report
+    description: reports/policy_<season>.json unpivoted to one row per (population, target) with the chosen threshold, the in-sample hit rates of the model and both causal baselines, and the band quantiles. Empty (typed) until the artifact exists.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: season, description: evaluated season }
+      - { name: policy_commit, description: git commit that wrote the artifact }
+      - { name: model_revision, description: model revision the replay used }
+      - { name: model_commit, description: training-code commit of the model }
+      - { name: in_sample, description: "true, the thresholds and bands were chosen on these rows" }
+      - { name: min_coverage, description: coverage floor of the threshold rule }
+      - { name: population, description: min10 or all }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: n, description: rows of the population with a box score and a baseline }
+      - { name: threshold, description: "chosen threshold in the target's unit" }
+      - { name: n_called, description: rows called over or under at the threshold }
+      - { name: coverage, description: n_called / n }
+      - { name: n_resolved, description: called rows with a side (hit or miss) }
+      - { name: n_push, description: called rows where actual equals the last-10 mean }
+      - { name: n_hit, description: hits }
+      - { name: hit_rate, description: n_hit / n_resolved }
+      - { name: coin_flip_hit_rate, description: 0.5 by definition }
+      - { name: coin_flip_half_width_95, description: 1.96 * sqrt(0.25 / n_resolved) }
+      - { name: season_mean_same_rows_n, description: "the model's resolved rows, the one n of this comparison (equals n_resolved)" }
+      - { name: season_mean_same_rows_n_hit, description: season-mean sign hits on those rows }
+      - { name: season_mean_same_rows_n_miss, description: season-mean sign misses on those rows }
+      - { name: season_mean_same_rows_n_tie, description: rows where the season mean equals the last-10 mean (no side, scored 0.5) }
+      - { name: season_mean_same_rows_n_missing, description: rows with no season mean (season debut; no side, scored 0.5) }
+      - { name: season_mean_same_rows_hit_rate, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
+      - { name: model_beats_both, description: "model hit rate above the season-mean sign and outside the coin flip's band" }
+      - { name: verdict, description: one sentence stating whether the model policy is recommended on the population }
+      - { name: band_q10, description: 10th percentile of actual minus prediction }
+      - { name: band_q25, description: 25th percentile of actual minus prediction }
+      - { name: band_q75, description: 75th percentile of actual minus prediction }
+      - { name: band_q90, description: 90th percentile of actual minus prediction }
+      - { name: band_coverage_50, description: in-sample share of actuals inside the 50% band }
+      - { name: band_coverage_80, description: in-sample share of actuals inside the 80% band }
+  - name: brz_policy_curve
+    description: The coverage curves of reports/policy_<season>.json, one row per (population, target, threshold). Empty (typed) until the artifact exists.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: season, description: evaluated season }
+      - { name: model_revision, description: model revision the replay used }
+      - { name: population, description: min10 or all }
+      - { name: target, description: "pts, reb or ast" }
+      - { name: threshold, description: grid threshold }
+      - { name: n_called, description: rows called at the threshold }
+      - { name: coverage, description: n_called / n }
+      - { name: n_resolved, description: called rows with a side }
+      - { name: n_push, description: called rows where actual equals the last-10 mean }
+      - { name: n_hit, description: hits }
+      - { name: hit_rate, description: n_hit / n_resolved }
+      - { name: net_correct, description: hits minus misses }
+      - { name: season_mean_same_rows_n, description: "the model's resolved rows, the one n of this comparison (equals n_resolved)" }
+      - { name: season_mean_same_rows_n_hit, description: season-mean sign hits on those rows }
+      - { name: season_mean_same_rows_n_miss, description: season-mean sign misses on those rows }
+      - { name: season_mean_same_rows_n_tie, description: rows where the season mean equals the last-10 mean (no side, scored 0.5) }
+      - { name: season_mean_same_rows_n_missing, description: rows with no season mean (season debut; no side, scored 0.5) }
+      - { name: season_mean_same_rows_hit_rate, description: (n_hit + 0.5 * (n_tie + n_missing)) / n }
+      - { name: season_mean_own_n_called, description: rows the season-mean sign calls at the same threshold on its own edge }
+      - { name: season_mean_own_hit_rate, description: its hit rate as a policy at that threshold }
+  - name: brz_drift_reports
+    description: drift/<date>.json unnested to one row per (run date, feature) with the run's verdict on every row. Empty (typed) until the first nightly run writes a report.
+    columns:
+      - { name: source_file, description: report file }
+      - { name: run_date, description: run date of the nightly job }
+      - { name: season, description: season of the run date }
+      - { name: position, description: "season position label (opening, cup, deadline_week, all_star_return, april, regular, off_season)" }
+      - { name: reference_mode, description: "reference block used: day_NNN (season day) or all" }
+      - { name: feature_version, description: feature module version of the reference }
+      - { name: model_revision, description: model revision of the reference }
+      - { name: n_rows, description: training-population rows in the window }
+      - { name: psi_threshold, description: PSI threshold that applied }
+      - { name: min_features, description: features at or above the threshold needed to fire }
+      - { name: calibrated, description: whether the threshold came from the committed calibration }
+      - { name: status, description: "ok, warn, hold or insufficient" }
+      - { name: n_flagged, description: features at or above the threshold }
+      - { name: slate_status, description: "the slate outcome of the run: ok, no_games or no_schedule" }
+      - { name: no_schedule_streak, description: consecutive runs ending at the no-schedule line }
+      - { name: no_schedule_warn, description: whether the streak reached the warning length }
+      - { name: feature, description: "model feature; null on the one row of a run without PSI" }
+      - { name: psi, description: population stability index of the feature in the window }
+      - { name: flagged, description: whether the feature is at or above the threshold }

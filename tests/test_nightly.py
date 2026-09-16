@@ -25,6 +25,7 @@ def root(
         "push_dataset",
         "push_products",
         "fetch_dataset_card",
+        "list_brief_dates",
     ):
         monkeypatch.setattr(
             hf, name, lambda *a, _name=name, **k: pytest.fail(f"{_name} must not be called")
@@ -129,6 +130,7 @@ def test_full_night_writes_slate_then_residuals_next_day(
     pushed: dict = {}
     monkeypatch.setattr(hf, "pull_dataset", lambda data_dir: "rev-before")
     monkeypatch.setattr(hf, "pull_products", lambda r: "prod-before")
+    monkeypatch.setattr(hf, "list_brief_dates", lambda: [])
     monkeypatch.setattr(
         hf,
         "push_products",
@@ -234,6 +236,8 @@ def test_products_pushed_include_daily_report_and_brief(
     pushed: dict = {}
     monkeypatch.setattr(hf, "pull_dataset", lambda data_dir: "rev")
     monkeypatch.setattr(hf, "pull_products", lambda r: "prod")
+    # The repo already holds briefs a partial pull did not bring down (AUDIT.md risk 8).
+    monkeypatch.setattr(hf, "list_brief_dates", lambda: ["2025-12-30", "2025-12-31"])
     monkeypatch.setattr(
         hf,
         "push_products",
@@ -251,4 +255,10 @@ def test_products_pushed_include_daily_report_and_brief(
     )
     assert "daily_reports/2026-01-15.json" in pushed["files"]
     assert "brief/2026-01-14.json" in pushed["files"] and "brief/latest.json" in pushed["files"]
+    index = json.loads((root / "brief" / "index.json").read_text())
+    assert index == {"dates": ["2025-12-30", "2025-12-31", "2026-01-14"], "latest": "2026-01-14"}
     assert s.products_revision == "sha"
+    # The drift report is a product too (ADR-0018); the fixture window is too thin for PSI.
+    assert "drift/2026-01-15.json" in pushed["files"]
+    assert s.drift["status"] == "insufficient" and s.drift["blocks_slate"] is False
+    assert s.drift["no_schedule_streak"] == 1

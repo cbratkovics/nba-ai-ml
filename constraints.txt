@@ -1,0 +1,8 @@
+# Pins for the analytics toolchain, applied by CI, the nightly job and the local venv
+# (pip install -c constraints.txt ...). The local build, the slim-CI state it is compared
+# against, and the MotherDuck build must run the same dbt-core / dbt-duckdb / DuckDB, or
+# state:modified+, the incremental models and the snapshot can behave differently between
+# them. Bump deliberately.
+dbt-core==1.12.5
+dbt-duckdb==1.11.0
+duckdb==1.5.5

@@ -33,6 +33,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -122,6 +123,26 @@ class Classification:
     examples: list[dict[str, Any]] = field(default_factory=list)
 
 
+def restatement_lag_days(game_dates: pd.Series, run_date: date) -> pd.Series:
+    """Days between the run date and each changed row's game date (the restatement lag)."""
+    return (pd.Timestamp(run_date) - pd.to_datetime(game_dates)).dt.days.astype("int64")
+
+
+def restatement_summary(changed: pd.DataFrame, run_date: date) -> dict[str, Any]:
+    """How far back the source restated rows: max and percentiles of the lag, over every
+    changed row (not only the examples kept in the report). The silver lookback must cover
+    the max; the warehouse tests that."""
+    if changed.empty:
+        return {"n_changed": 0, "max_days": None, "p50_days": None, "p90_days": None}
+    lag = restatement_lag_days(changed["game_date"], run_date)
+    return {
+        "n_changed": int(len(lag)),
+        "max_days": int(lag.max()),
+        "p50_days": float(np.percentile(lag, 50)),
+        "p90_days": float(np.percentile(lag, 90)),
+    }
+
+
 def _values_equal(a: pd.Series, b: pd.Series) -> pd.Series:
     if pd.api.types.is_float_dtype(a) or pd.api.types.is_float_dtype(b):
         a_num, b_num = pd.to_numeric(a), pd.to_numeric(b)
@@ -129,8 +150,14 @@ def _values_equal(a: pd.Series, b: pd.Series) -> pd.Series:
     return (a == b) | (a.isna() & b.isna())
 
 
-def classify(stored: pd.DataFrame, incoming: pd.DataFrame) -> Classification:
-    """Split incoming rows into new / unchanged / changed relative to stored rows."""
+def classify(
+    stored: pd.DataFrame, incoming: pd.DataFrame, run_date: date | None = None
+) -> Classification:
+    """Split incoming rows into new / unchanged / changed relative to stored rows.
+
+    With `run_date`, each changed example carries `restatement_lag_days` (run date minus the
+    game date) so the report shows how far back the source restated a row.
+    """
     keys = list(schema.KEY_COLUMNS)
     merged = incoming.merge(stored, on=keys, how="left", suffixes=("", "__stored"), indicator=True)
     is_new = merged["_merge"] == "left_only"
@@ -146,11 +173,13 @@ def classify(stored: pd.DataFrame, incoming: pd.DataFrame) -> Classification:
     examples = []
     for idx in list(merged.index[is_changed])[:MAX_CHANGED_EXAMPLES]:
         row = merged.loc[idx]
+        game_date = pd.Timestamp(row["game_date"]).date()
         examples.append(
             {
                 "player_id": int(row["player_id"]),
                 "game_id": str(row["game_id"]),
-                "game_date": pd.Timestamp(row["game_date"]).date().isoformat(),
+                "game_date": game_date.isoformat(),
+                "restatement_lag_days": (None if run_date is None else (run_date - game_date).days),
                 "player_name": str(row["player_name"]),
                 "fields": {
                     c: {"stored": _json_value(row[f"{c}__stored"]), "incoming": _json_value(row[c])}
@@ -214,7 +243,7 @@ def run_daily(
         incoming = schema.validate(schema.coerce(incoming))
         dnp_in_window = int(prepared.dnp_per_season.sum())
 
-    result = classify(stored, incoming)
+    result = classify(stored, incoming, run_date=today)
     replacements = pd.concat([result.new, result.changed], ignore_index=True)
     seasons_written: list[str] = []
     files: list[Path] = []
@@ -242,6 +271,7 @@ def run_daily(
             "unchanged": int(result.unchanged),
         },
         "changed_examples": result.examples,
+        "restatement_lag": restatement_summary(result.changed, today),
         "seasons_written": seasons_written,
         "schedule_file": schedule_file,
         "pushed": False,

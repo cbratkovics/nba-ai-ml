@@ -1,11 +1,17 @@
 {
-  "generated_at": "2026-09-12T06:50:17+00:00",
+  "generated_at": "2026-09-16T01:53:43+00:00",
   "mode": "trace_replay",
   "model_id": "openai/gpt-oss-120b",
+  "golden_version": 2,
   "n_briefs": 6,
   "grounding_pass": 6,
   "golden_pass": 5,
   "golden_total": 5,
+  "golden_facts": {
+    "player_pass": 5,
+    "decision_pass": 5,
+    "drift_pass": 5
+  },
   "results": [
     {
       "date": "2025-10-23",
@@ -21,6 +27,9 @@
         "player_id": 203932,
         "player_name": "Aaron Gordon",
         "resid_pts": 34.79,
+        "player_pass": true,
+        "decision_pass": true,
+        "drift_pass": true,
         "pass": true
       },
       "trace": "2025-10-23.trace.json"
@@ -28,8 +37,8 @@
     {
       "date": "2025-12-03",
       "status": "ok",
-      "n_findings": 5,
-      "grounded_findings": 5,
+      "n_findings": 3,
+      "grounded_findings": 3,
       "ungrounded_findings": 0,
       "grounding_pass": true,
       "tool_calls_made": 5,
@@ -39,6 +48,9 @@
         "player_id": 203507,
         "player_name": "Giannis Antetokounmpo",
         "resid_pts": -30.38,
+        "player_pass": true,
+        "decision_pass": true,
+        "drift_pass": true,
         "pass": true
       },
       "trace": "2025-12-03.trace.json"
@@ -57,6 +69,9 @@
         "player_id": 1641729,
         "player_name": "Brice Sensabaugh",
         "resid_pts": 31.38,
+        "player_pass": true,
+        "decision_pass": true,
+        "drift_pass": true,
         "pass": true
       },
       "trace": "2026-01-14.trace.json"
@@ -64,8 +79,8 @@
     {
       "date": "2026-03-10",
       "status": "ok",
-      "n_findings": 5,
-      "grounded_findings": 5,
+      "n_findings": 3,
+      "grounded_findings": 3,
       "ungrounded_findings": 0,
       "grounding_pass": true,
       "tool_calls_made": 5,
@@ -75,6 +90,9 @@
         "player_id": 1628389,
         "player_name": "Bam Adebayo",
         "resid_pts": 62.53,
+        "player_pass": true,
+        "decision_pass": true,
+        "drift_pass": true,
         "pass": true
       },
       "trace": "2026-03-10.trace.json"
@@ -82,8 +100,8 @@
     {
       "date": "2026-04-03",
       "status": "ok",
-      "n_findings": 5,
-      "grounded_findings": 5,
+      "n_findings": 4,
+      "grounded_findings": 4,
       "ungrounded_findings": 0,
       "grounding_pass": true,
       "tool_calls_made": 5,
@@ -93,6 +111,9 @@
         "player_id": 1642843,
         "player_name": "Cooper Flagg",
         "resid_pts": 29.29,
+        "player_pass": true,
+        "decision_pass": true,
+        "drift_pass": true,
         "pass": true
       },
       "trace": "2026-04-03.trace.json"
@@ -100,8 +121,8 @@
     {
       "date": "2026-04-12",
       "status": "ok",
-      "n_findings": 5,
-      "grounded_findings": 5,
+      "n_findings": 3,
+      "grounded_findings": 3,
       "ungrounded_findings": 0,
       "grounding_pass": true,
       "tool_calls_made": 5,

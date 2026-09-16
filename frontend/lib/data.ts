@@ -7,12 +7,45 @@
  * normal state before the season starts and is returned as `null`, never faked.
  */
 
+import allRowsBaseline from './all_rows_baseline.json'
+import policySummary from './policy_summary.json'
+
 export const DATASET_REPO = 'cbratkovics/nba-game-logs'
 export const MODEL_REPO = 'cbratkovics/nba-stat-predictor'
-/** Model revision pinned in nba/config.py; the site shows the report published with it. */
+/**
+ * The published model has one identity, mirrored from nba/config.py (a test checks the
+ * mirror): MODEL_COMMIT is the git commit of the training code (metrics.json git_sha),
+ * MODEL_REVISION the Hugging Face commit holding the model files. Shown everywhere as
+ * `commit 50a3b2e / HF fb427de`.
+ */
 export const MODEL_REVISION = 'fb427de136e1d6c4b591ae30cf30488f44935182'
+export const MODEL_COMMIT = '50a3b2e33b443d1db19274cea27467072ebfb3f8'
 export const REPLAY_SEASON = '2025-26'
 export const REVALIDATE_SECONDS = 3600
+
+/** `commit <git> / HF <revision>`; a revision other than the pinned one is shown alone. */
+export function modelIdentity(revision: string = MODEL_REVISION, commit: string | null = null): string {
+  const git = commit ?? (revision === MODEL_REVISION ? MODEL_COMMIT : null)
+  return git ? `commit ${git.slice(0, 7)} / HF ${revision.slice(0, 7)}` : `HF ${revision.slice(0, 7)}`
+}
+
+/**
+ * The two populations a metric can be computed on. Every page that shows a metric names
+ * the population next to it, because the answer to "does the model beat the last-10 mean"
+ * differs between them (see AUDIT.md section 15, item 1).
+ */
+export const POPULATION = {
+  headline: (minMinutes: number) =>
+    `players with at least ${minMinutes} minutes and both baselines defined (the training population)`,
+  allRows: 'every replayed player-game with a box score and a last-10 baseline for every target (all rows)',
+  nightlyAll: 'every slated player-game with a box score (all rows)',
+  nightlyRestricted: 'rows in the training population (at least 10 minutes, both baselines defined)',
+}
+
+/** `replay` for brief dates on or before the last replayed date, `live` afterwards. */
+export function briefMode(date: string, lastReplayDate: string | null | undefined): 'replay' | 'live' {
+  return lastReplayDate && date <= lastReplayDate ? 'replay' : 'live'
+}
 
 export const DATASET_BASE = `https://huggingface.co/datasets/${DATASET_REPO}/resolve/main`
 export const MODEL_BASE = `https://huggingface.co/${MODEL_REPO}/resolve/${MODEL_REVISION}`
@@ -34,6 +67,7 @@ export const DATASET_PATHS = {
   briefIndex: 'brief/index.json',
   briefLatest: 'brief/latest.json',
   brief: (date: string) => `brief/${date}.json`,
+  decisionsLatest: 'decisions/latest.json',
 }
 /** Path read from the model repo. */
 export const MODEL_PATHS = { metrics: 'metrics.json' }
@@ -128,6 +162,156 @@ export interface ReplayDay {
   n: number
   model: Record<Target, number>
   baseline_last10: Record<Target, number>
+}
+
+/**
+ * The all-rows season comparison, from the committed report
+ * reports/replay_all_rows_<season>.json (a copy of the replay's daily MAE file), derived by
+ * `python -m nba.models.evaluate all-rows` and checked against that report by a test. The
+ * pages import this file; they never compute the headline all-rows numbers from a fetch.
+ */
+export interface AllRowsBaseline {
+  season: string
+  population: string
+  source_file: string
+  source_sha256: string
+  n_dates: number
+  first_date: string | null
+  last_date: string | null
+  n: number
+  model_mae: Record<Target, number | null>
+  baseline_last10_mae: Record<Target, number | null>
+  baseline_wins: Target[]
+}
+export const ALL_ROWS_BASELINE = allRowsBaseline as AllRowsBaseline
+
+// ---------- the decision policy (ADR-0001, ADR-0015) ----------
+
+export type Population = 'min10' | 'all'
+export const POPULATIONS: Population[] = ['min10', 'all']
+export const POPULATION_LABEL: Record<Population, string> = {
+  min10: 'Training population',
+  all: 'All rows',
+}
+export type Call = 'over' | 'under' | 'no_call'
+
+export interface CoveragePoint {
+  threshold: number
+  coverage: number
+  n_resolved: number
+  hit_rate: number | null
+  season_mean_same_rows_hit_rate: number | null
+  season_mean_own_hit_rate: number | null
+}
+
+export interface PolicyTarget {
+  n: number
+  threshold: number
+  n_called: number
+  coverage: number
+  n_resolved: number
+  n_push: number
+  n_hit: number
+  hit_rate: number | null
+  baselines: {
+    coin_flip: { hit_rate: number; n: number; half_width_95: number | null }
+    season_mean_sign: {
+      n: number
+      n_hit: number
+      n_miss: number
+      n_tie: number
+      n_missing: number
+      hit_rate: number | null
+      same_rows: boolean
+      abstentions_scored_as: number
+      own_threshold_n_called: number
+      own_threshold_hit_rate: number | null
+    }
+  }
+  model_beats_both: boolean
+  verdict: string
+  bands: {
+    quantiles: { q10: number; q25: number; q75: number; q90: number }
+    coverage_50: number | null
+    coverage_80: number | null
+  }
+  coverage_curve: CoveragePoint[]
+}
+
+/**
+ * The policy evaluation the page imports, derived from the committed artifact
+ * reports/policy_<season>.json by `python -m nba.decisions.evaluate` and checked against it
+ * by a test. Thresholds and bands are in-sample on the replay season; the file says so.
+ */
+export interface PolicySummary {
+  season: string
+  generated_at: string
+  git_sha: string
+  model_revision: string
+  model_commit: string
+  in_sample: boolean
+  in_sample_note: string
+  min_coverage: number
+  source_file: string
+  source_sha256: string
+  definitions: Record<string, string>
+  populations: Record<
+    Population,
+    { description: string; n: number; targets: Record<Target, PolicyTarget>; model_beats_both_everywhere: boolean }
+  >
+}
+export const POLICY_SUMMARY = policySummary as PolicySummary
+
+export interface DecisionTarget {
+  prediction: number
+  baseline_last10: number
+  edge: number | null
+  populations: Record<Population, { call: Call; band_50: [number, number]; band_80: [number, number] }>
+}
+
+export interface DecisionRow {
+  game_id: string
+  player_id: number
+  player_name: string
+  team: string
+  opponent: string
+  home: boolean
+  targets: Record<Target, DecisionTarget>
+}
+
+/** decisions/latest.json: the slate's calls under the committed policy (nba/decisions/decide.py). */
+export interface DecisionsLatest {
+  date: string
+  model_revision: string
+  dataset_revision: string
+  generated_at: string
+  policy: {
+    season: string
+    report: string
+    git_sha: string
+    in_sample: boolean
+    populations: Record<
+      Population,
+      {
+        description: string
+        targets: Record<
+          Target,
+          {
+            threshold: number
+            hit_rate_in_sample: number | null
+            coverage_in_sample: number
+            model_beats_both: boolean
+            verdict: string
+            band_quantiles: { q10: number; q25: number; q75: number; q90: number }
+          }
+        >
+      }
+    >
+  }
+  n_games: number
+  n_players: number
+  n_calls: Record<Population, Record<Target, number>>
+  rows: DecisionRow[]
 }
 
 export interface ReplayDaily {
@@ -241,3 +425,5 @@ export const getMetricsReport = () => fetchJson<MetricsReport>(`${MODEL_BASE}/${
 export const getBriefIndex = () => fetchJson<BriefIndex>(`${DATASET_BASE}/${DATASET_PATHS.briefIndex}`)
 export const getLatestBrief = () => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.briefLatest}`)
 export const getBrief = (date: string) => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.brief(date)}`)
+export const getLatestDecisions = () =>
+  fetchJson<DecisionsLatest>(`${DATASET_BASE}/${DATASET_PATHS.decisionsLatest}`)

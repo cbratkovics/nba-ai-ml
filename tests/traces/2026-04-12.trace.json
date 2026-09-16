@@ -1,0 +1,499 @@
+{
+ "date": "2026-04-12",
+ "run_date": "2026-04-13",
+ "model_id": "openai/gpt-oss-120b",
+ "started_at": "2026-09-16T01:52:33+00:00",
+ "limits": {
+  "max_tool_calls": 8,
+  "max_turns_after_tools": 3,
+  "wall_clock_seconds": 60.0,
+  "temperature": 0
+ },
+ "status": "ok",
+ "error": null,
+ "tool_calls_made": 5,
+ "latency_ms": 5771,
+ "prefetch": [
+  {
+   "id": "pre-1",
+   "name": "get_daily_report",
+   "args": {
+    "date": "2026-04-13"
+   },
+   "result": {
+    "available": false,
+    "date": "2026-04-13",
+    "reason": "no daily report for this date",
+    "drift": {
+     "available": false,
+     "as_of": null,
+     "reason": "no drift report on or before this date"
+    },
+    "restatement": {
+     "available": false,
+     "reason": "no restatement row on or before this date"
+    },
+    "tool_version": 2
+   }
+  },
+  {
+   "id": "pre-2",
+   "name": "get_upstream_freshness",
+   "args": {},
+   "result": {
+    "run_date": "2026-04-13",
+    "stored_max_game_date": "2026-04-12",
+    "stored_rows": 130414,
+    "stored_seasons": [
+     "2021-22",
+     "2022-23",
+     "2023-24",
+     "2024-25",
+     "2025-26"
+    ],
+    "days_stale_stored": 1,
+    "dump_present": false,
+    "dump_max_game_date": null,
+    "dump_max_game_date_any_type": null,
+    "dump_rows_excluded_by_rules": 0,
+    "rules_applied": "gameType in ['Regular Season', 'NBA Emirates Cup', 'Emirates NBA Cup', 'NBA Cup', 'in-season-knockout'] and not the Cup final, as the backfill does",
+    "tool_version": 2,
+    "newest_game_date": "2026-04-12",
+    "days_stale": 1,
+    "note": "newest game is 1 days before the run date"
+   }
+  },
+  {
+   "id": "pre-3",
+   "name": "get_residuals",
+   "args": {
+    "date": "2026-04-12"
+   },
+   "result": {
+    "available": true,
+    "date": "2026-04-12",
+    "source": "replay",
+    "n_predicted": 477,
+    "n_with_actuals": 301,
+    "did_not_play": 176,
+    "missing_actual_game_not_ingested": 0,
+    "mae": {
+     "pts": 6.0198844948877746,
+     "reb": 2.260602746451191,
+     "ast": 1.7208221036659652
+    },
+    "largest_residuals": {
+     "pts": [
+      {
+       "player_id": 1627741,
+       "player_name": "Buddy Hield",
+       "team": "ATL",
+       "opponent": "MIA",
+       "home": false,
+       "minutes": 21.21,
+       "predicted": 7.91,
+       "actual": 31.0,
+       "residual": 23.09
+      },
+      {
+       "player_id": 1631248,
+       "player_name": "Baylor Scheierman",
+       "team": "BOS",
+       "opponent": "ORL",
+       "home": true,
+       "minutes": 38.48,
+       "predicted": 7.46,
+       "actual": 30.0,
+       "residual": 22.54
+      },
+      {
+       "player_id": 1631199,
+       "player_name": "Ron Harper Jr.",
+       "team": "BOS",
+       "opponent": "ORL",
+       "home": true,
+       "minutes": 36.39,
+       "predicted": 6.72,
+       "actual": 27.0,
+       "residual": 20.28
+      },
+      {
+       "player_id": 1631123,
+       "player_name": "Jamaree Bouyea",
+       "team": "PHX",
+       "opponent": "OKC",
+       "home": false,
+       "minutes": 39.41,
+       "predicted": 7.21,
+       "actual": 27.0,
+       "residual": 19.79
+      },
+      {
+       "player_id": 1642967,
+       "player_name": "John Poulakidas",
+       "team": "DAL",
+       "opponent": "CHI",
+       "home": true,
+       "minutes": 36.03,
+       "predicted": 8.32,
+       "actual": 28.0,
+       "residual": 19.68
+      }
+     ],
+     "reb": [
+      {
+       "player_id": 1642852,
+       "player_name": "Derik Queen",
+       "team": "NOP",
+       "opponent": "MIN",
+       "home": false,
+       "minutes": 41.03,
+       "predicted": 6.32,
+       "actual": 22.0,
+       "residual": 15.68
+      },
+      {
+       "player_id": 1630619,
+       "player_name": "Moussa Cisse",
+       "team": "DAL",
+       "opponent": "CHI",
+       "home": true,
+       "minutes": 40.49,
+       "predicted": 9.87,
+       "actual": 20.0,
+       "residual": 10.13
+      },
+      {
+       "player_id": 1631223,
+       "player_name": "David Roddy",
+       "team": "DEN",
+       "opponent": "SAN",
+       "home": false,
+       "minutes": 33.28,
+       "predicted": 3.04,
+       "actual": 13.0,
+       "residual": 9.96
+      },
+      {
+       "player_id": 1631131,
+       "player_name": "Oscar Tshiebwe",
+       "team": "UTA",
+       "opponent": "LAL",
+       "home": false,
+       "minutes": 32.04,
+       "predicted": 7.63,
+       "actual": 17.0,
+       "residual": 9.37
+      },
+      {
+       "player_id": 1642878,
+       "player_name": "Tyrese Proctor",
+       "team": "CLE",
+       "opponent": "WAS",
+       "home": true,
+       "minutes": 34.43,
+       "predicted": 1.81,
+       "actual": 11.0,
+       "residual": 9.19
+      }
+     ],
+     "ast": [
+      {
+       "player_id": 1642948,
+       "player_name": "Ryan Nembhard",
+       "team": "DAL",
+       "opponent": "CHI",
+       "home": true,
+       "minutes": 38.17,
+       "predicted": 6.21,
+       "actual": 23.0,
+       "residual": 16.79
+      },
+      {
+       "player_id": 1642260,
+       "player_name": "Nikola Topic",
+       "team": "OKC",
+       "opponent": "PHX",
+       "home": true,
+       "minutes": 39.21,
+       "predicted": 3.84,
+       "actual": 14.0,
+       "residual": 10.16
+      },
+      {
+       "player_id": 203999,
+       "player_name": "Nikola Jokic",
+       "team": "DEN",
+       "opponent": "SAN",
+       "home": false,
+       "minutes": 18.15,
+       "predicted": 9.45,
+       "actual": 1.0,
+       "residual": -8.45
+      },
+      {
+       "player_id": 1642950,
+       "player_name": "Lachlan Olbrich",
+       "team": "CHI",
+       "opponent": "DAL",
+       "home": false,
+       "minutes": 30.36,
+       "predicted": 1.88,
+       "actual": 10.0,
+       "residual": 8.12
+      },
+      {
+       "player_id": 1642942,
+       "player_name": "Jahmai Mashack",
+       "team": "MEM",
+       "opponent": "HOU",
+       "home": false,
+       "minutes": 38.22,
+       "predicted": 3.19,
+       "actual": 11.0,
+       "residual": 7.81
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "pre-4",
+   "name": "get_rolling_metrics",
+   "args": {
+    "days": 30
+   },
+   "result": {
+    "available": true,
+    "source": "mart_daily_metrics (gold export)",
+    "days_requested": 30,
+    "window": {
+     "start": "2026-03-15",
+     "end": "2026-04-13"
+    },
+    "n_dates_covered": 28,
+    "n": 4776,
+    "population": "every row with a box score and a last-10 baseline (all)",
+    "model": {
+     "pts": 5.037614607156101,
+     "reb": 2.037456410735124,
+     "ast": 1.4776792450026097
+    },
+    "baseline_last10": {
+     "pts": 4.888861386961261,
+     "reb": 1.94587155353487,
+     "ast": 1.4425332681928156
+    },
+    "decisions": {
+     "available": true,
+     "source": "fct_decision_policy (gold export)",
+     "population": "min10",
+     "season": "2025-26",
+     "through": "2026-04-13",
+     "first_date": "2025-10-23",
+     "pts": {
+      "threshold": 1.75,
+      "n_called": 6748,
+      "n_resolved": 6680,
+      "n_push": 68,
+      "n_hit": 4457,
+      "hit_rate": 0.6672
+     },
+     "reb": {
+      "threshold": 0.7,
+      "n_called": 6623,
+      "n_resolved": 6516,
+      "n_push": 107,
+      "n_hit": 4300,
+      "hit_rate": 0.6599
+     },
+     "ast": {
+      "threshold": 0.5,
+      "n_called": 6041,
+      "n_resolved": 5914,
+      "n_push": 127,
+      "n_hit": 3741,
+      "hit_rate": 0.6326
+     }
+    },
+    "tool_version": 2
+   }
+  },
+  {
+   "id": "pre-5",
+   "name": "list_data_gaps",
+   "args": {},
+   "result": {
+    "known_missing_count": 7,
+    "known_missing_games": [
+     {
+      "season": "2024-25",
+      "game_id": "0022400524",
+      "scheduled": "2025-01-09",
+      "home": "LAL",
+      "away": "CHA"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400532",
+      "scheduled": "2025-01-11",
+      "home": "ATL",
+      "away": "HOU"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400537",
+      "scheduled": "2025-01-11",
+      "home": "LAL",
+      "away": "SAN"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400538",
+      "scheduled": "2025-01-11",
+      "home": "LAC",
+      "away": "CHA"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400617",
+      "scheduled": "2025-01-22",
+      "home": "NOP",
+      "away": "MIL"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400627",
+      "scheduled": "2025-01-23",
+      "home": "UTA",
+      "away": "WAS"
+     },
+     {
+      "season": "2024-25",
+      "game_id": "0022400988",
+      "scheduled": "2025-03-17",
+      "home": "SAN",
+      "away": "ORL"
+     }
+    ],
+    "seasons_below_full": [
+     {
+      "season": "2024-25",
+      "games": 1223,
+      "expected": 1230
+     }
+    ],
+    "full_season_games": 1230
+   }
+  }
+ ],
+ "steps": [
+  {
+   "request_messages": [
+    {
+     "role": "system",
+     "content": "You are the nightly analyst for an NBA player-stat prediction pipeline. You have read-only tools over the pipeline's published files. Rules:\n1. Report only what the tools returned. Every number in a finding's text must come from that finding's evidence.values, copied exactly.\n2. Cite the tool call (tool name and arguments) for every number you report.\n3. If a tool returns available=false or an error, say \"no evidence\" for that topic instead of guessing.\n4. Never speculate about injuries, lineups, trades, rest, or any reason a player did or did not play. Report only counts and values.\n5. Flag at most 5 findings, most important first. Severity is one of info, warning, critical.\n6. Be brief: the summary is at most 120 words.\n7. The standard evidence (ingest report with drift and restatement, freshness, residuals, rolling metrics with the decision policy, data gaps) has already been fetched for you and appears as tool results. You may call get_player_recent or get_team_context a few more times if a residual needs context; otherwise answer immediately. evidence.values is a small flat object holding only the keys and numbers the text cites, including window lengths (days_requested) and counts; never copy whole lists or nested tool output into it. Round numbers to two decimals. A residual finding must name the player and give predicted and actual values.\n8. Three findings are required and come first, in this order: (a) residual_outlier citing get_residuals, naming the player with the largest absolute points residual with predicted and actual; (b) decision_policy citing get_rolling_metrics, giving the decisions block's pts hit_rate and n_resolved to date on the training population, or 'no evidence' if unavailable; (c) drift citing get_daily_report, giving the drift block's status word (ok, warn, hold or insufficient), its as_of date, the flagged features by name when any, and no_schedule_streak when it is above 0; an insufficient status with n_rows is itself the finding. Ingest, freshness, rolling accuracy and data gaps are optional: add them only when something is notable and only within the five-finding limit.\n9. The brief is your final message content, plain JSON with no code fence. Never wrap it in a tool call; there is no tool named json.\n\nWhen you are done, respond with ONLY a JSON object (no markdown, no prose) with exactly these keys:\n{\"summary\": string, \"findings\": [{\"kind\": string, \"severity\": \"info\"|\"warning\"|\"critical\", \"evidence\": {\"tool\": string, \"args\": object, \"values\": object}, \"text\": string}]}\n\"kind\" is a short label such as ingest, freshness, residual_outlier, rolling_accuracy, decision_policy, drift, data_gap.\n\"evidence.values\" must contain every number used in \"text\", as returned by the tool."
+    },
+    {
+     "role": "user",
+     "content": "Run date: 2026-04-13. Brief date: 2026-04-12. Write the analyst brief for 2026-04-12: ingest status for the run date, upstream freshness, residual outliers for 2026-04-12, rolling accuracy versus the last-10 baseline, the decision policy's hit rate to date, the drift status, and known data gaps. Use the tools, then answer with the JSON object only."
+    },
+    {
+     "role": "assistant",
+     "content": null,
+     "tool_calls": [
+      {
+       "id": "pre-1",
+       "type": "function",
+       "function": {
+        "name": "get_daily_report",
+        "arguments": "{\"date\": \"2026-04-13\"}"
+       }
+      },
+      {
+       "id": "pre-2",
+       "type": "function",
+       "function": {
+        "name": "get_upstream_freshness",
+        "arguments": "{}"
+       }
+      },
+      {
+       "id": "pre-3",
+       "type": "function",
+       "function": {
+        "name": "get_residuals",
+        "arguments": "{\"date\": \"2026-04-12\"}"
+       }
+      },
+      {
+       "id": "pre-4",
+       "type": "function",
+       "function": {
+        "name": "get_rolling_metrics",
+        "arguments": "{\"days\": 30}"
+       }
+      },
+      {
+       "id": "pre-5",
+       "type": "function",
+       "function": {
+        "name": "list_data_gaps",
+        "arguments": "{}"
+       }
+      }
+     ]
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-1",
+     "name": "get_daily_report",
+     "content": "{\"available\": false, \"date\": \"2026-04-13\", \"reason\": \"no daily report for this date\", \"drift\": {\"available\": false, \"as_of\": null, \"reason\": \"no drift report on or before this date\"}, \"restatement\": {\"available\": false, \"reason\": \"no restatement row on or before this date\"}, \"tool_version\": 2}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-2",
+     "name": "get_upstream_freshness",
+     "content": "{\"run_date\": \"2026-04-13\", \"stored_max_game_date\": \"2026-04-12\", \"stored_rows\": 130414, \"stored_seasons\": [\"2021-22\", \"2022-23\", \"2023-24\", \"2024-25\", \"2025-26\"], \"days_stale_stored\": 1, \"dump_present\": false, \"dump_max_game_date\": null, \"dump_max_game_date_any_type\": null, \"dump_rows_excluded_by_rules\": 0, \"rules_applied\": \"gameType in ['Regular Season', 'NBA Emirates Cup', 'Emirates NBA Cup', 'NBA Cup', 'in-season-knockout'] and not the Cup final, as the backfill does\", \"tool_version\": 2, \"newest_game_date\": \"2026-04-12\", \"days_stale\": 1, \"note\": \"newest game is 1 days before the run date\"}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-3",
+     "name": "get_residuals",
+     "content": "{\"available\": true, \"date\": \"2026-04-12\", \"source\": \"replay\", \"n_predicted\": 477, \"n_with_actuals\": 301, \"did_not_play\": 176, \"missing_actual_game_not_ingested\": 0, \"mae\": {\"pts\": 6.0198844948877746, \"reb\": 2.260602746451191, \"ast\": 1.7208221036659652}, \"largest_residuals\": {\"pts\": [{\"player_id\": 1627741, \"player_name\": \"Buddy Hield\", \"team\": \"ATL\", \"opponent\": \"MIA\", \"home\": false, \"minutes\": 21.21, \"predicted\": 7.91, \"actual\": 31.0, \"residual\": 23.09}, {\"player_id\": 1631248, \"player_name\": \"Baylor Scheierman\", \"team\": \"BOS\", \"opponent\": \"ORL\", \"home\": true, \"minutes\": 38.48, \"predicted\": 7.46, \"actual\": 30.0, \"residual\": 22.54}, {\"player_id\": 1631199, \"player_name\": \"Ron Harper Jr.\", \"team\": \"BOS\", \"opponent\": \"ORL\", \"home\": true, \"minutes\": 36.39, \"predicted\": 6.72, \"actual\": 27.0, \"residual\": 20.28}, {\"player_id\": 1631123, \"player_name\": \"Jamaree Bouyea\", \"team\": \"PHX\", \"opponent\": \"OKC\", \"home\": false, \"minutes\": 39.41, \"predicted\": 7.21, \"actual\": 27.0, \"residual\": 19.79}, {\"player_id\": 1642967, \"player_name\": \"John Poulakidas\", \"team\": \"DAL\", \"opponent\": \"CHI\", \"home\": true, \"minutes\": 36.03, \"predicted\": 8.32, \"actual\": 28.0, \"residual\": 19.68}], \"reb\": [{\"player_id\": 1642852, \"player_name\": \"Derik Queen\", \"team\": \"NOP\", \"opponent\": \"MIN\", \"home\": false, \"minutes\": 41.03, \"predicted\": 6.32, \"actual\": 22.0, \"residual\": 15.68}, {\"player_id\": 1630619, \"player_name\": \"Moussa Cisse\", \"team\": \"DAL\", \"opponent\": \"CHI\", \"home\": true, \"minutes\": 40.49, \"predicted\": 9.87, \"actual\": 20.0, \"residual\": 10.13}, {\"player_id\": 1631223, \"player_name\": \"David Roddy\", \"team\": \"DEN\", \"opponent\": \"SAN\", \"home\": false, \"minutes\": 33.28, \"predicted\": 3.04, \"actual\": 13.0, \"residual\": 9.96}, {\"player_id\": 1631131, \"player_name\": \"Oscar Tshiebwe\", \"team\": \"UTA\", \"opponent\": \"LAL\", \"home\": false, \"minutes\": 32.04, \"predicted\": 7.63, \"actual\": 17.0, \"residual\": 9.37}, {\"player_id\": 1642878, \"player_name\": \"Tyrese Proctor\", \"team\": \"CLE\", \"opponent\": \"WAS\", \"home\": true, \"minutes\": 34.43, \"predicted\": 1.81, \"actual\": 11.0, \"residual\": 9.19}], \"ast\": [{\"player_id\": 1642948, \"player_name\": \"Ryan Nembhard\", \"team\": \"DAL\", \"opponent\": \"CHI\", \"home\": true, \"minutes\": 38.17, \"predicted\": 6.21, \"actual\": 23.0, \"residual\": 16.79}, {\"player_id\": 1642260, \"player_name\": \"Nikola Topic\", \"team\": \"OKC\", \"opponent\": \"PHX\", \"home\": true, \"minutes\": 39.21, \"predicted\": 3.84, \"actual\": 14.0, \"residual\": 10.16}, {\"player_id\": 203999, \"player_name\": \"Nikola Jokic\", \"team\": \"DEN\", \"opponent\": \"SAN\", \"home\": false, \"minutes\": 18.15, \"predicted\": 9.45, \"actual\": 1.0, \"residual\": -8.45}, {\"player_id\": 1642950, \"player_name\": \"Lachlan Olbrich\", \"team\": \"CHI\", \"opponent\": \"DAL\", \"home\": false, \"minutes\": 30.36, \"predicted\": 1.88, \"actual\": 10.0, \"residual\": 8.12}, {\"player_id\": 1642942, \"player_name\": \"Jahmai Mashack\", \"team\": \"MEM\", \"opponent\": \"HOU\", \"home\": false, \"minutes\": 38.22, \"predicted\": 3.19, \"actual\": 11.0, \"residual\": 7.81}]}}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-4",
+     "name": "get_rolling_metrics",
+     "content": "{\"available\": true, \"source\": \"mart_daily_metrics (gold export)\", \"days_requested\": 30, \"window\": {\"start\": \"2026-03-15\", \"end\": \"2026-04-13\"}, \"n_dates_covered\": 28, \"n\": 4776, \"population\": \"every row with a box score and a last-10 baseline (all)\", \"model\": {\"pts\": 5.037614607156101, \"reb\": 2.037456410735124, \"ast\": 1.4776792450026097}, \"baseline_last10\": {\"pts\": 4.888861386961261, \"reb\": 1.94587155353487, \"ast\": 1.4425332681928156}, \"decisions\": {\"available\": true, \"source\": \"fct_decision_policy (gold export)\", \"population\": \"min10\", \"season\": \"2025-26\", \"through\": \"2026-04-13\", \"first_date\": \"2025-10-23\", \"pts\": {\"threshold\": 1.75, \"n_called\": 6748, \"n_resolved\": 6680, \"n_push\": 68, \"n_hit\": 4457, \"hit_rate\": 0.6672}, \"reb\": {\"threshold\": 0.7, \"n_called\": 6623, \"n_resolved\": 6516, \"n_push\": 107, \"n_hit\": 4300, \"hit_rate\": 0.6599}, \"ast\": {\"threshold\": 0.5, \"n_called\": 6041, \"n_resolved\": 5914, \"n_push\": 127, \"n_hit\": 3741, \"hit_rate\": 0.6326}}, \"tool_version\": 2}"
+    },
+    {
+     "role": "tool",
+     "tool_call_id": "pre-5",
+     "name": "list_data_gaps",
+     "content": "{\"known_missing_count\": 7, \"known_missing_games\": [{\"season\": \"2024-25\", \"game_id\": \"0022400524\", \"scheduled\": \"2025-01-09\", \"home\": \"LAL\", \"away\": \"CHA\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400532\", \"scheduled\": \"2025-01-11\", \"home\": \"ATL\", \"away\": \"HOU\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400537\", \"scheduled\": \"2025-01-11\", \"home\": \"LAL\", \"away\": \"SAN\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400538\", \"scheduled\": \"2025-01-11\", \"home\": \"LAC\", \"away\": \"CHA\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400617\", \"scheduled\": \"2025-01-22\", \"home\": \"NOP\", \"away\": \"MIL\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400627\", \"scheduled\": \"2025-01-23\", \"home\": \"UTA\", \"away\": \"WAS\"}, {\"season\": \"2024-25\", \"game_id\": \"0022400988\", \"scheduled\": \"2025-03-17\", \"home\": \"SAN\", \"away\": \"ORL\"}], \"seasons_below_full\": [{\"season\": \"2024-25\", \"games\": 1223, \"expected\": 1230}], \"full_season_games\": 1230}"
+    }
+   ],
+   "response": {
+    "role": "assistant",
+    "content": "{\"summary\":\"Residual outlier: Buddy Hield (pts) 23.09; Decision policy: pts hit_rate 0.6672, n_resolved 6680; Drift: no evidence.\",\"findings\":[{\"kind\":\"residual_outlier\",\"severity\":\"critical\",\"evidence\":{\"tool\":\"get_residuals\",\"args\":{\"date\":\"2026-04-12\"},\"values\":{\"predicted\":7.91,\"actual\":31.0,\"residual\":23.09}},\"text\":\"Buddy Hield had the largest absolute points residual of 23.09, predicted 7.91, actual 31.0.\"},{\"kind\":\"decision_policy\",\"severity\":\"info\",\"evidence\":{\"tool\":\"get_rolling_metrics\",\"args\":{\"days\":30},\"values\":{\"hit_rate\":0.6672,\"n_resolved\":6680}},\"text\":\"Decision policy hit rate for points is 0.6672 based on 6680 resolved decisions.\"},{\"kind\":\"drift\",\"severity\":\"warning\",\"evidence\":{\"tool\":\"get_daily_report\",\"args\":{\"date\":\"2026-04-13\"},\"values\":{}},\"text\":\"No drift evidence available for the run date.\"}]}"
+   },
+   "usage": {
+    "completion_tokens": 323,
+    "prompt_tokens": 3612,
+    "total_tokens": 3935,
+    "completion_time": 0.326271723,
+    "completion_tokens_details": {
+     "reasoning_tokens": 68
+    },
+    "prompt_time": 0.179875339,
+    "prompt_tokens_details": null,
+    "queue_time": 0.117790803,
+    "total_time": 0.506147062
+   },
+   "tool_results": [],
+   "latency_ms": 5265
+  }
+ ]
+}

@@ -23,6 +23,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -79,6 +80,53 @@ def push_dataset(
     return info.oid
 
 
+def push_dataset_card(
+    card_path: Path, repo_id: str = config.HF_DATASET_REPO, message: str = "Update dataset card"
+) -> str:
+    """Upload only README.md to the dataset repo. Returns the new commit sha."""
+    api = _api(require_token=True)
+    info = api.create_commit(
+        repo_id=repo_id,
+        repo_type="dataset",
+        operations=[
+            CommitOperationAdd(path_in_repo=DATASET_CARD_FILE, path_or_fileobj=str(card_path))
+        ],
+        commit_message=message,
+    )
+    return info.oid
+
+
+def push_model_card(
+    card_path: Path, repo_id: str = config.HF_MODEL_REPO, message: str = "Update model card"
+) -> str:
+    """Upload only README.md to the model repo; the model files and their revision are untouched."""
+    api = _api(require_token=True)
+    info = api.create_commit(
+        repo_id=repo_id,
+        repo_type="model",
+        operations=[CommitOperationAdd(path_in_repo="README.md", path_or_fileobj=str(card_path))],
+        commit_message=message,
+    )
+    return info.oid
+
+
+def push_gold(
+    files: list[Path], repo_id: str = config.HF_DATASET_REPO, message: str = "Export gold marts"
+) -> str:
+    """Upload exported gold marts under gold/ in the dataset repo, in one commit."""
+    if not files:
+        raise ValueError("no files given")
+    api = _api(require_token=True)
+    operations = [
+        CommitOperationAdd(path_in_repo=f"{config.HF_GOLD_PREFIX}/{p.name}", path_or_fileobj=str(p))
+        for p in files
+    ]
+    info = api.create_commit(
+        repo_id=repo_id, repo_type="dataset", operations=operations, commit_message=message
+    )
+    return info.oid
+
+
 def fetch_dataset_card(repo_id: str = config.HF_DATASET_REPO) -> str:
     """Current README.md of the dataset repo."""
     path = hf_hub_download(repo_id, DATASET_CARD_FILE, repo_type="dataset", token=config.hf_token())
@@ -122,6 +170,9 @@ PRODUCT_PREFIXES: tuple[str, ...] = (
     config.HF_REPLAY_PREFIX,
     config.HF_DAILY_REPORTS_PREFIX,
     config.HF_BRIEF_PREFIX,
+    config.HF_DECISIONS_PREFIX,
+    config.HF_DRIFT_PREFIX,
+    config.HF_GOLD_PREFIX,  # exported marts, read by the agent tools (pushed by push_gold)
 )
 PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/**" for p in PRODUCT_PREFIXES)
 
@@ -190,6 +241,21 @@ def pull_products(
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(src, dest)
     return sha
+
+
+BRIEF_DATE_PATTERN = re.compile(rf"^{config.HF_BRIEF_PREFIX}/(\d{{4}}-\d{{2}}-\d{{2}})\.json$")
+
+
+def list_brief_dates(repo_id: str = config.HF_DATASET_REPO) -> list[str]:
+    """Every brief date published in the dataset repo, from the repo's file listing (so the
+    index never depends on which files a partial pull brought down; AUDIT.md risk 8)."""
+    api = _api(require_token=False)
+    dates = []
+    for name in api.list_repo_files(repo_id, repo_type="dataset"):
+        m = BRIEF_DATE_PATTERN.match(name)
+        if m:
+            dates.append(m.group(1))
+    return sorted(dates)
 
 
 def push_model(

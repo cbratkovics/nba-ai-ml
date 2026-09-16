@@ -104,7 +104,26 @@ A row is DNP when `numMinutes` is null or 0, or when `comment` is populated
 (`DNP - Coach's Decision`, injury notes, and similar). DNP rows are dropped and
 counted per season (table above); 29,585 in total across the five seasons.
 
-### 9. Other observations
+### 9. An 83-point box score is genuine
+
+`PlayerStatistics.csv` records Bam Adebayo (player id `1628389`, MIA vs WAS, game
+`0022500938`, 2026-03-10) with 41.54 minutes, 83 points, 9 rebounds and 3 assists: the
+season maximum, the largest points residual of the replay (predicted 20.47) and the
+`2026-03-10` golden-set case for the analyst agent. Verified 2026-09-15 from a local machine
+(GitHub runners cannot reach nba.com) with `nba_api` endpoint `boxscoretraditionalv3` for
+game `0022500938`: Adebayo MIA, 41:54, 83 pts, 9 reb, 3 ast. The row stands. The warehouse
+carries a plausibility warning for box scores above 70 points, 30 rebounds or 25 assists
+with this game listed as a known exception, so the warning cites the verification instead
+of reopening it.
+
+The four other box scores above those thresholds were verified the same way on 2026-09-15
+(`boxscoretraditionalv3`, one call per game id) and seeded alongside it:
+Donovan Mitchell CLE 49:48, 71 pts 8 reb 11 ast (game `0022200552`, 2023-01-02);
+Damian Lillard POR 39:11, 71 pts 6 reb 6 ast (game `0022200917`, 2023-02-26);
+Luka Dončić DAL 44:43, 73 pts 10 reb 7 ast (game `0022300634`, 2024-01-26);
+Jusuf Nurkić PHX 32:20, 14 pts 31 reb 4 ast (game `0022300878`, 2024-03-03).
+
+### 10. Other observations
 
 - `gameDate` is `YYYY-MM-DD HH:MM:SS` and parsed with `format="ISO8601"`; it is empty
   on some non-NBA rows, which fall before the 2021-10-01 cutoff and are skipped.
@@ -197,14 +216,20 @@ until the dump author publishes `LeagueSchedule26_27.csv`.
 
 GitHub Actions run `34668262142` (`.github/workflows/replay.yml`) replayed the slate for
 all 164 game dates of 2025-26, truncating the game logs to games before each
-date, scoring with model `fb427de` on dataset `b20b560`, and
-joining actuals. Output committed as `reports/replay_2025-26.json`.
+date, scoring with model `commit 50a3b2e / HF fb427de` on dataset `b20b5601`, and
+joining actuals. Output committed as `reports/replay_2025-26.json` (the run pushed at
+dataset-repo revision `8a127c93`; a later identical run, `6cbc915b`, is what the site
+reads; `reports/provenance_b20b5601.json` records both hashes).
 
 | Target | metrics.json MAE | replay MAE (same population) | diff | replay MAE (all rows with actuals) |
 |---|---:|---:|---:|---:|
 | pts | 4.7644 | 4.7665 | +0.0021 | 4.8639 |
 | reb | 1.9421 | 1.9429 | +0.0008 | 2.0228 |
 | ast | 1.4310 | 1.4320 | +0.0010 | 1.4029 |
+
+The first three columns are the training population (minutes >= 10, both baselines
+defined); the last is every replayed row with a box score, where the last-10 baseline is
+the better predictor on all three targets (README, "All rows").
 
 Tolerance 0.05 per target: **passed**. The restricted population (minutes >= 10, both
 baselines present) has 22,075 replayed rows against 22,244 in

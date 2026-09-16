@@ -15,8 +15,6 @@ dependencies = [
     "scikit-learn==1.9.1",
     "lightgbm==4.7.0",
     "huggingface_hub==1.31.0",
-    "nba_api==1.11.4",
-    "pyyaml==6.0.3",
     "python-dotenv==1.2.3",
     "requests==2.34.2",
     "groq==1.7.0",
@@ -26,6 +24,15 @@ dependencies = [
 dev = [
     "pytest==9.1.1",
     "ruff==0.16.7",
+    "dbt-core==1.12.5",
+    "dbt-duckdb==1.11.0",
+    "duckdb==1.5.5",
+]
+# The warehouse toolchain alone (nightly job, CI dbt job); the same pins as constraints.txt.
+warehouse = [
+    "dbt-core==1.12.5",
+    "dbt-duckdb==1.11.0",
+    "duckdb==1.5.5",
 ]
 
 [tool.setuptools.packages.find]
@@ -34,7 +41,7 @@ include = ["nba*"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-extend-exclude = ["frontend", "scratch", ".venv"]
+extend-exclude = ["frontend", "scratch", ".venv", "dbt"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "W"]

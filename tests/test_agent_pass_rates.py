@@ -2,8 +2,10 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from nba import config
-from nba.agent import pass_rates, tools
+from nba.agent import evals, pass_rates, tools
 from nba.storage import local
 from tests.test_agent_loop import ScriptedChat, _final
 
@@ -41,7 +43,9 @@ def test_measure_counts_grounding_and_golden_per_date(tmp_path: Path, game_logs)
     assert (d1["grounding_pass"], d1["golden_pass"], d1["runs"]) == (1, 1, 2)
     assert d1["statuses"] == {"ok": 1, "ungrounded": 1}
     assert (d2["grounding_pass"], d2["golden_pass"]) == (2, 0)
-    assert report["overall"] == {
+    added_in_v2 = ("golden_version", "dates_stale", "runs_stale")
+    overall = {k: v for k, v in report["overall"].items() if k not in added_in_v2}
+    assert overall == {
         "runs": 4,
         "grounding_pass": 3,
         "grounding_rate": 0.75,
@@ -51,7 +55,12 @@ def test_measure_counts_grounding_and_golden_per_date(tmp_path: Path, game_logs)
         "complete": True,
         "statuses": {"ok": 3, "ungrounded": 1},
         "models": {"scripted-model": 4},
+        "dates_complete": 2,
+        "dates_total": 2,
+        "runs_expected": 4,
+        "runs_completed": 4,
     }
+    assert report["golden_dates"] == ["2026-01-13", "2026-01-14"]
     assert len(logged) == 4 and logged[0].startswith("PASSRATE 2026-01-13 run 1/2")
     assert json.dumps(report)  # serializable
 
@@ -160,3 +169,193 @@ def test_no_fallback_flag_builds_a_single_model_chat(
         ]
     )
     assert built == ["backup"]
+
+
+def _date_block(runs: int, limited: int = 0, grounded: int | None = None) -> dict:
+    detail = []
+    for i in range(runs):
+        is_limited = i < limited
+        ok = (not is_limited) and (grounded is None or i - limited < grounded)
+        detail.append(
+            {
+                "status": "rate_limited" if is_limited else ("ok" if ok else "ungrounded"),
+                "grounding_pass": ok,
+                "golden_pass": not is_limited,
+                "n_findings": 0 if is_limited else 5,
+                "n_dropped": 0,
+                "model_id": "pinned",
+                "tool_calls_made": 5,
+                "latency_ms": 100,
+                "error": None,
+                "run": i + 1,
+            }
+        )
+    return {"player_name": "P", "player_id": 1, **pass_rates._rates(detail), "runs_detail": detail}
+
+
+def test_merge_replaces_dates_and_recomputes_completeness() -> None:
+    golden = {
+        d: {"date": d, "player_id": 1, "player_name": "P"} for d in ("2026-01-01", "2026-02-02")
+    }
+    existing = pass_rates.finalize(
+        {
+            "generated_at": "t0",
+            "mode": "live",
+            "model_id": "pinned",
+            "fallback_model_id": None,
+            "runs_per_date": 2,
+            "golden_dates": sorted(golden),
+            "dates": {"2026-01-01": _date_block(2), "2026-02-02": _date_block(2, limited=2)},
+        }
+    )
+    assert existing["overall"]["complete"] is False
+    assert pass_rates.incomplete_dates(existing, golden) == ["2026-02-02"]
+    assert existing["overall"]["runs_completed"] == 2 and existing["overall"]["runs_expected"] == 4
+
+    new = pass_rates.finalize(
+        {
+            "generated_at": "t1",
+            "mode": "live",
+            "model_id": "pinned",
+            "fallback_model_id": None,
+            "runs_per_date": 2,
+            "golden_dates": sorted(golden),
+            "dates": {"2026-02-02": _date_block(2, grounded=1)},
+        }
+    )
+    merged = pass_rates.merge_reports(existing, new)
+    assert merged["generated_at"] == "t1"
+    assert merged["dates"]["2026-01-01"] == existing["dates"]["2026-01-01"]
+    assert merged["dates"]["2026-02-02"]["statuses"] == {"ok": 1, "ungrounded": 1}
+    o = merged["overall"]
+    assert (o["runs"], o["grounding_pass"], o["golden_pass"], o["rate_limited"]) == (4, 3, 4, 0)
+    assert o["complete"] is True and o["dates_complete"] == 2 and o["dates_total"] == 2
+    assert pass_rates.incomplete_dates(merged, golden) == []
+    with pytest.raises(ValueError, match="runs per date"):
+        pass_rates.merge_reports(existing, dict(new, runs_per_date=3))
+
+
+def test_readme_row_and_update(tmp_path: Path) -> None:
+    golden = {
+        d: {"date": d, "player_id": 1, "player_name": "P"} for d in ("2026-01-01", "2026-02-02")
+    }
+    partial = pass_rates.finalize(
+        {
+            "generated_at": "t0",
+            "mode": "live",
+            "model_id": "pinned",
+            "fallback_model_id": None,
+            "runs_per_date": 2,
+            "golden_dates": sorted(golden),
+            "dates": {
+                "2026-01-01": _date_block(2, grounded=1),
+                "2026-02-02": _date_block(2, limited=2),
+            },
+        }
+    )
+    assert pass_rates.readme_row(partial) == (
+        "incomplete: 2 of 4 briefs completed (1 of 2 dates; 2 rate-limited); "
+        "of those, grounding 1 of 2, golden 2 of 2"
+    )
+    full = pass_rates.merge_reports(
+        partial,
+        pass_rates.finalize(dict(partial, dates={"2026-02-02": _date_block(2)}, generated_at="t1")),
+    )
+    assert (
+        pass_rates.readme_row(full)
+        == "grounding 3 of 4, golden 4 of 4 (2 dates × 2 runs, `pinned`)"
+    )
+    readme = tmp_path / "README.md"
+    readme.write_text("| row | <!-- pass-rates -->old<!-- /pass-rates --> tail |\n")
+    assert pass_rates.update_readme(readme, full) is True
+    assert (
+        readme.read_text()
+        == f"| row | <!-- pass-rates -->{pass_rates.readme_row(full)}<!-- /pass-rates --> tail |\n"
+    )
+    assert pass_rates.update_readme(readme, full) is False
+    readme.write_text("no markers\n")
+    with pytest.raises(ValueError, match="markers"):
+        pass_rates.update_readme(readme, full)
+
+
+def test_committed_report_and_readme_row_agree() -> None:
+    report = json.loads((config.REPO_ROOT / pass_rates.PASS_RATES_PATH).read_text())
+    readme = (config.REPO_ROOT / "README.md").read_text()
+    expected = f"{pass_rates.README_START}{pass_rates.readme_row(report)}{pass_rates.README_END}"
+    assert expected in readme, (
+        "run: python -m nba.agent.pass_rates --readme README.md (or update the row)"
+    )
+    golden = json.loads((config.REPO_ROOT / "reports" / "agent_golden.json").read_text())
+    assert report["golden_dates"] == sorted(g["date"] for g in golden["dates"])
+    assert "org_REDACTED" in json.dumps(report) or "org_" not in json.dumps(report)
+    assert not pass_rates.ORG_PATTERN.search(json.dumps(report).replace("org_REDACTED", ""))
+
+
+def test_scrub_error_redacts_the_organisation_id() -> None:
+    err = "RateLimitError: ... in organization `org_01abcXYZ` service tier ..."
+    assert (
+        pass_rates.scrub_error(err)
+        == "RateLimitError: ... in organization `org_REDACTED` service tier ..."
+    )
+    assert pass_rates.scrub_error(None) is None
+
+
+def test_measure_can_run_a_subset_of_dates(tmp_path: Path, game_logs) -> None:
+    root = tmp_path / "root"
+    local.write_per_season(game_logs, root / config.DATA_DIR)
+    ctx = tools.ToolContext(root=root, data_dir=root / config.DATA_DIR, run_date=date(2026, 1, 15))
+    golden = {
+        "2026-01-14": {"date": "2026-01-14", "player_id": 1, "player_name": "Test Player"},
+        "2026-01-13": {"date": "2026-01-13", "player_id": 2, "player_name": "Other Guy"},
+    }
+    good = {
+        "kind": "residual_outlier",
+        "severity": "warning",
+        "evidence": {"tool": "get_residuals", "args": {}, "values": {"residual": 12.5}},
+        "text": "Test Player missed by 12.5.",
+    }
+    scripts = [_final([good])]
+    report = pass_rates.measure(
+        golden,
+        1,
+        lambda d: ctx,
+        lambda: ScriptedChat([scripts.pop(0)]),
+        pause=0,
+        log=lambda s: None,
+        dates=["2026-01-14"],
+        runner={"runner": "local"},
+    )
+    assert list(report["dates"]) == ["2026-01-14"]
+    assert report["golden_dates"] == ["2026-01-13", "2026-01-14"]
+    assert report["dates"]["2026-01-14"]["measured"]["runner"] == "local"
+    assert report["overall"]["complete"] is False and report["overall"]["dates_complete"] == 1
+
+
+@pytest.fixture(autouse=True)
+def golden_set_version_one(monkeypatch):
+    """The synthetic reports in this module predate the versioned golden set."""
+    monkeypatch.setattr(evals, "golden_version", lambda *a, **k: 1)
+
+
+def test_dates_measured_under_an_older_golden_set_are_incomplete(monkeypatch) -> None:
+    monkeypatch.setattr(evals, "golden_version", lambda *a, **k: 2)
+    golden = {"2026-01-14": {"player_name": "A"}, "2026-03-10": {"player_name": "B"}}
+    run = {"status": "ok", "grounding_pass": True, "golden_pass": True, "model_id": "m"}
+    report = {
+        "runs_per_date": 1,
+        "golden_dates": sorted(golden),
+        "dates": {
+            "2026-01-14": {"complete": True, "runs": 1, "golden_version": 1, "runs_detail": [run]},
+            "2026-03-10": {"complete": True, "runs": 1, "golden_version": 2, "runs_detail": [run]},
+        },
+    }
+    assert pass_rates.incomplete_dates(report, golden) == ["2026-01-14"]
+    final = pass_rates.finalize(report)
+    assert final["overall"]["dates_stale"] == 1 and final["overall"]["dates_complete"] == 1
+    assert final["overall"]["complete"] is False and final["overall"]["golden_version"] == 2
+    # The stale date's runs are left out of the overall counts.
+    assert final["overall"]["runs"] == 1 and final["overall"]["runs_stale"] == 1
+    assert "older golden set" in pass_rates.readme_row(final)
+    only_stale = {**report, "dates": {"2026-01-14": report["dates"]["2026-01-14"]}}
+    row = pass_rates.readme_row(pass_rates.finalize(only_stale))
+    assert row.startswith("incomplete: 0 of 2 briefs completed under the current golden set")

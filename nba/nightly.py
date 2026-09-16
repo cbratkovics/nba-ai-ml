@@ -2,7 +2,8 @@
 
 One process so the files written by each step are known exactly and only those are
 uploaded. Steps: ingest -> residuals for yesterday -> analyst brief for yesterday ->
-slate for today -> push. Outcomes that are not errors exit 0 with one explicit line each:
+slate for today -> decisions for today -> drift check -> push. Outcomes that are not errors
+exit 0 with one explicit line each:
 
     SLATE <date>: no schedule file for season <season> (...)   the dump has no schedule yet
     SLATE <date>: no games on this date (...)                   schedule exists, nothing today
@@ -29,6 +30,10 @@ import pandas as pd
 from nba import config
 from nba.agent import loop as agent_loop
 from nba.agent import tools as agent_tools
+from nba.decisions import decide
+from nba.decisions import evaluate as policy_evaluate
+from nba.drift import reference as drift_reference
+from nba.drift import run as drift_run
 from nba.ingest import kaggle_daily, schedule
 from nba.predict import model, residuals, slate
 from nba.storage import hf, local
@@ -45,6 +50,8 @@ class NightlySummary:
     residuals: dict[str, Any] = field(default_factory=dict)
     agent: dict[str, Any] = field(default_factory=dict)
     slate: dict[str, Any] = field(default_factory=dict)
+    decisions: dict[str, Any] = field(default_factory=dict)
+    drift: dict[str, Any] = field(default_factory=dict)
     products_pushed: list[str] = field(default_factory=list)
     products_revision: str | None = None
     lines: list[str] = field(default_factory=list)
@@ -135,7 +142,15 @@ def run(
             run_date=d,
             dump_dir=dump_dir if dump_dir.exists() else None,
         )
-        brief, brief_files = agent_loop.run_and_write(ctx, yesterday, root / config.BRIEF_DIR)
+        known_dates = None
+        if push:
+            try:
+                known_dates = hf.list_brief_dates()
+            except Exception as exc:  # noqa: BLE001 - the listing is a convenience, never fatal
+                summary.log(f"AGENT {yesterday}: brief listing unavailable ({type(exc).__name__})")
+        brief, brief_files = agent_loop.run_and_write(
+            ctx, yesterday, root / config.BRIEF_DIR, known_dates=known_dates
+        )
         written += brief_files
         summary.agent = {
             "status": brief["status"],
@@ -163,6 +178,56 @@ def run(
     if outcome.status is slate.SlateStatus.OK:
         parquet, latest = slate.write_outputs(outcome, predictions_dir)
         written += [parquet, latest]
+        # 3b. Decisions for today's slate under the committed policy (ADR-0001).
+        artifact = decide.load_artifact()
+        if artifact is None:
+            summary.decisions = {"status": "no_policy_report"}
+            summary.log(
+                f"DECISIONS {d}: no policy report at {policy_evaluate.report_path()}; none written"
+            )
+        else:
+            decision_files = decide.write_outputs(
+                outcome.predictions, d, root / config.DECISIONS_DIR, artifact
+            )
+            written += decision_files
+            payload = json.loads(decision_files[0].read_text())
+            summary.decisions = {
+                "status": "ok",
+                "policy_season": payload["policy"]["season"],
+                "n_calls": payload["n_calls"],
+            }
+            summary.log(
+                f"DECISIONS {d}: {payload['n_players']} players, calls per target "
+                f"(training-population policy) {payload['n_calls']['min10']}"
+            )
+
+    # 3c. Drift: the window before today against the day-aligned reference (ADR-0016 to
+    # ADR-0018). A HOLD is recorded, never a reason to skip the slate or the push.
+    report, drift_path = drift_run.run(root, d, game_logs, outcome.status.value)
+    if report is None:
+        summary.drift = {"status": "no_reference"}
+        summary.log(
+            f"DRIFT {d}: no reference at {drift_reference.reference_path()}; nothing written"
+        )
+    else:
+        written.append(drift_path)
+        summary.drift = {
+            k: report[k]
+            for k in (
+                "status",
+                "reasons",
+                "thresholds",
+                "flagged",
+                "n_flagged",
+                "position",
+                "reference_mode",
+                "no_schedule_streak",
+                "no_schedule_warn",
+                "blocks_slate",
+            )
+        }
+        summary.drift["n_rows"] = report["window"]["n_rows"]
+        summary.log(drift_run.log_line(d, report))
 
     # 4. Push exactly the product files written tonight.
     if push and written:

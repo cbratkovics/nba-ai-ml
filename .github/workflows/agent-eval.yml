@@ -1,16 +1,35 @@
 name: Agent pass rates
 
-# Manually triggered: run the analyst agent N times on each golden date against the
-# provider and record grounding and golden pass rates in reports/agent_pass_rates.json.
-# Nothing is pushed to the HF dataset repo; the report is uploaded as an artifact and
-# committed by hand. Runs with --no-fallback: a 429 on the pinned model is recorded as
-# rate_limited, never answered by the second model, so every measured brief is the
-# pinned model's. Cost: 5 dates x N briefs, about 4-5k tokens each, so N=5 is roughly
-# half of the free tier's 200k tokens-per-day cap for the pinned model.
+# Measures how often the analyst agent passes the grounding and golden checks on the
+# golden dates (reports/agent_golden.json), N briefs per date, against the provider with
+# --no-fallback (a 429 on the pinned model is recorded as rate_limited, never answered by
+# the second model, so every measured brief is the pinned model's).
+#
+# Spread across days: one full pass (5 dates x 5 briefs, ~4-5k tokens each) is about half
+# of the free tier's 200k tokens-per-day cap for the pinned model, and the first attempt
+# (2026-09-12) was capped after 10 briefs because same-day dispatches had already used the
+# rest. So each run measures only the next `max_dates` golden dates that are missing or
+# rate-limited in the committed report and merges the result into it per date; the
+# scheduled run at 03:00 UTC (seven hours before the nightly brief) does one date per day
+# until the report is complete, then exits before installing anything. The README row is
+# rewritten from the merged report and both files are committed back to the branch that
+# ran the job (contents: write), so no number is ever typed by hand.
+#
+# Status: implemented on branch `template`; it has not yet run in Actions in this form.
 
 on:
+  schedule:
+    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
+      dates:
+        description: "Comma-separated golden dates to measure (default: next incomplete dates)"
+        required: false
+        default: ""
+      max_dates:
+        description: "How many incomplete dates to measure in this run"
+        required: false
+        default: "1"
       runs:
         description: "Runs per golden date"
         required: false
@@ -19,9 +38,13 @@ on:
         description: "Seconds to wait between briefs (per-minute token cap)"
         required: false
         default: "30"
+      commit:
+        description: "Commit the merged report and README row back to this branch"
+        type: boolean
+        default: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   pass-rates:
@@ -33,36 +56,68 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Decide whether anything is left to measure
+        id: pending
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, pathlib
+          golden = [g["date"] for g in json.load(open("reports/agent_golden.json"))["dates"]]
+          p = pathlib.Path("reports/agent_pass_rates.json")
+          report = json.load(open(p)) if p.exists() else {"dates": {}, "runs_per_date": 0}
+          pending = [d for d in golden
+                     if d not in report["dates"]
+                     or not report["dates"][d].get("complete")
+                     or report["dates"][d].get("runs", 0) < report.get("runs_per_date", 0)]
+          print(f"pending={','.join(pending)}")
+          print(f"any={'true' if pending else 'false'}")
+          PY
+          echo "requested=${{ inputs.dates }}" >> "$GITHUB_OUTPUT"
+
+      - name: Nothing to do
+        if: steps.pending.outputs.any != 'true' && steps.pending.outputs.requested == ''
+        run: echo "Every golden date is complete in reports/agent_pass_rates.json; no briefs run."
+
       - uses: actions/setup-python@v5
+        if: steps.pending.outputs.any == 'true' || steps.pending.outputs.requested != ''
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Require secrets
+        if: steps.pending.outputs.any == 'true' || steps.pending.outputs.requested != ''
         run: |
           for v in HF_TOKEN GROQ_API_KEY; do
             if [ -z "${!v}" ]; then echo "::error::Missing repository secret $v"; exit 1; fi
           done
 
       - name: Install project
+        if: steps.pending.outputs.any == 'true' || steps.pending.outputs.requested != ''
         run: python -m pip install --quiet "."
 
       - name: Pull dataset and products
+        if: steps.pending.outputs.any == 'true' || steps.pending.outputs.requested != ''
         run: |
           python -m nba.storage.hf pull-dataset
           python -m nba.storage.hf pull-products
 
-      - name: Run each golden date N times
+      - name: Measure the selected dates and merge into the committed report
+        if: steps.pending.outputs.any == 'true' || steps.pending.outputs.requested != ''
         run: |
           set -o pipefail
+          if [ -n "${{ inputs.dates }}" ]; then
+            select=(--dates "${{ inputs.dates }}")
+          else
+            select=(--only-incomplete --max-dates "${{ inputs.max_dates || '1' }}")
+          fi
           python -m nba.agent.pass_rates \
-            --runs "${{ inputs.runs }}" --pause "${{ inputs.pause }}" --no-fallback \
-            --out reports/agent_pass_rates.json 2>&1 | tee pass_rates.log
+            --runs "${{ inputs.runs || '5' }}" --pause "${{ inputs.pause || '30' }}" --no-fallback \
+            "${select[@]}" \
+            --out reports/agent_pass_rates.json --readme README.md 2>&1 | tee pass_rates.log
 
       - name: Job summary
         if: always()
         run: |
-          { echo "## Agent pass rates"; grep -E "^PASSRATE " pass_rates.log || true; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "## Agent pass rates"; grep -E "^PASSRATE " pass_rates.log 2>/dev/null || echo "(no briefs ran)"; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload report
         if: always()
@@ -73,3 +128,15 @@ jobs:
             reports/agent_pass_rates.json
             pass_rates.log
           if-no-files-found: warn
+
+      - name: Commit the merged report and README row
+        if: (github.event_name == 'schedule' || inputs.commit) && (steps.pending.outputs.any == 'true' || steps.pending.outputs.requested != '')
+        run: |
+          if git diff --quiet -- reports/agent_pass_rates.json README.md; then
+            echo "No change to commit."; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/agent_pass_rates.json README.md
+          git commit -m "test(agent): pass rates measured by run ${{ github.run_id }}"
+          git push origin "HEAD:${{ github.ref_name }}"

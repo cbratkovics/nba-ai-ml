@@ -1,0 +1,6 @@
+game_id,player_id,game_date,player_name,stat,value,verification,source
+0022500938,1628389,2026-03-10,Bam Adebayo,pts,83,verified 2026-09-15 from a local machine with nba_api boxscoretraditionalv3 for game 0022500938: MIA 41:54 83 pts 9 reb 3 ast,docs/reconciliation.md finding 9
+0022200552,1628378,2023-01-02,Donovan Mitchell,pts,71,verified 2026-09-15 from a local machine with nba_api boxscoretraditionalv3 for game 0022200552: CLE 49:48 71 pts 8 reb 11 ast,docs/reconciliation.md finding 9
+0022200917,203081,2023-02-26,Damian Lillard,pts,71,verified 2026-09-15 from a local machine with nba_api boxscoretraditionalv3 for game 0022200917: POR 39:11 71 pts 6 reb 6 ast,docs/reconciliation.md finding 9
+0022300634,1629029,2024-01-26,Luka Doncic,pts,73,verified 2026-09-15 from a local machine with nba_api boxscoretraditionalv3 for game 0022300634: DAL 44:43 73 pts 10 reb 7 ast,docs/reconciliation.md finding 9
+0022300878,203994,2024-03-03,Jusuf Nurkic,reb,31,verified 2026-09-15 from a local machine with nba_api boxscoretraditionalv3 for game 0022300878: PHX 32:20 14 pts 31 reb 4 ast,docs/reconciliation.md finding 9

@@ -55,8 +55,16 @@ HF_MODEL_REPO: str = "cbratkovics/nba-stat-predictor"
 # Folder inside the dataset repo that holds the per-season Parquet files.
 HF_DATASET_PREFIX: str = "game_logs"
 
-# Kaggle dump used for the backfill and the daily incremental ingest.
+# Kaggle dump used for the backfill and the daily incremental ingest. There is no other
+# automated source: stats.nba.com is unreachable from GitHub Actions runners (see the
+# probe workflow and docs/reconciliation.md), so the dataset and model cards must describe
+# this dataset as both the backfill and the daily source. They are rendered from these
+# constants, never typed by hand.
 KAGGLE_DATASET: str = "eoinamoore/historical-nba-data-and-player-box-scores"
+KAGGLE_DATASET_TITLE: str = "Historical NBA Data and Player Box Scores"
+KAGGLE_DATASET_AUTHOR: str = "Eoin Moore"
+KAGGLE_DATASET_VERSION: int = 515
+KAGGLE_DATASET_LICENSE: str = "CC0 1.0"
 # Value written to the `source` column by the daily ingest.
 KAGGLE_DAILY_SOURCE: str = "kaggle_daily"
 # The daily ingest re-reads rows from this many days before the newest stored game.
@@ -65,8 +73,14 @@ DAILY_REPORT_PATH: Path = Path("data") / "daily_report.json"
 # Where the daily ingest puts the downloaded dump files (the slate reads the schedule here).
 DUMP_DIR: Path = Path("data") / "dump"
 
-# Published model used for scoring, pinned to a commit of HF_MODEL_REPO.
+# Published model used for scoring, pinned to a commit of HF_MODEL_REPO, and the git commit
+# of the training code that produced it (reports/metrics.json `git_sha`). The model has one
+# identity, shown everywhere as `commit 50a3b2e / HF fb427de` (see model_identity()).
 MODEL_REVISION: str = "fb427de136e1d6c4b591ae30cf30488f44935182"
+MODEL_COMMIT: str = "50a3b2e33b443d1db19274cea27467072ebfb3f8"
+# Revision of HF_DATASET_REPO the published model was trained and evaluated on
+# (reports/metrics.json `dataset.version`). The provenance report hashes every file at it.
+DATASET_REVISION: str = "b20b5601de213fa8e704ebffaafd18f182ea68c3"
 # Analyst-agent model on Groq, pinned from the catalogue queried on 2026-09-12: no Llama
 # chat model was listed; openai/gpt-oss-120b was the largest model with verified native
 # tool calls (0.53 s on a one-tool probe). Fallback if rate-limited: openai/gpt-oss-20b.
@@ -93,6 +107,68 @@ HF_DAILY_REPORTS_PREFIX: str = "daily_reports"
 # Analyst-agent briefs: brief/<date>.json, brief/<date>.trace.json, latest.json, index.json.
 BRIEF_DIR: Path = Path("brief")
 HF_BRIEF_PREFIX: str = "brief"
+# Exported gold marts from the warehouse: gold/<mart>.parquet, gold/_export_manifest.json.
+HF_GOLD_PREFIX: str = "gold"
+# Decision products: decisions/<date>.json and decisions/latest.json, the directional calls
+# for the slate under the committed policy (nba/decisions/decide.py).
+DECISIONS_DIR: Path = Path("decisions")
+HF_DECISIONS_PREFIX: str = "decisions"
+
+# Decision policy (ADR-0001, ADR-0006, ADR-0015): a line-free directional call per
+# (player, game, target) against the last-10 mean. `over` when the model's prediction exceeds
+# the last-10 mean by more than the threshold, `under` when it falls short by more, else
+# `no_call`. Thresholds are chosen per target and population on the holdout-season replay
+# rows (in-sample) from this grid: (start, stop, step) in the target's unit.
+POLICY_THRESHOLD_GRID: dict[str, tuple[float, float, float]] = {
+    "pts": (0.0, 8.0, 0.25),
+    "reb": (0.0, 4.0, 0.1),
+    "ast": (0.0, 4.0, 0.1),
+}
+# The chosen threshold is the largest grid value that still calls at least this share of
+# the population's rows (the strictest policy that keeps a quarter of the slate).
+POLICY_MIN_COVERAGE: float = 0.25
+# Residual quantiles (actual - prediction) that bound the 50% and 80% bands around a prediction.
+POLICY_BAND_QUANTILES: tuple[float, ...] = (0.10, 0.25, 0.75, 0.90)
+POLICY_REPORT_TEMPLATE: str = "policy_{season}.json"
+
+# Drift monitoring (ADR-0016 to ADR-0018): PSI per model feature between the window of games
+# played before a run date and a reference built by the feature module over the training rows
+# of the gold marts (population min10, TRAIN_SEASONS), decile bins. Products: drift/<date>.json.
+DRIFT_DIR: Path = Path("drift")
+HF_DRIFT_PREFIX: str = "drift"
+DRIFT_WINDOW_DAYS: int = 14
+# Seasons whose rows form the day-aligned reference: the training seasons except the first
+# season in the data, whose career-long features (<stat>_mean_vs_opp) are missing for most
+# rows only because no earlier season exists in the data (85% missing at its day 15 against
+# 9% to 12% in every later season and in 2025-26; ADR-0017). Bin edges and the season-long
+# comparison still use every training season.
+DRIFT_REFERENCE_SEASONS: tuple[str, ...] = TRAIN_SEASONS[1:]
+DRIFT_MIN_ROWS: int = 500
+DRIFT_BINS: int = 10
+# Candidate PSI thresholds swept by the calibration; the provisional one applies until
+# reports/drift_calibration_<season>.json exists (then its chosen threshold does).
+DRIFT_CANDIDATE_THRESHOLDS: tuple[float, ...] = (0.05, 0.10, 0.15, 0.20, 0.25, 0.30)
+DRIFT_PROVISIONAL_THRESHOLD: float = 0.20
+# The rule fires (WARN uncalibrated, HOLD calibrated) when this many features are at or
+# above the threshold in one window; one flagged feature is a WARN either way.
+DRIFT_MIN_FEATURES: int = 3
+DRIFT_REFERENCE_TEMPLATE: str = "drift_reference_{feature_version}_{model_revision}.json"
+DRIFT_CALIBRATION_TEMPLATE: str = "drift_calibration_{season}.json"
+# Season positions (calendar facts for 2025-26; opening and april are generic). The opening
+# position is the season's first OPENING_GAME_DATES game dates; its windows are compared with
+# the opening windows of the training seasons (ADR-0017).
+OPENING_GAME_DATES: int = 10
+ALL_STAR_RETURN_GAME_DATES: int = 7
+SEASON_CALENDAR: dict[str, dict[str, tuple[str, str]]] = {
+    "2025-26": {
+        "cup": ("2025-10-31", "2025-12-16"),  # Emirates NBA Cup group play to the final
+        "deadline_week": ("2026-02-02", "2026-02-08"),  # trade deadline Thursday 2026-02-05
+        "all_star_break": ("2026-02-13", "2026-02-18"),  # no games; All-Star Game 2026-02-15
+    },
+}
+# Consecutive nightly runs ending at the no-schedule line before a WARN with an issue
+# (ADR-0018). The dump's schedule-file publish timing for 2025-26 is not recorded, so 14.
+NO_SCHEDULE_STREAK_WARN: int = 14
 
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"
@@ -131,6 +207,29 @@ GROQ_API_KEY: str | None = os.environ.get("GROQ_API_KEY") or None
 
 def groq_api_key() -> str | None:
     return GROQ_API_KEY
+
+
+def model_identity(commit: str = MODEL_COMMIT, revision: str = MODEL_REVISION) -> str:
+    """The one string that names the published model: `commit <git> / HF <revision>`."""
+    return f"commit {commit[:7]} / HF {revision[:7]}"
+
+
+def source_lines() -> dict[str, str]:
+    """Markdown bullets describing the data sources, shared by the dataset and model cards."""
+    backfill = (
+        f"**Historical backfill:** {KAGGLE_DATASET_AUTHOR}, *{KAGGLE_DATASET_TITLE}*, Kaggle "
+        f"(`{KAGGLE_DATASET}`), version {KAGGLE_DATASET_VERSION}, {KAGGLE_DATASET_LICENSE}. "
+        "Only `PlayerStatistics.csv` and `TeamHistories.csv` are used; rows carry "
+        f"`source = {KAGGLE_SOURCE}`."
+    )
+    daily = (
+        "**Daily updates:** the same Kaggle dataset, re-downloaded by the nightly GitHub "
+        f"Actions job. Rows within {DAILY_LOOKBACK_DAYS} days of the newest stored game are "
+        "reconciled against the stored rows; new or changed rows carry "
+        f"`source = {KAGGLE_DAILY_SOURCE}`. There is no live collection from NBA.com: "
+        "stats.nba.com is not reachable from GitHub Actions runners."
+    )
+    return {"backfill": backfill, "daily": daily}
 
 
 def hf_token() -> str | None:

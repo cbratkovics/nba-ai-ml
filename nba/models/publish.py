@@ -1,8 +1,12 @@
 """Publish trained models and a model card to the Hugging Face model repo.
 
+The card is rendered from reports/metrics.json and nba.config only; its canonical copy is
+committed as docs/MODEL_CARD.md and a test asserts it regenerates identically.
+
 Usage:
     HF_TOKEN=... python -m nba.models.publish [--models-dir models] \
         [--metrics-path reports/metrics.json]
+    python -m nba.models.publish --card-only [--out docs/MODEL_CARD.md] [--push-card]
 """
 
 from __future__ import annotations
@@ -17,6 +21,7 @@ from nba.models import evaluate
 from nba.storage import hf
 
 MODEL_CARD_FILE = "README.md"
+CARD_PATH = Path("docs") / "MODEL_CARD.md"
 
 
 def model_card(payload: dict[str, Any]) -> str:
@@ -27,6 +32,12 @@ def model_card(payload: dict[str, Any]) -> str:
     model_files = "\n".join(
         f"- `{name}` (LightGBM text model for `{target}`)"
         for target, name in payload["model_files"].items()
+    )
+    sources = config.source_lines()
+    identity = (
+        f"Pinned by the pipeline as `{config.model_identity()}` (`nba/config.py`)."
+        if payload["git_sha"] == config.MODEL_COMMIT
+        else "Not the revision currently pinned in `nba/config.py`."
     )
     return f"""---
 license: mit
@@ -88,12 +99,17 @@ scored on the same rows (those where both baselines are defined).
 - Game-to-game variance in box-score stats is high; compare against the
   baselines above rather than reading the absolute error alone.
 
-## Data note
+## Data sources
 
-Game logs are derived from NBA.com box scores (Kaggle CC0 backfill; `nba_api`
-for updates). NBA data is used here for non-commercial personal study only.
+- {sources["backfill"]}
+- {sources["daily"]}
 
-Trained at git commit `{payload["git_sha"]}` on {payload["generated_at"]}.
+Both are derived from NBA.com box scores. NBA data is used here for non-commercial
+personal study only.
+
+## Identity
+
+Trained at git commit `{payload["git_sha"]}` on {payload["generated_at"]}. {identity}
 """
 
 
@@ -110,13 +126,32 @@ def publish(models_dir: Path, metrics_path: Path) -> str:
     return hf.push_model(files + [card_path, metrics_copy])
 
 
+def render_card(metrics_path: Path, out: Path) -> Path:
+    """Write the model card for the committed metrics report (no model files needed)."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(model_card(evaluate.read_metrics(metrics_path)))
+    return out
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--models-dir", type=Path, default=config.MODELS_DIR)
     parser.add_argument("--metrics-path", type=Path, default=config.METRICS_PATH)
+    parser.add_argument("--card-only", action="store_true", help="render the card, no model files")
+    parser.add_argument("--out", type=Path, default=CARD_PATH, help="card path for --card-only")
+    parser.add_argument(
+        "--push-card", action="store_true", help="with --card-only: upload README.md only"
+    )
     args = parser.parse_args(argv)
+    if args.card_only:
+        out = render_card(args.metrics_path, args.out)
+        print(f"CARD model: wrote {out}")
+        if args.push_card:
+            sha = hf.push_model_card(out)
+            print(f"CARD model: pushed README.md to {config.HF_MODEL_REPO} at {sha}")
+        return
     sha = publish(args.models_dir, args.metrics_path)
     print(f"pushed to https://huggingface.co/{config.HF_MODEL_REPO} at {sha}")
 

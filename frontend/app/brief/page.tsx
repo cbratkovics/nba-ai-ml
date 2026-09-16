@@ -1,5 +1,13 @@
 import Link from 'next/link'
-import { getBrief, getBriefIndex, getLatestBrief, type Brief, type BriefFinding } from '@/lib/data'
+import {
+  briefMode,
+  getBrief,
+  getBriefIndex,
+  getLatestBrief,
+  getReplayDaily,
+  type Brief,
+  type BriefFinding,
+} from '@/lib/data'
 
 // The date comes from the query string, so this route renders per request; the
 // underlying fetches are still cached for an hour.
@@ -51,12 +59,15 @@ export default async function BriefPage({
   searchParams: { date?: string }
 }) {
   const requested = searchParams?.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date) ? searchParams.date : null
-  const [index, fetched] = await Promise.all([
+  const [index, fetched, daily] = await Promise.all([
     getBriefIndex(),
     requested ? getBrief(requested) : getLatestBrief(),
+    getReplayDaily(),
   ])
   const brief = fetched.data
   const dates = index.data?.dates ?? []
+  const lastReplayDate = daily.data?.last_date ?? null
+  const mode = brief ? briefMode(brief.date, lastReplayDate) : null
 
   return (
     <div className="space-y-8">
@@ -64,8 +75,17 @@ export default async function BriefPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-text-primary">
-              Analyst brief{brief ? `: ${brief.date}` : ''}
+              Analyst brief{brief ? ` for ${brief.date}` : ''}
             </h1>
+            {brief && (
+              <p className="mt-1 text-sm text-text-secondary">
+                Brief date {brief.date}, written on run date {brief.run_date} ({mode}
+                {mode === 'replay'
+                  ? `: a replayed ${brief.date <= (lastReplayDate ?? '') ? daily.data?.season : ''} date briefed on demand`
+                  : ': written by the nightly job'}
+                ).
+              </p>
+            )}
             <p className="mt-2 max-w-3xl text-sm text-text-secondary">
               A tool-using agent reads the pipeline&apos;s published files (ingest report,
               residuals, rolling accuracy, game logs, known gaps) and writes a short brief. It
@@ -86,7 +106,7 @@ export default async function BriefPage({
               >
                 {[...dates].reverse().map((d) => (
                   <option key={d} value={d}>
-                    {d}
+                    {d} · {briefMode(d, lastReplayDate)}
                   </option>
                 ))}
               </select>

@@ -1,0 +1,22 @@
+# Committed on purpose: no secret lives here. The motherduck target reads MOTHERDUCK_TOKEN
+# from the environment (a GitHub Actions secret for the nightly job; exported locally by the
+# owner). The site never touches the warehouse: it reads files on Hugging Face.
+nba_dbt:
+  target: "{{ env_var('DBT_TARGET', 'local') }}"
+  outputs:
+    local:
+      type: duckdb
+      # NBA_DUCKDB_PATH lets tests and the nightly fallback build into their own file.
+      path: "{{ env_var('NBA_DUCKDB_PATH', '.duckdb/nba.duckdb') }}"
+      schema: main
+      threads: 4
+      # DuckDB's own parallelism (dbt `threads` only bounds model concurrency). Parallel
+      # aggregation order is not deterministic at the 1e-15 level; NBA_DUCKDB_THREADS=1 makes
+      # a build reproducible for the behaviour-preservation proof.
+      settings:
+        threads: "{{ env_var('NBA_DUCKDB_THREADS', '4') | int }}"
+    motherduck:
+      type: duckdb
+      path: "md:{{ env_var('NBA_MOTHERDUCK_DATABASE', 'nba') }}?motherduck_token={{ env_var('MOTHERDUCK_TOKEN') }}"
+      schema: main
+      threads: 4

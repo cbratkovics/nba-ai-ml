@@ -2,6 +2,7 @@
 import pandas as pd
 import pytest
 
+from nba import config
 from nba.storage import dataset_card
 
 # Abridged copy of the hand-written card in the HF dataset repo, with its placeholders.
@@ -116,7 +117,8 @@ def test_render_adds_missing_games_bullet_after_dnp_and_keeps_true_game_count() 
     )
     bullet = lines[dnp_at + 1]
     assert bullet.startswith("- Games missing from the dump: 2 regular-season games were postponed")
-    assert "never re-captured upstream" in bullet and "backfilled from nba_api" in bullet
+    assert "never re-captured upstream" in bullet
+    assert "not filled in from any other source" in bullet and "nba_api" not in bullet
     assert (
         "2024-25: 0022400524 (2025-01-09, LAL vs CHA), 0022400988 (2025-03-17, SAN vs ORL)."
         in bullet
@@ -125,3 +127,26 @@ def test_render_adds_missing_games_bullet_after_dnp_and_keeps_true_game_count() 
     again = dataset_card.render_dataset_card(out, summary, missing_games=MISSING)
     assert again == out
     assert again.count("Games missing from the dump") == 1
+
+
+def test_render_inserts_provenance_bullets_from_config() -> None:
+    out = dataset_card.render_dataset_card(PLACEHOLDER_CARD, _summary())
+    lines = out.split("\n")
+    heading = lines.index(dataset_card.PROVENANCE_HEADING)
+    backfill, daily = dataset_card.provenance_lines()
+    assert lines[heading + 2] == backfill and lines[heading + 3] == daily
+    assert "nba_api" not in out
+    assert config.KAGGLE_DATASET in backfill and config.KAGGLE_SOURCE in backfill
+    assert config.KAGGLE_DAILY_SOURCE in daily and str(config.DAILY_LOOKBACK_DAYS) in daily
+
+
+def test_render_replaces_existing_provenance_bullets() -> None:
+    card = PLACEHOLDER_CARD.replace(
+        "## Files",
+        "## Provenance\n\n- **Historical backfill:** old text.\n"
+        "- **Daily updates (from the 2026-27 season):** `nba_api` against stats.nba.com.\n\n## Files",
+    )
+    out = dataset_card.render_dataset_card(card, _summary())
+    assert "old text" not in out and "nba_api" not in out
+    assert out.count("**Historical backfill:**") == 1 and out.count("**Daily updates:**") == 1
+    assert dataset_card.render_dataset_card(out, _summary()) == out

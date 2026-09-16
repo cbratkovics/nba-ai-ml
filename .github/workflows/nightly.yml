@@ -5,8 +5,16 @@ name: Nightly ingest, residuals, slate
 #   2. residuals for yesterday's predictions
 #   2b. analyst brief for yesterday (Groq; never fails the job)
 #   3. slate for today's games
-#   4. push tonight's predictions/, residuals/, daily_reports/, brief/ files to the HF dataset repo
+#   3c. drift check against the day-aligned reference; HOLD / streak WARN open a labelled issue, never block
+#   4. push tonight's predictions/, decisions/, drift/, residuals/, daily_reports/, brief/ files to the HF dataset repo
 #   5. upload data/daily_report.json and data/nightly_summary.json as an artifact
+#   6. warehouse (fixed decision 7): when the run ingested, scored or slated anything, load
+#      the Hugging Face files and build the incremental silver models with their parents and
+#      children (bronze copies, snapshot, gold, tests) on MotherDuck (`nba`, MOTHERDUCK_TOKEN);
+#      without the token, or with DBT_TARGET=local, build into a local DuckDB file and upload
+#      it as a workflow artifact. Then export the gold marts and push them to gold/ in the
+#      dataset repo. Off-season zero-row runs skip the build and exit 0. A weekly full refresh
+#      is warehouse.yml.
 #
 # Days with no schedule file (season not published yet) or no games print one explicit
 # line each and exit 0. Schema validation errors and download failures fail the job.
@@ -23,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  issues: write  # HOLD / WARN issues (nba/drift/notify.py); labels are created idempotently
 
 jobs:
   nightly:
@@ -52,8 +61,8 @@ jobs:
             exit 1
           fi
 
-      - name: Install project
-        run: python -m pip install --quiet "."
+      - name: Install project with the warehouse extra
+        run: python -m pip install --quiet -c constraints.txt ".[warehouse]"
 
       - name: Run nightly pipeline
         run: |
@@ -69,13 +78,28 @@ jobs:
         run: |
           {
             echo "## Nightly outcome"
-            grep -E "^(NIGHTLY|INGEST|RESIDUALS|AGENT|SLATE) " nightly.log || echo "(no outcome lines; the run failed before logging)"
+            grep -E "^(NIGHTLY|INGEST|RESIDUALS|AGENT|SLATE|DECISIONS|DRIFT) " nightly.log || echo "(no outcome lines; the run failed before logging)"
             if grep -q "no schedule file for season" nightly.log; then
               echo; echo "Outcome: NO SCHEDULE for this date's season (the dump author has not published it yet)."
             elif grep -q "no games on this date" nightly.log; then
               echo; echo "Outcome: NO GAMES today."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open an issue on HOLD or on a no-schedule streak (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python -m nba.drift.notify --summary data/nightly_summary.json --body-out issue_body.md | while read -r _ label title; do
+            gh label create "$label" --force --description "opened by the nightly drift policy" || true
+            existing="$(gh issue list --label "$label" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+            if [ -z "$existing" ]; then
+              gh issue create --label "$label" --title "$title" --body-file issue_body.md
+            else
+              echo "issue #$existing already open for: $title"
+            fi
+          done
 
       - name: Upload reports
         if: always()
@@ -86,4 +110,51 @@ jobs:
             data/daily_report.json
             data/nightly_summary.json
             nightly.log
+          if-no-files-found: warn
+
+      - name: Decide whether the warehouse has anything to build
+        id: gate
+        run: |
+          line="$(python -m nba.warehouse.gate --summary data/nightly_summary.json)"
+          echo "$line"
+          echo "verdict=$(echo "$line" | awk '{print $2}' | tr -d ':')" >> "$GITHUB_OUTPUT"
+
+      - name: Choose the warehouse target
+        id: target
+        if: steps.gate.outputs.verdict == 'build'
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+        run: |
+          if [ -n "$MOTHERDUCK_TOKEN" ] && [ "${DBT_TARGET:-}" != "local" ]; then
+            echo "target=motherduck" >> "$GITHUB_OUTPUT"; echo "building on MotherDuck (nba)"
+          else
+            echo "target=local" >> "$GITHUB_OUTPUT"; echo "no MOTHERDUCK_TOKEN (or DBT_TARGET=local): building a local DuckDB file"
+          fi
+
+      - name: Load the warehouse sources and build the incremental models
+        if: steps.gate.outputs.verdict == 'build'
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+          DBT_TARGET: ${{ steps.target.outputs.target }}
+          NBA_DUCKDB_PATH: .duckdb/nba.duckdb
+        run: |
+          mkdir -p .duckdb
+          python -m nba.warehouse.load --root data/warehouse
+          # Incremental silver models with their parents (bronze copies) and children
+          # (snapshot, gold, tests); the tiny report copies are cheap and always rebuilt.
+          dbt build --project-dir dbt --profiles-dir dbt             --select "+slv_game_logs+" "+slv_predictions+" "+slv_residuals+" "+slv_daily_reports+"             "brz_metrics+" "brz_replay_report+" "brz_replay_all_rows+" "brz_policy_report+" "brz_policy_curve+" "brz_drift_reports+" 2>&1 | tee dbt.log
+          dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
+
+      - name: Push the exported gold marts to the dataset repo
+        if: steps.gate.outputs.verdict == 'build'
+        run: python -m nba.warehouse.publish --export-dir data/warehouse/export
+
+      - name: Upload the local warehouse file (fallback target only)
+        if: steps.gate.outputs.verdict == 'build' && steps.target.outputs.target == 'local'
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-local-${{ github.run_id }}
+          path: |
+            .duckdb/nba.duckdb
+            dbt.log
           if-no-files-found: warn

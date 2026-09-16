@@ -6,11 +6,13 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -19,8 +21,8 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install package with dev extras
-        run: python -m pip install --quiet ".[dev]"
+      - name: Install package with dev extras (dbt pinned by constraints.txt)
+        run: python -m pip install --quiet -c constraints.txt ".[dev]"
 
       - name: Ruff (lint)
         run: ruff check .
@@ -29,4 +31,91 @@ jobs:
         run: ruff format --check .
 
       - name: Pytest
+        # Includes tests/test_dbt_incremental.py, which shells out to dbt against a scratch
+        # DuckDB file with fixture game logs; no network.
         run: pytest -q
+
+  dbt:
+    # The warehouse on the local DuckDB target only; never a MotherDuck build here.
+    # Slim CI: pushes to main do a full build and save the manifest + DuckDB file to the
+    # Actions cache; every other run restores that state and builds only `state:modified+`,
+    # deferring unmodified upstream models to the restored file. No cached state (first run,
+    # or the cache evicted after seven days without access) falls back to a full build.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DBT_TARGET: local
+      NBA_DUCKDB_PATH: .duckdb/nba.duckdb
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}  # optional: the dataset repo is public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package with the warehouse extra
+        run: python -m pip install --quiet -c constraints.txt ".[warehouse]"
+
+      - name: Load the warehouse sources from Hugging Face
+        run: python -m nba.warehouse.load --root data/warehouse
+
+      - name: Restore the last main build (slim-CI state)
+        if: ${{ github.ref != 'refs/heads/main' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: .dbt-state
+          key: dbt-local-state-${{ github.sha }}
+          restore-keys: dbt-local-state-
+
+      - name: dbt build (local DuckDB)
+        run: |
+          mkdir -p .duckdb
+          if [ "$GITHUB_REF" != "refs/heads/main" ] && [ -f .dbt-state/manifest.json ] && [ -f .dbt-state/nba.duckdb ]; then
+            echo "slim build: state:modified+ against main@$(cat .dbt-state/commit)"
+            cp .dbt-state/nba.duckdb .duckdb/nba.duckdb
+            dbt build --project-dir dbt --profiles-dir dbt --select state:modified+ --defer --state "$PWD/.dbt-state" --full-refresh
+          else
+            echo "full local build (main, or no cached slim-CI state)"
+            dbt build --project-dir dbt --profiles-dir dbt --full-refresh
+          fi
+
+      - name: dbt docs generate
+        run: |
+          dbt docs generate --project-dir dbt --profiles-dir dbt --static
+          mkdir -p site && cp dbt/target/static_index.html site/index.html
+
+      - name: Every model, seed, snapshot, column and source is described
+        run: python scripts/check_dbt_descriptions.py
+
+      - name: Save this build as the slim-CI state (main only)
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          mkdir -p .dbt-state
+          cp dbt/target/manifest.json .dbt-state/manifest.json
+          cp .duckdb/nba.duckdb .dbt-state/nba.duckdb
+          git rev-parse HEAD > .dbt-state/commit
+
+      - uses: actions/cache/save@v4
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          path: .dbt-state
+          key: dbt-local-state-${{ github.sha }}
+
+      - name: Upload the docs site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  pages:
+    # Publishes the dbt docs to GitHub Pages (owner step: Settings -> Pages -> Source: GitHub Actions).
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: dbt
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

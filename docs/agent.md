@@ -32,10 +32,10 @@ dimension, and is checked by deterministic evals before anything it says is publ
 
 | Tool | Reads | Returns |
 |---|---|---|
-| `get_daily_report(date)` | `daily_reports/<date>.json` | ingest window, new/changed/unchanged counts, up to 5 changed examples, seasons written, push status, revisions |
-| `get_upstream_freshness()` | stored game logs, the downloaded dump if present | newest stored game date, newest dump game date, days stale versus the run date |
+| `get_daily_report(date)` (v2) | `daily_reports/<date>.json`; `gold/mart_drift.parquet` else `drift/<date>.json` else the calibration's per-date row; `gold/mart_restatement_lag.parquet` | ingest window, new/changed/unchanged counts, up to 5 changed examples, seasons written, push status, revisions; `drift` (latest verdict on or before the date: status, position, flagged features, largest PSI, no-schedule streak, source); `restatement` (observed lag against the lookback) |
+| `get_upstream_freshness()` (v2) | stored game logs, the downloaded dump if present under the regular-season rules | newest stored game date, newest regular-season dump game date (and the raw maximum of any type, with the rows the rules excluded), days stale versus the run date |
 | `get_residuals(date, top_n=5)` | `residuals/<date>.parquet`, else `replay/2025-26/residuals/<date>.parquet` | MAE per target, top-n absolute residuals per target with predicted/actual/minutes, counts of did-not-play and game-not-ingested |
-| `get_rolling_metrics(days=30)` | residual files in the window, else `replay/2025-26/daily_mae.json` | MAE per target for the model and the last-10 baseline on the same rows, window bounds, count of dates covered |
+| `get_rolling_metrics(days=30)` (v2) | `gold/mart_daily_metrics.parquet`, else residual files in the window, else `replay/2025-26/daily_mae.json`; `decisions` from `gold/fct_decision_policy.parquet`, else the residual files with `reports/policy_<season>.json` | MAE per target for the model and the last-10 baseline on the same rows, window bounds, count of dates covered; `decisions`: the training-population policy's called rows, resolved rows and hit rate to date per target |
 | `get_player_recent(player_id, n=10)` | stored game logs | last n lines on or before the run date, plus means |
 | `get_team_context(team, date)` | stored game logs | the team's last ten games before the date with player counts, distinct players, and whether it played on the date |
 | `list_data_gaps()` | `KNOWN_MISSING_GAMES`, stored game logs | the missing-game count, the seven missing 2024-25 games, seasons below 1,230 games |
@@ -43,6 +43,22 @@ dimension, and is checked by deterministic evals before anything it says is publ
 Every tool returns a JSON-serializable dict; bad arguments or failures come back as
 `{"error": ...}` so a mistake never ends the loop. Each tool is unit-tested against
 fixtures (`tests/test_agent_tools.py`).
+
+### Marts and fallbacks (ADR-0019)
+
+The marts arrive through `pull_products` (the `gold/` folder the nightly warehouse step
+pushes after its build); until the first warehouse build has run in Actions the tools use
+the fallbacks, which compute the same numbers (the decisions fallback was checked equal
+to the mart on two golden dates, every count and rate). A tool whose return shape grew
+carries `tool_version: 2` and keeps every version-1 key; the test suite freezes the
+version-1 keys per tool, so a shape change is a versioned, additive change with a test.
+
+| Tool | Version | Mart when exported | Fallback |
+|---|---|---|---|
+| `get_daily_report` | 2: adds `drift`, `restatement` | `mart_drift` (latest run on or before the date: status, flagged features by name, streak), `mart_restatement_lag` | `drift/<date>.json` products, then the calibration's per-date row for replay dates; restatement unavailable |
+| `get_upstream_freshness` | 2: adds `dump_max_game_date_any_type`, `dump_rows_excluded_by_rules`, `rules_applied` | (stored logs) | the dump under the backfill's regular-season rules, so playoff rows never set the newest date |
+| `get_rolling_metrics` | 2: adds `decisions` | `mart_daily_metrics` (row-weighted over the window, population `all`), `fct_decision_policy` (training-population calls and hit rate to date) | residual files, then the replay daily file; decisions from the residual files with `reports/policy_<season>.json` through the same rule |
+| the other four | 1 | | unchanged |
 
 ## Model and limits (`nba/agent/loop.py`)
 
@@ -82,8 +98,10 @@ clock. The prefetched calls count against the tool budget and are recorded under
 Rules in the system prompt: report only tool output; cite the tool call for every
 number; say "no evidence" instead of guessing; never speculate about injuries or
 lineups; at most five findings; keep `evidence.values` a small flat object of the cited
-numbers; round to two decimals; name the player in a residual finding; answer as plain
-JSON content, never as a tool call.
+numbers; round to two decimals; name the player in a residual finding; always include one
+`decision_policy` finding (hit rate and resolved calls to date) and one `drift` finding
+(status word, flagged features, streak); answer as plain JSON content, never as a tool
+call.
 
 Two provider quirks are handled in code. gpt-oss models sometimes emit the final JSON
 as a call to a tool named `json`; the provider rejects that with a 400 whose body
@@ -121,9 +139,15 @@ Two deterministic checks, no model involved:
    ids, and numbers glued to a word by a hyphen ("30-day", "2024-25"); signs are ignored
    so "32 days ahead" matches `days_stale = -32`. Failing findings are dropped from the
    published brief, kept under `dropped_findings`, and the brief is marked `ungrounded`.
-2. **Golden set.** Five 2025-26 replay dates, each with the player who had the single
-   largest points residual that day (`reports/agent_golden.json`). The agent's findings
-   for that date must name the player. Results are in `reports/agent_evals.json`.
+2. **Golden set (version 2).** Five 2025-26 replay dates, each with the player who had the
+   single largest points residual that day, plus one decision fact (the policy's pts hit
+   rate to date on the training population, cited from `get_rolling_metrics`) and one drift
+   fact (the status word cited from `get_daily_report`; off-season dates carry the
+   `insufficient` / streak line), all computed by the tools themselves
+   (`python -m nba.agent.golden`, `reports/agent_golden.json`). A date passes only when a
+   finding names the player, a finding carries the hit rate (within 0.01, or as a
+   percentage) and a finding names the drift status. Results are in
+   `reports/agent_evals.json` with each fact counted separately.
 
 CI replays the committed traces (`tests/traces/<date>.trace.json`) through the loop
 with the provider mocked, so the checks run without network or keys; the live run
@@ -131,20 +155,24 @@ happens on demand through `agent.yml`.
 
 ### Results
 
-Committed traces (`tests/traces/`, recorded by `agent.yml` on 2026-09-12, run date =
-the day after each brief date), replayed offline by `python -m nba.agent.evals`:
+Committed traces (`tests/traces/`, re-recorded locally on 2026-09-16 under the version-2
+golden set and the Phase 4 tools, run date = the day after each brief date), replayed
+offline by `python -m nba.agent.evals`:
 
-| Date | Status | Grounded | Golden player | Golden | Live latency |
+| Date | Status | Grounded | Golden player | Golden (player, decision, drift) | Live latency |
 |---|---|---|---|---|---|
-| 2025-10-23 | ok | 5/5 | Aaron Gordon | pass | 1.4 s |
-| 2025-12-03 | ok | 5/5 | Giannis Antetokounmpo | pass | 1.4 s |
-| 2026-01-14 | ok | 5/5 | Brice Sensabaugh | pass | 17.4 s |
-| 2026-03-10 | ok | 5/5 | Bam Adebayo | pass | 24.6 s |
-| 2026-04-03 | ok | 5/5 | Cooper Flagg | pass | 22.2 s |
-| 2026-04-12 | ok | 5/5 | (not a golden date) | | 23.5 s |
+| 2025-10-23 | ok | 5/5 | Aaron Gordon | pass | 3.1 s |
+| 2025-12-03 | ok | 3/3 | Giannis Antetokounmpo | pass | 1.6 s |
+| 2026-01-14 | ok | 5/5 | Brice Sensabaugh | pass | 25.8 s |
+| 2026-03-10 | ok | 3/3 | Bam Adebayo | pass | 7.9 s |
+| 2026-04-03 | ok | 4/4 | Cooper Flagg | pass | 3.9 s |
+| 2026-04-12 | ok | 3/3 | (not a golden date) |  | 5.8 s |
 
 Every brief used `openai/gpt-oss-120b` with 5 tool calls (the prefetch) and a single
-model turn.
+model turn; three to five findings each, the three required kinds (`residual_outlier`,
+`decision_policy`, `drift`) first. The 2026-09-12 traces recorded under the version-1
+golden set are superseded; their results (6 of 6 grounded, 5 of 5 golden by player only)
+are in the git history.
 
 What it took to get there, so the numbers above are not read as a first try:
 
@@ -191,8 +219,32 @@ rolling window that the same day's six-date dispatches and local smoke runs had
 already mostly consumed. The 15 remaining briefs were refused within 0.5 s each and
 are recorded as `rate_limited`; none was answered by the fallback model. Over the 10
 briefs that ran: grounding 9 of 10, golden 10 of 10. That is too few runs, on two of
-five dates, to quote a pass rate. The workflow needs to be re-run on a day with no
-other agent traffic; the rows above will be replaced by that run.
+five dates, to quote a pass rate.
+
+**Spreading the measurement across days (implemented 2026-09-15, not yet run in
+Actions in this form).** `agent-eval.yml` now measures only the golden dates that are
+missing or rate-limited in the committed report (`--only-incomplete --max-dates 1` by
+default, or an explicit `dates` input), merges the new per-date results into
+`reports/agent_pass_rates.json` (each date records the Actions run id that measured it),
+recomputes the overall block, rewrites the README row between its `pass-rates` markers
+from the report, and commits both files back to the branch it ran on. A daily schedule
+at 03:00 UTC (seven hours before the nightly brief) does one date per day until every
+date is complete, then exits before installing anything. One date is 5 briefs, about
+25k tokens, an eighth of the daily cap. `overall.complete` is true only when all five
+dates have five unlimited runs under the current golden set; until then the README row
+says "incomplete" with the count, rendered from the report and checked by
+`tests/test_agent_pass_rates.py`.
+
+**Status wording (the README row).** Every date entry records the golden-set version it
+was measured under. A date measured under an older version is incomplete for the
+spreader, which re-measures it, and its runs are left out of the overall block; the row
+then reads "incomplete: N of 25 briefs completed under the current golden set (R
+rate-limited; S dates measured under an older golden set, not counted)". As of
+2026-09-16 that row is "0 of 25 ... (5 rate-limited; 4 dates measured under an older
+golden set, not counted)": the golden set moved to version 2 (decision and drift facts),
+the four version-1 dates are stale, and the one date measured locally under version 2 hit
+the daily token cap after the trace re-recording. The scheduled spreader measures one
+date per day once the branch is pushed.
 
 **The single-run failure mode, plainly.** At temperature 0 the model's output still
 varies between runs. The failure seen in every set of runs so far is the same one: a

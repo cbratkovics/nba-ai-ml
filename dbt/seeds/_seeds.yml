@@ -1,0 +1,37 @@
+version: 2
+
+seeds:
+  - name: season_exceptions
+    description: Seasons declared short of the 1,230-game regular season, with the count the contract accepts instead and the documented reason.
+    config:
+      column_types: { season: varchar, games_expected: integer, games_declared: integer, reason: varchar, source: varchar }
+    columns:
+      - { name: season, description: season label, data_tests: [unique, not_null] }
+      - { name: games_expected, description: games a full regular season has }
+      - { name: games_declared, description: distinct games the warehouse must hold for the season }
+      - { name: reason, description: why the season is short }
+      - { name: source, description: where the exception is documented }
+  - name: known_missing_games
+    description: Regular-season games listed in the dump's schedule files but absent from the box scores (docs/reconciliation.md finding 7); the season contract cites them.
+    config:
+      column_types: { season: varchar, game_id: varchar, scheduled: date, home: varchar, away: varchar, source: varchar }
+    columns:
+      - { name: season, description: season label }
+      - { name: game_id, description: ten-character nba.com game id, data_tests: [unique, not_null] }
+      - { name: scheduled, description: scheduled date }
+      - { name: home, description: home team abbreviation as stored }
+      - { name: away, description: away team abbreviation as stored }
+      - { name: source, description: where the gap is documented }
+  - name: known_stat_exceptions
+    description: Box scores above the plausibility thresholds that were verified against another source; the plausibility warning cites the verification instead of reopening them.
+    config:
+      column_types: { game_id: varchar, player_id: bigint, game_date: date, player_name: varchar, stat: varchar, value: integer, verification: varchar, source: varchar }
+    columns:
+      - { name: game_id, description: game id, data_tests: [not_null] }
+      - { name: player_id, description: player id, data_tests: [not_null] }
+      - { name: game_date, description: game date }
+      - { name: player_name, description: player name at the time }
+      - { name: stat, description: which statistic exceeded its threshold }
+      - { name: value, description: the verified value }
+      - { name: verification, description: how and when the value was verified }
+      - { name: source, description: where the verification is documented }
