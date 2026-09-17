@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-16T08:30:50+00:00",
+  "generated_at": "2026-09-17T08:36:09+00:00",
   "mode": "live",
   "model_id": "openai/gpt-oss-120b",
   "fallback_model_id": null,
@@ -95,6 +95,7 @@
     "2025-12-03": {
       "player_name": "Giannis Antetokounmpo",
       "player_id": 203507,
+      "golden_version": 2,
       "runs": 5,
       "grounding_pass": 5,
       "grounding_rate": 1.0,
@@ -108,16 +109,23 @@
       "models": {
         "openai/gpt-oss-120b": 5
       },
+      "measured": {
+        "generated_at": "2026-09-17T08:36:09+00:00",
+        "runner": "github_actions",
+        "run_id": "35200296421",
+        "workflow": "Agent pass rates",
+        "ref": "main"
+      },
       "runs_detail": [
         {
           "status": "ok",
           "grounding_pass": true,
           "golden_pass": true,
-          "n_findings": 5,
+          "n_findings": 3,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 2179,
+          "latency_ms": 2816,
           "error": null,
           "run": 1
         },
@@ -125,11 +133,11 @@
           "status": "ok",
           "grounding_pass": true,
           "golden_pass": true,
-          "n_findings": 5,
+          "n_findings": 3,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 2475,
+          "latency_ms": 2351,
           "error": null,
           "run": 2
         },
@@ -141,7 +149,7 @@
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 2331,
+          "latency_ms": 2571,
           "error": null,
           "run": 3
         },
@@ -153,7 +161,7 @@
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 2358,
+          "latency_ms": 3079,
           "error": null,
           "run": 4
         },
@@ -165,18 +173,11 @@
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 1768,
+          "latency_ms": 2355,
           "error": null,
           "run": 5
         }
-      ],
-      "measured": {
-        "generated_at": "2026-09-12T15:29:49+00:00",
-        "runner": "github_actions",
-        "run_id": "34701742530",
-        "workflow": "Agent pass rates",
-        "ref": "v2"
-      }
+      ]
     },
     "2026-01-14": {
       "player_name": "Brice Sensabaugh",
@@ -438,26 +439,26 @@
     }
   },
   "overall": {
-    "runs": 5,
-    "grounding_pass": 5,
+    "runs": 10,
+    "grounding_pass": 10,
     "grounding_rate": 1.0,
-    "golden_pass": 5,
+    "golden_pass": 10,
     "golden_rate": 1.0,
     "rate_limited": 0,
     "complete": false,
     "statuses": {
-      "ok": 5
+      "ok": 10
     },
     "models": {
-      "openai/gpt-oss-120b": 5
+      "openai/gpt-oss-120b": 10
     },
-    "runs_stale": 20,
+    "runs_stale": 15,
     "golden_version": 2,
-    "dates_stale": 4,
-    "dates_complete": 1,
+    "dates_stale": 3,
+    "dates_complete": 2,
     "dates_total": 5,
     "runs_expected": 25,
-    "runs_completed": 5
+    "runs_completed": 10
   },
   "golden_dates": [
     "2025-10-23",
