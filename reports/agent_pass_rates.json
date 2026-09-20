@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-19T08:00:14+00:00",
+  "generated_at": "2026-09-20T08:31:43+00:00",
   "mode": "live",
   "model_id": "openai/gpt-oss-120b",
   "fallback_model_id": null,
@@ -356,111 +356,112 @@
     "2026-04-03": {
       "player_name": "Cooper Flagg",
       "player_id": 1642843,
+      "golden_version": 2,
       "runs": 5,
-      "grounding_pass": 0,
-      "grounding_rate": 0.0,
-      "golden_pass": 0,
-      "golden_rate": 0.0,
-      "rate_limited": 5,
-      "complete": false,
+      "grounding_pass": 5,
+      "grounding_rate": 1.0,
+      "golden_pass": 5,
+      "golden_rate": 1.0,
+      "rate_limited": 0,
+      "complete": true,
       "statuses": {
-        "rate_limited": 5
+        "ok": 5
       },
       "models": {
         "openai/gpt-oss-120b": 5
       },
+      "measured": {
+        "generated_at": "2026-09-20T08:31:43+00:00",
+        "runner": "github_actions",
+        "run_id": "35499665725",
+        "workflow": "Agent pass rates",
+        "ref": "main"
+      },
       "runs_detail": [
         {
-          "status": "rate_limited",
-          "grounding_pass": false,
-          "golden_pass": false,
-          "n_findings": 0,
+          "status": "ok",
+          "grounding_pass": true,
+          "golden_pass": true,
+          "n_findings": 3,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 396,
-          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_REDACTED` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198252, Requested 3431. Please try again in 12m7.056s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+          "latency_ms": 1792,
+          "error": null,
           "run": 1
         },
         {
-          "status": "rate_limited",
-          "grounding_pass": false,
-          "golden_pass": false,
-          "n_findings": 0,
+          "status": "ok",
+          "grounding_pass": true,
+          "golden_pass": true,
+          "n_findings": 3,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 305,
-          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_REDACTED` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198182, Requested 3277. Please try again in 10m30.288s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+          "latency_ms": 1541,
+          "error": null,
           "run": 2
         },
         {
-          "status": "rate_limited",
-          "grounding_pass": false,
-          "golden_pass": false,
-          "n_findings": 0,
+          "status": "ok",
+          "grounding_pass": true,
+          "golden_pass": true,
+          "n_findings": 4,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 328,
-          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_REDACTED` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198112, Requested 3303. Please try again in 10m11.28s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+          "latency_ms": 2172,
+          "error": null,
           "run": 3
         },
         {
-          "status": "rate_limited",
-          "grounding_pass": false,
-          "golden_pass": false,
-          "n_findings": 0,
+          "status": "ok",
+          "grounding_pass": true,
+          "golden_pass": true,
+          "n_findings": 5,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 347,
-          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_REDACTED` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198042, Requested 3327. Please try again in 9m51.408s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+          "latency_ms": 1811,
+          "error": null,
           "run": 4
         },
         {
-          "status": "rate_limited",
-          "grounding_pass": false,
-          "golden_pass": false,
-          "n_findings": 0,
+          "status": "ok",
+          "grounding_pass": true,
+          "golden_pass": true,
+          "n_findings": 5,
           "n_dropped": 0,
           "model_id": "openai/gpt-oss-120b",
           "tool_calls_made": 5,
-          "latency_ms": 363,
-          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_REDACTED` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 197966, Requested 3269. Please try again in 8m53.52s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+          "latency_ms": 1644,
+          "error": null,
           "run": 5
         }
-      ],
-      "measured": {
-        "generated_at": "2026-09-12T15:29:49+00:00",
-        "runner": "github_actions",
-        "run_id": "34701742530",
-        "workflow": "Agent pass rates",
-        "ref": "v2"
-      }
+      ]
     }
   },
   "overall": {
-    "runs": 20,
-    "grounding_pass": 20,
+    "runs": 25,
+    "grounding_pass": 25,
     "grounding_rate": 1.0,
-    "golden_pass": 20,
+    "golden_pass": 25,
     "golden_rate": 1.0,
     "rate_limited": 0,
-    "complete": false,
+    "complete": true,
     "statuses": {
-      "ok": 20
+      "ok": 25
     },
     "models": {
-      "openai/gpt-oss-120b": 20
+      "openai/gpt-oss-120b": 25
     },
-    "runs_stale": 5,
+    "runs_stale": 0,
     "golden_version": 2,
-    "dates_stale": 1,
-    "dates_complete": 4,
+    "dates_stale": 0,
+    "dates_complete": 5,
     "dates_total": 5,
     "runs_expected": 25,
-    "runs_completed": 20
+    "runs_completed": 25
   },
   "golden_dates": [
     "2025-10-23",
