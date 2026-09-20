@@ -1,6 +1,8 @@
 import SlateTable from '@/components/SlateTable'
+import Link from 'next/link'
 import {
   POPULATION,
+  REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
   getLatestSlate,
@@ -45,6 +47,11 @@ export default async function PredictionsPage() {
               and the 2026-27 season starts in October. The last replayed date was{' '}
               {daily.data?.last_date ?? 'not published'}
               {daily.data ? ` (${daily.data.season} replay)` : ''}.
+            </p>
+            <p>
+              <Link href="/replay" className="text-secondary hover:underline">
+                Browse the {REPLAY_SEASON} replay by date
+              </Link>
             </p>
             <p className="text-xs">
               Checked {latest.url} (HTTP {latest.status}).

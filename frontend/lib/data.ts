@@ -64,6 +64,8 @@ export const DATASET_PATHS = {
   replaySummary: `replay/${REPLAY_SEASON}/replay.json`,
   replayDaily: `replay/${REPLAY_SEASON}/daily_mae.json`,
   replaySample: (date: string) => `replay/${REPLAY_SEASON}/sample_${date}.json`,
+  replaySlateIndex: `replay/${REPLAY_SEASON}/slates/index.json`,
+  replaySlate: (date: string) => `replay/${REPLAY_SEASON}/slates/${date}.json`,
   briefIndex: 'brief/index.json',
   briefLatest: 'brief/latest.json',
   brief: (date: string) => `brief/${date}.json`,
@@ -352,6 +354,55 @@ export interface ReplaySample {
   rows: SampleRow[]
 }
 
+/**
+ * replay/<season>/slates/<date>.json: one replayed date (nba/predict/replay.py). Every
+ * file says `kind: 'replay'`: a backtest scored against the stored game logs, never a
+ * live slate. `did_not_play` marks a slated player whose game was ingested without a row
+ * for them; the prediction is kept and the row has no actuals.
+ */
+export interface ReplaySlateRow extends SampleRow {
+  did_not_play: boolean
+}
+
+export interface ReplaySlateGame {
+  game_id: string
+  home: string
+  away: string
+  n_players: number
+  n_with_actuals: number
+}
+
+export interface ReplaySlate {
+  kind: 'replay'
+  season: string
+  date: string
+  model_revision: string
+  dataset_revision: string
+  n_games: number
+  n_players: number
+  n_with_actuals: number
+  n_did_not_play: number
+  /** That date's n and MAE per target for the model and the last-10 baseline (the daily_mae entry). */
+  metrics: {
+    population: string
+    n: number
+    model: Record<Target, number | null>
+    baseline_last10: Record<Target, number | null>
+  }
+  games: ReplaySlateGame[]
+  rows: ReplaySlateRow[]
+}
+
+/** replay/<season>/slates/index.json: the replayed dates with their game counts. */
+export interface ReplaySlateIndex {
+  kind: 'replay'
+  season: string
+  n_dates: number
+  first_date: string | null
+  latest: string | null
+  dates: { date: string; n_games: number; n_players: number; n_with_actuals: number; file: string }[]
+}
+
 export interface BriefFinding {
   kind: string
   severity: 'info' | 'warning' | 'critical'
@@ -421,6 +472,11 @@ export const getReplaySummary = () =>
 export const getReplayDaily = () => fetchJson<ReplayDaily>(`${DATASET_BASE}/${DATASET_PATHS.replayDaily}`)
 export const getReplaySample = (date: string) =>
   fetchJson<ReplaySample>(`${DATASET_BASE}/${DATASET_PATHS.replaySample(date)}`)
+export const getReplaySlateIndex = () =>
+  fetchJson<ReplaySlateIndex>(`${DATASET_BASE}/${DATASET_PATHS.replaySlateIndex}`)
+/** One date's replayed slate; the page fetches only the selected date, never the whole season. */
+export const getReplaySlate = (date: string) =>
+  fetchJson<ReplaySlate>(`${DATASET_BASE}/${DATASET_PATHS.replaySlate(date)}`)
 export const getMetricsReport = () => fetchJson<MetricsReport>(`${MODEL_BASE}/${MODEL_PATHS.metrics}`)
 export const getBriefIndex = () => fetchJson<BriefIndex>(`${DATASET_BASE}/${DATASET_PATHS.briefIndex}`)
 export const getLatestBrief = () => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.briefLatest}`)

@@ -17,6 +17,8 @@ interface Props<Row> {
   initialSort: { key: keyof Row & string; direction: 'asc' | 'desc' }
   rowKey: (row: Row) => string
   caption?: string
+  /** Extra classes for a row (e.g. to grey out rows without a box score). */
+  rowClassName?: (row: Row) => string | undefined
 }
 
 function compare(a: unknown, b: unknown): number {
@@ -33,6 +35,7 @@ export default function SortableTable<Row extends object>({
   initialSort,
   rowKey,
   caption,
+  rowClassName,
 }: Props<Row>) {
   const [sort, setSort] = useState(initialSort)
 
@@ -83,7 +86,10 @@ export default function SortableTable<Row extends object>({
         </thead>
         <tbody>
           {sorted.map((row) => (
-            <tr key={rowKey(row)} className="border-b border-white/5 hover:bg-white/5">
+            <tr
+              key={rowKey(row)}
+              className={cn('border-b border-white/5 hover:bg-white/5', rowClassName?.(row))}
+            >
               {columns.map((col) => (
                 <td
                   key={col.key}
