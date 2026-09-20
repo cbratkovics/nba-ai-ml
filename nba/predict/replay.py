@@ -17,6 +17,13 @@ Products written to replay/<season>/ (and pushed with --push-products):
   daily_mae.json          per date: n, model MAE, last-10 baseline MAE per target
   sample_<last-date>.json that date's slate with predictions and actuals side by side
   residuals/<date>.parquet one residual file per replayed date (nightly residual columns)
+  slates/<date>.json      one replayed slate per date: predictions, actuals, minutes and a
+                          did_not_play flag per player, plus that date's n and MAE per
+                          target for the model and the last-10 baseline
+  slates/index.json       the replayed dates with their game counts
+
+Every slate and the index carry "kind": "replay": they are backtests scored against
+stored game logs, never live predictions.
 
 Usage:
     python -m nba.predict.replay [--season 2025-26] [--schedule-dir data/dump]
@@ -144,11 +151,14 @@ def daily_mae(combined: pd.DataFrame, season: str, sample_date: str | None) -> d
     }
 
 
-def sample_slate(
-    combined: pd.DataFrame, d: str, models: model.Models, dataset_revision: str
-) -> dict[str, Any]:
-    """One date's replayed slate with predictions and actuals side by side."""
-    part = combined[combined["date"] == d].sort_values(["game_id", "team", "player_id"])
+def _slate_rows(part: pd.DataFrame) -> list[dict[str, Any]]:
+    """One JSON row per replayed prediction, sorted by game, team, player.
+
+    `did_not_play` is true when the game's box score is in the stored logs but the
+    player has no row in it (the nightly "player did not play" case); a row with no
+    actuals whose game was never ingested keeps has_actual false and did_not_play false.
+    """
+    part = part.sort_values(["game_id", "team", "player_id"])
     rows = []
     for r in part.itertuples(index=False):
         rows.append(
@@ -167,8 +177,18 @@ def sample_slate(
                 "actual_ast": None if pd.isna(r.actual_ast) else int(r.actual_ast),
                 "minutes": None if pd.isna(r.minutes) else round(float(r.minutes), 1),
                 "has_actual": bool(r.has_actual),
+                "did_not_play": bool(r.game_ingested and not r.has_actual),
             }
         )
+    return rows
+
+
+def sample_slate(
+    combined: pd.DataFrame, d: str, models: model.Models, dataset_revision: str
+) -> dict[str, Any]:
+    """One date's replayed slate with predictions and actuals side by side."""
+    part = combined[combined["date"] == d]
+    rows = _slate_rows(part)
     return {
         "date": d,
         "model_revision": models.revision,
@@ -180,6 +200,81 @@ def sample_slate(
     }
 
 
+def date_slate(
+    combined: pd.DataFrame,
+    d: str,
+    season: str,
+    models: model.Models,
+    dataset_revision: str,
+    day: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """replay/<season>/slates/<date>.json: the replayed slate for one date.
+
+    `day` is that date's entry from daily_mae() (n and MAE per target for the model and
+    the last-10 baseline on the same rows); None when no row of the date had actuals
+    and a full last-10 baseline.
+    """
+    part = combined[combined["date"] == d]
+    rows = _slate_rows(part)
+    games = []
+    for game_id, g in part.groupby("game_id", sort=True):
+        home_rows, away_rows = g[g["home"]], g[~g["home"]]
+        # Either side's rows name both teams; a game with one slated side still lists two.
+        home = home_rows["team"].iloc[0] if len(home_rows) else away_rows["opponent"].iloc[0]
+        away = away_rows["team"].iloc[0] if len(away_rows) else home_rows["opponent"].iloc[0]
+        games.append(
+            {
+                "game_id": str(game_id),
+                "home": str(home),
+                "away": str(away),
+                "n_players": int(len(g)),
+                "n_with_actuals": int(g["has_actual"].sum()),
+            }
+        )
+    none = dict.fromkeys(config.TARGETS)
+    return {
+        "kind": "replay",
+        "season": season,
+        "date": d,
+        "model_revision": models.revision,
+        "dataset_revision": dataset_revision,
+        "n_games": len(games),
+        "n_players": len(rows),
+        "n_with_actuals": int(part["has_actual"].sum()),
+        "n_did_not_play": sum(r["did_not_play"] for r in rows),
+        "metrics": {
+            "population": "rows with actuals and a last-10 baseline for every target",
+            "n": day["n"] if day else 0,
+            "model": day["model"] if day else dict(none),
+            "baseline_last10": day["baseline_last10"] if day else dict(none),
+        },
+        "games": games,
+        "rows": rows,
+    }
+
+
+def slate_index(season: str, slates: list[dict[str, Any]]) -> dict[str, Any]:
+    """replay/<season>/slates/index.json: the replayed dates with their game counts."""
+    dates = [
+        {
+            "date": s["date"],
+            "n_games": s["n_games"],
+            "n_players": s["n_players"],
+            "n_with_actuals": s["n_with_actuals"],
+            "file": f"{s['date']}.json",
+        }
+        for s in slates
+    ]
+    return {
+        "kind": "replay",
+        "season": season,
+        "n_dates": len(dates),
+        "first_date": dates[0]["date"] if dates else None,
+        "latest": dates[-1]["date"] if dates else None,
+        "dates": dates,
+    }
+
+
 def write_products(
     season: str,
     combined: pd.DataFrame,
@@ -188,7 +283,8 @@ def write_products(
     dataset_revision: str,
     products_dir: Path,
 ) -> list[Path]:
-    """Write replay/<season>/{replay.json, daily_mae.json, sample_<last-date>.json}."""
+    """Write replay/<season>/{replay.json, daily_mae.json, sample_<last-date>.json,
+    residuals/<date>.parquet, slates/<date>.json, slates/index.json}."""
     folder = products_dir / season
     folder.mkdir(parents=True, exist_ok=True)
     last_date = str(combined["date"].max()) if len(combined) else None
@@ -214,6 +310,22 @@ def write_products(
         path = res_dir / f"{d}.parquet"
         part.reset_index(drop=True).to_parquet(path, index=False)
         written.append(path)
+    # One replayed slate per date (compact JSON: the site fetches one date at a time)
+    # and an index of the dates, so the site can offer a date picker over the replay.
+    slates_dir = folder / "slates"
+    slates_dir.mkdir(exist_ok=True)
+    by_date = {day["date"]: day for day in daily["days"]}
+    slates = []
+    for d in sorted(combined["date"].unique()):
+        d = str(d)
+        one = date_slate(combined, d, season, models, dataset_revision, by_date.get(d))
+        path = slates_dir / f"{d}.json"
+        path.write_text(json.dumps(one, separators=(",", ":")) + "\n")
+        written.append(path)
+        slates.append(one)
+    index_path = slates_dir / "index.json"
+    index_path.write_text(json.dumps(slate_index(season, slates), indent=2) + "\n")
+    written.append(index_path)
     return written
 
 

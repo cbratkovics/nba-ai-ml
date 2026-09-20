@@ -195,14 +195,21 @@ def test_products_daily_mae_and_sample(
         "metrics": {t: {"model": {"mae": mae[t], "n": 1}} for t in config.TARGETS},
     }
     report = replay.summarize("2025-26", combined, per_date, game_logs, metrics, models, "rev-d")
+    # One slated player of the last date did not play: the game's box score is in the
+    # logs but the player has no row, so the actuals are missing.
+    last = str(combined["date"].max())
+    dnp = combined.index[combined["date"] == last][0]
+    combined.loc[dnp, ["actual_pts", "actual_reb", "actual_ast", "minutes"]] = None
+    combined.loc[dnp, ["resid_pts", "resid_reb", "resid_ast"]] = None
+    combined.loc[dnp, ["has_actual", "in_metrics_population"]] = False
+    assert bool(combined.loc[dnp, "game_ingested"]) is True
     written = replay.write_products(
         "2025-26", combined, report, models, "rev-d", tmp_path / "replay"
     )
-    last = str(combined["date"].max())
     n_dates = combined["date"].nunique()
     assert [p.name for p in written[:3]] == ["replay.json", "daily_mae.json", f"sample_{last}.json"]
     assert all(p.parent == tmp_path / "replay" / "2025-26" for p in written[:3])
-    residual_files = written[3:]
+    residual_files = [p for p in written if p.parent.name == "residuals"]
     assert len(residual_files) == n_dates
     assert all(p.parent == tmp_path / "replay" / "2025-26" / "residuals" for p in residual_files)
     from nba.predict import residuals as residuals_module
@@ -223,7 +230,7 @@ def test_products_daily_mae_and_sample(
 
     sample = json.loads(written[2].read_text())
     assert sample["date"] == last and sample["n_players"] == len(sample["rows"])
-    row = sample["rows"][0]
+    row = next(r for r in sample["rows"] if r["has_actual"])
     assert {
         "player_name",
         "team",
@@ -236,6 +243,45 @@ def test_products_daily_mae_and_sample(
     } <= set(row)
     assert row["has_actual"] is True and isinstance(row["actual_pts"], int)
     assert json.loads(written[0].read_text())["passed"] is True
+
+    # Per-date replay slates and their index, labelled as replay, one file per date.
+    slate_files = [p for p in written if p.parent.name == "slates" and p.name != "index.json"]
+    assert [p.stem for p in slate_files] == sorted(str(d) for d in combined["date"].unique())
+    assert written[-1].name == "index.json" and written[-1].parent.name == "slates"
+    index = json.loads(written[-1].read_text())
+    assert index["kind"] == "replay" and index["season"] == "2025-26"
+    assert index["n_dates"] == len(index["dates"]) == n_dates
+    assert index["first_date"] == index["dates"][0]["date"] and index["latest"] == last
+    by_date = {d["date"]: d for d in index["dates"]}
+    for path in slate_files:
+        one = json.loads(path.read_text())
+        assert one["kind"] == "replay" and one["date"] == path.stem
+        entry = by_date[one["date"]]
+        assert entry["file"] == path.name
+        assert entry["n_games"] == one["n_games"] == len(one["games"])
+        assert entry["n_players"] == one["n_players"] == len(one["rows"])
+        assert set(one["games"][0]) == {"game_id", "home", "away", "n_players", "n_with_actuals"}
+        assert one["n_games"] == combined.loc[combined["date"] == one["date"], "game_id"].nunique()
+        # The date's metrics are the daily_mae entry for that date.
+        day_entry = next(x for x in daily["days"] if x["date"] == one["date"])
+        assert one["metrics"]["n"] == day_entry["n"]
+        assert one["metrics"]["model"] == day_entry["model"]
+        assert one["metrics"]["baseline_last10"] == day_entry["baseline_last10"]
+        assert one["model_revision"] == models.revision and one["dataset_revision"] == "rev-d"
+    last_slate = json.loads(slate_files[-1].read_text())
+    assert last_slate["n_did_not_play"] == 1
+    assert last_slate["n_with_actuals"] == last_slate["n_players"] - 1
+    # The did-not-play row keeps its prediction, has no actuals, and is excluded from n.
+    dnp_rows = [r for r in last_slate["rows"] if r["did_not_play"]]
+    assert len(dnp_rows) == 1
+    assert dnp_rows[0]["has_actual"] is False and dnp_rows[0]["actual_pts"] is None
+    assert dnp_rows[0]["minutes"] is None and isinstance(dnp_rows[0]["pred_pts"], float)
+    assert last_slate["metrics"]["n"] == last_slate["n_players"] - 1
+    assert all(r["did_not_play"] is False for r in json.loads(slate_files[0].read_text())["rows"])
+    # Every game lists a home and an away team drawn from its rows.
+    for g in last_slate["games"]:
+        teams = {r["team"] for r in last_slate["rows"] if r["game_id"] == g["game_id"]}
+        assert {g["home"], g["away"]} == teams
 
 
 def test_push_products_handles_nested_replay_folder(

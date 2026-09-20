@@ -8,7 +8,8 @@ Layout in the dataset repo:
     game_logs/game_logs_<season>.parquet   one file per season
     predictions/<date>.parquet, latest.json, rolling_metrics.json
     residuals/<date>.parquet
-    replay/<season>/replay.json, daily_mae.json, sample_<date>.json, residuals/<date>.parquet
+    replay/<season>/replay.json, daily_mae.json, sample_<date>.json, residuals/<date>.parquet,
+                    slates/<date>.json, slates/index.json
     daily_reports/<date>.json
     brief/<date>.json, <date>.trace.json, latest.json, index.json
 
