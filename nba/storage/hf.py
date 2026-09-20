@@ -176,6 +176,9 @@ PRODUCT_PREFIXES: tuple[str, ...] = (
     config.HF_GOLD_PREFIX,  # exported marts, read by the agent tools (pushed by push_gold)
 )
 PRODUCT_PATTERNS: tuple[str, ...] = tuple(f"{p}/**" for p in PRODUCT_PREFIXES)
+# The per-date replay slates (replay/<season>/slates/) are read by the site only, one
+# date at a time; the pipeline and the agent tools never need them, so pulls skip them.
+PRODUCT_IGNORE_PATTERNS: tuple[str, ...] = (f"{config.HF_REPLAY_PREFIX}/*/slates/*",)
 
 
 def push_products(
@@ -220,7 +223,10 @@ def pull_products(
     repo_id: str = config.HF_DATASET_REPO,
     revision: str | None = None,
 ) -> str:
-    """Download predictions/ and residuals/ from the dataset repo into <root>. Returns the sha."""
+    """Download the product folders from the dataset repo into <root>. Returns the sha.
+
+    Skips the per-date replay slates (PRODUCT_IGNORE_PATTERNS), which only the site reads.
+    """
     api = _api(require_token=False)
     sha = api.dataset_info(repo_id, revision=revision).sha
     with tempfile.TemporaryDirectory() as tmp:
@@ -229,6 +235,7 @@ def pull_products(
             repo_type="dataset",
             revision=sha,
             allow_patterns=list(PRODUCT_PATTERNS),
+            ignore_patterns=list(PRODUCT_IGNORE_PATTERNS),
             local_dir=tmp,
             token=config.hf_token(),
         )

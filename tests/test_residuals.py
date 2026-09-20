@@ -1,3 +1,4 @@
+import fnmatch
 import json
 from datetime import date
 from pathlib import Path
@@ -161,8 +162,17 @@ def test_push_and_pull_products(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     ]
     assert hf.push_products(tmp_path / "empty") is None
 
-    def fake_snapshot(repo_id, repo_type, revision, allow_patterns, local_dir, token):
+    def fake_snapshot(
+        repo_id, repo_type, revision, allow_patterns, ignore_patterns, local_dir, token
+    ):
         assert allow_patterns == list(hf.PRODUCT_PATTERNS)
+        # The per-date replay slates are excluded from every pull; the rest of replay/ is not.
+        assert ignore_patterns == ["replay/*/slates/*"]
+        assert fnmatch.fnmatch("replay/2025-26/slates/2026-04-12.json", ignore_patterns[0])
+        assert fnmatch.fnmatch("replay/2025-26/slates/index.json", ignore_patterns[0])
+        assert not fnmatch.fnmatch("replay/2025-26/daily_mae.json", ignore_patterns[0])
+        residual = "replay/2025-26/residuals/2026-04-12.parquet"
+        assert not fnmatch.fnmatch(residual, ignore_patterns[0])
         import shutil
 
         for prefix in ("predictions", "residuals"):
