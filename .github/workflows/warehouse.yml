@@ -6,7 +6,8 @@ name: Warehouse full refresh
 # builds the incremental models; this is where a restatement older than the 14-day lookback,
 # a model-SQL change, or a new season gets picked up. Also exports and pushes the gold marts.
 #
-# Status: implemented on branch `template`; it has not yet run in Actions.
+# Status: implemented. No committed run record currently proves that this workflow has
+# completed against MotherDuck; the selected target must be verified from a run log.
 
 on:
   schedule:

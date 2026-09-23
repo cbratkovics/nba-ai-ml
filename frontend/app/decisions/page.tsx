@@ -124,7 +124,8 @@ export default async function DecisionsPage() {
           <span className="text-text-primary">under</span> when it falls short by more, otherwise no call. There are no
           sportsbook lines. A call resolves against the same last-10 mean once the box score exists. Thresholds and the
           bands around each prediction were chosen per population on the {s.season} replay rows, so the hit rates below
-          are in-sample; the full coverage curve is shown so any other threshold can be read off.
+          are in-sample policy-fit results, not out-of-sample validation or demonstrated betting performance; the full
+          coverage curve is shown so any other threshold can be read off.
         </p>
       </section>
 

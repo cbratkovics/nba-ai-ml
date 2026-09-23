@@ -15,7 +15,8 @@ name: Agent pass rates
 # rewritten from the merged report and both files are committed back to the branch that
 # ran the job (contents: write), so no number is ever typed by hand.
 #
-# Status: implemented on branch `template`; it has not yet run in Actions in this form.
+# Status: completed for all five version-2 golden dates in Actions runs recorded in
+# reports/agent_pass_rates.json. The schedule now exits before installation when complete.
 
 on:
   schedule:
