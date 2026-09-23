@@ -17,6 +17,7 @@ import hashlib
 import json
 import subprocess
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,21 @@ from nba import config
 METRIC_KEYS = ("mae", "rmse", "r2", "n")
 ALL_ROWS_REPORT_TEMPLATE = "replay_all_rows_{season}.json"
 ALL_ROWS_SUMMARY_PATH = Path("frontend") / "lib" / "all_rows_baseline.json"
+ALL_ROWS_DECIMAL_PLACES = 12
+
+
+def _weighted_mean(days: list[dict[str, Any]], key: str, target: str, n: int) -> float | None:
+    """Return a reproducible weighted mean from the report's decimal JSON values.
+
+    Summing binary floats can differ by a few units in the last place between Python
+    versions.  The site does not need more than twelve decimal places, so aggregate the
+    source decimals exactly and round once at that documented serialization boundary.
+    """
+    if not n:
+        return None
+    value = sum((d[key][target] * int(d["n"]) for d in days), start=Decimal(0)) / n
+    quantum = Decimal(1).scaleb(-ALL_ROWS_DECIMAL_PLACES)
+    return float(value.quantize(quantum))
 
 
 def all_rows_report_path(season: str = config.HOLDOUT_SEASON) -> Path:
@@ -34,14 +50,12 @@ def all_rows_report_path(season: str = config.HOLDOUT_SEASON) -> Path:
 def all_rows_summary(report_path: Path) -> dict[str, Any]:
     """Row-weighted season MAE per target for the model and the last-10 baseline."""
     raw = report_path.read_bytes()
-    daily = json.loads(raw)
+    daily = json.loads(raw, parse_float=Decimal)
     days = daily["days"]
     n = sum(int(d["n"]) for d in days)
     targets = list(daily.get("targets", config.TARGETS))
-    model = {t: (sum(d["model"][t] * d["n"] for d in days) / n if n else None) for t in targets}
-    baseline = {
-        t: (sum(d["baseline_last10"][t] * d["n"] for d in days) / n if n else None) for t in targets
-    }
+    model = {t: _weighted_mean(days, "model", t, n) for t in targets}
+    baseline = {t: _weighted_mean(days, "baseline_last10", t, n) for t in targets}
     try:
         source_file = report_path.resolve().relative_to(config.REPO_ROOT).as_posix()
     except ValueError:
