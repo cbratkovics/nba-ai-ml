@@ -36,7 +36,9 @@ The holdout season is never used for fitting or for choosing settings.
 
 `baseline_last10` is the player's mean over the previous 10 games;
 `baseline_season` is the player's season-to-date mean. All three predictors are
-scored on the same rows (those where both baselines are defined).
+scored on the same eligible rows: players who logged at least
+10.0 minutes and for whom both baselines are defined. This is the
+training-population cohort, not every player-game in the replay.
 
 Holdout season: 2025-26 (2025-10-21 to 2026-04-12)
 
@@ -51,6 +53,13 @@ Holdout season: 2025-26 (2025-10-21 to 2026-04-12)
 | ast | model | 1.431 | 1.909 | 0.461 | 22244 |
 | ast | baseline_last10 | 1.460 | 1.967 | 0.427 | 22244 |
 | ast | baseline_season | 1.456 | 1.973 | 0.424 | 22244 |
+
+On this eligible holdout cohort, the model's MAE is about 2–3% lower than the
+last-10 baseline (2.9% for points, 3.3% for rebounds, and 2.0% for assists). The
+separate nightly-path replay also reports an all-rows population that includes games
+under 10 minutes; on that wider population, the last-10 baseline has lower MAE on
+all three targets. The model's advantage must not be generalized beyond the eligible
+cohort in the table above.
 
 ## Features
 
@@ -87,8 +96,9 @@ Holdout season: 2025-26 (2025-10-21 to 2026-04-12)
 
 ## Known limitations
 
-- Predicts only for players who play; it does not predict minutes or DNPs, and it
-  is only evaluated on games with at least 10.0 minutes played.
+- Predicts only for players who play; it does not predict minutes or DNPs. The model
+  metrics above use only games with at least 10.0 minutes played
+  and both baselines available; the wider replay does not show a model advantage.
 - No injury, lineup, betting-line, or opponent-strength inputs.
 - Regular-season games only.
 - Game-to-game variance in box-score stats is high; compare against the

@@ -310,7 +310,9 @@ depend on that calendar, the reference does not.
 in one window; `WARN` when one or two do, or when three or more do while the thresholds are
 uncalibrated; `ok` otherwise; `insufficient` under 500 rows. The threshold is the smallest
 candidate of 0.05, 0.10, 0.15, 0.20, 0.25, 0.30 with zero false positives on every position:
-**0.15** (0.05 would have fired on 69 of 157 scored dates, 0.10 on one, 2026-03-05). The
+**0.15** (of 164 replay dates, 157 were scoreable; 0.05 would have fired on 69 of those
+157 and 0.10 on one, 2026-03-05). Zero alerts at 0.15 is an observed calibration-set
+result, not a prospective false-positive guarantee. The
 policy is pure Python with a test per branch (`nba/drift/policy.py`,
 `tests/test_drift.py`). Until `reports/drift_calibration_<season>.json` exists the job uses
 the provisional 0.20, says "uncalibrated" in every report and cannot HOLD; committing the

@@ -201,28 +201,28 @@ check, and writes `reports/agent_pass_rates.json`. A 429 on the pinned model is 
 as `rate_limited` and fails both checks, so a capped run reads as incomplete rather than
 as a lower pass rate.
 
-First run, 2026-09-12 (GitHub Actions run 34701742530), N = 5, 30 s between briefs,
-`openai/gpt-oss-120b` only:
+The first attempt on 2026-09-12 (GitHub Actions run `34701742530`) completed 10 of
+25 requested briefs before the provider's daily limit. It produced 9 grounding passes
+and 10 golden passes on the completed briefs; the other 15 were recorded as
+`rate_limited`, not silently answered by another model. That incomplete attempt is useful
+failure history, but it is not the current repeated-run result.
 
-| Date | Player | Completed | Grounding pass | Golden pass | Rate limited | Latency |
-|---|---|---:|---:|---:|---:|---|
-| 2025-10-23 | Aaron Gordon | 5 | 4/5 | 5/5 | 0 | 2.1 to 2.4 s |
-| 2025-12-03 | Giannis Antetokounmpo | 5 | 5/5 | 5/5 | 0 | 1.8 to 2.5 s |
-| 2026-01-14 | Brice Sensabaugh | 0 | 0/5 | 0/5 | 5 | |
-| 2026-03-10 | Bam Adebayo | 0 | 0/5 | 0/5 | 5 | |
-| 2026-04-03 | Cooper Flagg | 0 | 0/5 | 0/5 | 5 | |
-| **Overall** | | **10 of 25** | **9/25** | **10/25** | **15** | |
+**Current version-2 result.** The spreader subsequently measured one golden date per
+Actions run. The committed report records the runner and run id on every date:
 
-**This run is incomplete.** After 10 briefs the pinned model hit the free tier's
-200,000 tokens-per-day cap (the error reported 198,955 used, 3,830 requested), a
-rolling window that the same day's six-date dispatches and local smoke runs had
-already mostly consumed. The 15 remaining briefs were refused within 0.5 s each and
-are recorded as `rate_limited`; none was answered by the fallback model. Over the 10
-briefs that ran: grounding 9 of 10, golden 10 of 10. That is too few runs, on two of
-five dates, to quote a pass rate.
+| Date | Player | Actions run | Completed | Grounding | Golden | Rate limited |
+|---|---|---:|---:|---:|---:|---:|
+| 2025-10-23 | Aaron Gordon | 35073930571 | 5 | 5/5 | 5/5 | 0 |
+| 2025-12-03 | Giannis Antetokounmpo | 35200296421 | 5 | 5/5 | 5/5 | 0 |
+| 2026-01-14 | Brice Sensabaugh | 35322849219 | 5 | 5/5 | 5/5 | 0 |
+| 2026-03-10 | Bam Adebayo | 35430694570 | 5 | 5/5 | 5/5 | 0 |
+| 2026-04-03 | Cooper Flagg | 35499665725 | 5 | 5/5 | 5/5 | 0 |
+| **Overall** | | | **25/25** | **25/25** | **25/25** | **0** |
 
-**Spreading the measurement across days (implemented 2026-09-15, not yet run in
-Actions in this form).** `agent-eval.yml` now measures only the golden dates that are
+These are selected historical dates and model output can still vary; 25 passes do not
+guarantee that a future nightly brief will pass.
+
+**Spreading the measurement across days.** `agent-eval.yml` measures only golden dates that are
 missing or rate-limited in the committed report (`--only-incomplete --max-dates 1` by
 default, or an explicit `dates` input), merges the new per-date results into
 `reports/agent_pass_rates.json` (each date records the Actions run id that measured it),
@@ -230,21 +230,16 @@ recomputes the overall block, rewrites the README row between its `pass-rates` m
 from the report, and commits both files back to the branch it ran on. A daily schedule
 at 03:00 UTC (seven hours before the nightly brief) does one date per day until every
 date is complete, then exits before installing anything. One date is 5 briefs, about
-25k tokens, an eighth of the daily cap. `overall.complete` is true only when all five
-dates have five unlimited runs under the current golden set; until then the README row
-says "incomplete" with the count, rendered from the report and checked by
+25k tokens. `overall.complete` is true only when all five dates have five unlimited runs
+under the current golden set; the README row is rendered from that report and checked by
 `tests/test_agent_pass_rates.py`.
 
 **Status wording (the README row).** Every date entry records the golden-set version it
 was measured under. A date measured under an older version is incomplete for the
 spreader, which re-measures it, and its runs are left out of the overall block; the row
 then reads "incomplete: N of 25 briefs completed under the current golden set (R
-rate-limited; S dates measured under an older golden set, not counted)". As of
-2026-09-16 that row is "0 of 25 ... (5 rate-limited; 4 dates measured under an older
-golden set, not counted)": the golden set moved to version 2 (decision and drift facts),
-the four version-1 dates are stale, and the one date measured locally under version 2 hit
-the daily token cap after the trace re-recording. The scheduled spreader measures one
-date per day once the branch is pushed.
+rate-limited; S dates measured under an older golden set, not counted)". The current
+report is complete under golden set version 2, so the README instead reports 25 of 25.
 
 **The single-run failure mode, plainly.** At temperature 0 the model's output still
 varies between runs. The failure seen in every set of runs so far is the same one: a
