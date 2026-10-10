@@ -144,6 +144,8 @@ reports/*
 # Drift reference (from the gold marts, keyed by feature and model version) and calibration.
 !reports/drift_reference_*.json
 !reports/drift_calibration_*.json
+# Run evidence: every cited GitHub Actions run id with its conclusion (ADR-0022).
+!reports/runs.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git (data/warehouse/ is the loader's copy).
@@ -155,6 +157,8 @@ data/
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+# dbt's anonymous-usage id (stats are off in dbt_project.yml; the file is per machine).
+dbt/.user.yml
 .dbt-state/
 site/
 # Prediction and residual products live in the HF dataset repo, never in git.

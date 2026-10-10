@@ -39,7 +39,7 @@ select
 from published as p
 left join computed as c
     on p.season = c.season and p.model_revision = c.model_revision
-    and p.population = c.population and p.target = c.target
+        and p.population = c.population and p.target = c.target
 where
     c.n is null
     or p.n <> c.n

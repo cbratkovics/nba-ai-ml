@@ -10,6 +10,10 @@ require-dbt-version: ">=1.9.0"
 
 profile: nba_dbt
 
+flags:
+  # No anonymous usage statistics, so dbt never writes a per-machine .user.yml here.
+  send_anonymous_usage_stats: false
+
 model-paths: ["models"]
 macro-paths: ["macros"]
 test-paths: ["tests"]
@@ -27,7 +31,8 @@ vars:
   dataset_revision: "b20b5601de213fa8e704ebffaafd18f182ea68c3"
   feature_version: "asof_v1"
   holdout_season: "2025-26"
-  seasons: ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
+  # The season list is the `seasons` seed (ADR-0024), not a var: nothing in the project read
+  # the old var, and the seed is tested against nba/config.py by tests/test_project_config.py.
   targets: ["pts", "reb", "ast"]
   min_minutes: 10.0
   full_season_games: 1230

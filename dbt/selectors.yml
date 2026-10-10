@@ -1,0 +1,19 @@
+# Named selections, so the Makefile and the workflows share one definition (ADR-0023).
+#
+#   nightly   what the nightly job rebuilds after a night that ingested, scored or slated
+#             something: every model (the incremental silver models run incrementally, the
+#             bronze copies and gold marts are cheap tables), the snapshot, the four tiny
+#             seeds, and their tests. Today that is the whole project; the selector exists so
+#             the Makefile and nightly.yml name one definition, and so the set can be narrowed
+#             in one place if MotherDuck compute ever matters (ADR-0007). Seeds are included
+#             on purpose: the season relationship tests reference the `seasons` seed, and a
+#             nightly build must not depend on a weekly full refresh having loaded it first.
+#
+#   dbt build --project-dir dbt --profiles-dir dbt --selector nightly
+selectors:
+  - name: nightly
+    description: Every model, seed and the snapshot with their tests (the whole project); the one definition the Makefile and nightly.yml share.
+    default: false
+    definition:
+      method: fqn
+      value: "*"

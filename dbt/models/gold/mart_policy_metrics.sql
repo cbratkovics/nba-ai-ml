@@ -22,12 +22,19 @@ agg as (
         count(*) filter (where outcome = 'push') as n_push,
         count(*) filter (where outcome = 'hit') as n_hit,
         count(*) filter (where outcome = 'miss') as n_miss,
-        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'hit') as season_mean_same_rows_n_hit,
-        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'miss') as season_mean_same_rows_n_miss,
-        count(*) filter (where outcome in ('hit', 'miss') and season_mean_decision = 'no_call' and baseline_season is not null) as season_mean_same_rows_n_tie,
-        count(*) filter (where outcome in ('hit', 'miss') and baseline_season is null) as season_mean_same_rows_n_missing,
-        avg(case when within_band_50 then 1.0 else 0.0 end) filter (where within_band_50 is not null) as band_coverage_50,
-        avg(case when within_band_80 then 1.0 else 0.0 end) filter (where within_band_80 is not null) as band_coverage_80
+        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'hit')
+            as season_mean_same_rows_n_hit,
+        count(*) filter (where outcome in ('hit', 'miss') and season_mean_outcome = 'miss')
+            as season_mean_same_rows_n_miss,
+        count(*) filter (
+            where outcome in ('hit', 'miss') and season_mean_decision = 'no_call' and baseline_season is not null
+        ) as season_mean_same_rows_n_tie,
+        count(*) filter (where outcome in ('hit', 'miss') and baseline_season is null)
+            as season_mean_same_rows_n_missing,
+        avg(case when within_band_50 then 1.0 else 0.0 end) filter (where within_band_50 is not null)
+            as band_coverage_50,
+        avg(case when within_band_80 then 1.0 else 0.0 end) filter (where within_band_80 is not null)
+            as band_coverage_80
     from resolved
     group by season, run_kind, model_revision, population, target
 ),
@@ -44,7 +51,10 @@ rates as (
         -- mean has no side and is scored as a coin flip (ADR-0015)
         case
             when n_resolved > 0
-                then (season_mean_same_rows_n_hit + 0.5 * (season_mean_same_rows_n_tie + season_mean_same_rows_n_missing)) / n_resolved
+                then (
+                    season_mean_same_rows_n_hit + 0.5 * (season_mean_same_rows_n_tie + season_mean_same_rows_n_missing)
+                )
+                / n_resolved
         end as season_mean_same_rows_hit_rate
     from agg
 )

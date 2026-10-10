@@ -1,7 +1,9 @@
 version: 2
 
 # Gold = the product. Every model has an enforced contract, a description per column and tests.
-# The nightly job exports these tables (macro export_gold) and pushes them to the dataset repo.
+# The weekly full refresh (warehouse.yml) and any nightly that built the warehouse export these
+# tables (macro export_gold) and push them to gold/ in the dataset repo (nba.warehouse.publish),
+# where the analyst tools read them (ADR-0019; the site reads JSON exports from Phase 3).
 models:
   - name: dim_player_current
     description: One row per player, the current version of the snp_player_team snapshot (team of the most recent game as of the last build). Not exported.

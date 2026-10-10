@@ -1,6 +1,15 @@
 version: 2
 
 seeds:
+  - name: seasons
+    description: Every season the warehouse may hold, one row each (ADR-0024). The one place the season list lives; the silver models' season columns must relate to it, so a season that appears in the data before it is added here warns rather than silently passing a hand-typed list.
+    config:
+      column_types: { season: varchar, start_year: integer, status: varchar, note: varchar }
+    columns:
+      - { name: season, description: season label such as 2025-26 (October starts the season), data_tests: [unique, not_null] }
+      - { name: start_year, description: calendar year the season starts in, data_tests: [unique, not_null] }
+      - { name: status, description: "complete, current or upcoming", data_tests: [{ accepted_values: { arguments: { values: [complete, current, upcoming] } } }] }
+      - { name: note, description: what the season is to the pipeline }
   - name: season_exceptions
     description: Seasons declared short of the 1,230-game regular season, with the count the contract accepts instead and the documented reason.
     config:

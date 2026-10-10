@@ -12,6 +12,9 @@ Layout in the dataset repo:
                     slates/<date>.json, slates/index.json
     daily_reports/<date>.json
     brief/<date>.json, <date>.trace.json, latest.json, index.json
+    decisions/<date>.json, latest.json            (written only on nights with a slate)
+    drift/<date>.json                             (every nightly run)
+    gold/<mart>.parquet, _export_manifest.json    (nba.warehouse.publish after a dbt build)
 
 Usage:
     python -m nba.storage.hf push-dataset [--data-dir data/game_logs] \\
@@ -24,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import tempfile
@@ -37,8 +41,14 @@ from nba.storage import local
 DATASET_CARD_FILE = "README.md"
 
 
+REHEARSAL_ENV = "NBA_REHEARSAL"
+
+
 def _api(require_token: bool) -> HfApi:
     token = config.hf_token()
+    if require_token and os.environ.get(REHEARSAL_ENV):
+        # nba.rehearsal: the nightly path runs for real but may not touch the published repos.
+        raise RuntimeError(f"{REHEARSAL_ENV} is set: Hugging Face writes are disabled")
     if require_token and not token:
         raise RuntimeError("HF_TOKEN is not set; a write token is required to push")
     return HfApi(token=token)
@@ -187,11 +197,12 @@ def push_products(
     message: str = "Update predictions and residuals",
     files: list[Path] | None = None,
 ) -> str | None:
-    """Upload product files under <root>/predictions and <root>/residuals in one commit.
+    """Upload product files from the PRODUCT_PREFIXES folders under <root> in one commit.
 
     `files` restricts the upload to those paths (each must live in one of the product
-    folders); by default every file in both folders is uploaded. Returns the commit
-    sha, or None when there is nothing to upload.
+    folders; the nightly passes exactly the files it wrote); by default every file in every
+    product folder is uploaded. Returns the commit sha, or None when there is nothing to
+    upload.
     """
     if files is None:
         files = [

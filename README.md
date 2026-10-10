@@ -51,11 +51,17 @@ flowchart TB
     Warehouse -->|gold/*.parquet| Serve
 ```
 
-There is no API server and no database on the serving path: every page is implemented to
-fetch published files from the Hugging Face dataset repo. The warehouse and its nightly
-export step are implemented upstream of that serving path, but the committed evidence does
-not show a completed MotherDuck build or a pushed `gold/` export. Agent tools therefore
-retain reconciled product-file fallbacks.
+There is no API server and no database on the serving path: every page fetches published
+files from the Hugging Face dataset repo. The warehouse sits upstream of that path, and its
+status has three parts, each with a run id in [reports/runs.json](reports/runs.json)
+(ADR-0022): the weekly full refresh **has run on MotherDuck** (`35048092357` dispatched
+2026-09-16, then `35506971007`, `36317104881`, `37201223219` on schedule, all green,
+`PASS=102`); the `gold/` export **was pushed once** (dataset revision `66404be0`, 2026-09-16)
+and then skipped for three weeks by a workflow-expression bug fixed in ADR-0022; and the
+nightly's own incremental build **is implemented but had not executed** before the 2026-27
+season, because every off-season night stops at the gate, so it was rehearsed on a synthetic
+game night (ADR-0028) rather than claimed. The agent tools keep their reconciled
+product-file fallbacks.
 
 | Stage | Evidence-backed status | Artifact |
 |---|---|---|
@@ -64,8 +70,8 @@ retain reconciled product-file fallbacks.
 | Slate, residuals and season replay | Replay ran in Actions (`34668262142`) and its products reached HF; replay covers 164 game dates | `reports/replay_2025-26.json`, `replay/2025-26/` |
 | Agent evaluation | Repeated live evaluations ran in Actions (`35073930571` through `35499665725`); all 25 completed runs are recorded | `reports/agent_pass_rates.json` |
 | Site | Core fetch-only site is deployed on Vercel; deployment of every newer committed page revision was not independently verified in this audit | `/`, `/predictions`, `/replay`, `/decisions`, `/brief` |
-| Decision policy and drift | Implemented, replay-evaluated and reconciled locally; no committed run record proves nightly decision/drift products were pushed to HF | `reports/policy_2025-26.json`, `reports/drift_calibration_2025-26.json` |
-| Warehouse | Locally validated with DuckDB; workflow supports MotherDuck or a local fallback, but no committed record proves a completed MotherDuck run or pushed `gold/` exports | bronze/silver/gold marts |
+| Decision policy and drift | Drift: ran in every nightly since 2026-09-16 and pushed `drift/<date>.json` each time (24 files by 2026-10-09, first at dataset revision `17fd9fb1`). Decisions: implemented; written only on nights with a slate, so none before 2026-27 | `reports/policy_2025-26.json`, `reports/drift_calibration_2025-26.json`, `drift/` |
+| Warehouse | Weekly full refresh ran on MotherDuck (`35048092357`, `35506971007`, `36317104881`, `37201223219`; `PASS=102`); `gold/` pushed once (`66404be0`) until the ADR-0022 fix; the nightly incremental path is rehearsed (ADR-0028), not yet run live | bronze/silver/gold marts, `reports/runs.json` |
 
 ## Results
 
@@ -96,11 +102,11 @@ Replay equivalence ([reports/replay_2025-26.json](reports/replay_2025-26.json), 
 
 On all rows the model's calls hit less often than the season-mean sign on the same rows, so the policy is not recommended there; the site's `/decisions` page says so and the nightly decisions file carries both populations' calls. The warehouse mart `fct_decision_policy` applies the same thresholds to every prediction and two singular tests recompute every number in the artifact.
 
-**Drift monitoring** ([reports/drift_reference_asof_v1_fb427de.json](reports/drift_reference_asof_v1_fb427de.json), [reports/drift_calibration_2025-26.json](reports/drift_calibration_2025-26.json) keys `chosen.threshold`, `false_positives_total`, `positions.<position>.{psi,false_positives}`, `sensitivity`; ADR-0016 to ADR-0018; locally validated). The 14-day check compares each feature with a season-day-aligned reference. It was calibrated retrospectively on all 164 replay dates; 157 had enough rows to score. The selected rule—HOLD when at least three features have PSI ≥ 0.15—had no alerts on those calibration dates, while 0.05 would have fired on 69. That is a calibration-set observation, not a prospective false-positive guarantee: an untouched season remains untested. The implemented nightly path writes `drift/<date>.json`, opens a labelled issue on HOLD, and never blocks the slate, but no committed evidence shows a nightly drift product pushed to HF.
+**Drift monitoring** ([reports/drift_reference_asof_v1_fb427de.json](reports/drift_reference_asof_v1_fb427de.json), [reports/drift_calibration_2025-26.json](reports/drift_calibration_2025-26.json) keys `chosen.threshold`, `false_positives_total`, `positions.<position>.{psi,false_positives}`, `sensitivity`; ADR-0016 to ADR-0018; locally validated). The 14-day check compares each feature with a season-day-aligned reference. It was calibrated retrospectively on all 164 replay dates; 157 had enough rows to score. The selected rule—HOLD when at least three features have PSI ≥ 0.15—had no alerts on those calibration dates, while 0.05 would have fired on 69. That is a calibration-set observation, not a prospective false-positive guarantee: an untouched season remains untested. The nightly path writes `drift/<date>.json` (and has, every run since 2026-09-16; `reports/runs.json`), opens a labelled issue on HOLD, and never blocks the slate. What each alert means and what to do is in [docs/RUNBOOK.md](docs/RUNBOOK.md).
 
 Provenance: [reports/provenance_b20b5601.json](reports/provenance_b20b5601.json) records the SHA-256 of every parquet file at dataset revision `b20b5601`, of the model files and `metrics.json` at HF revision `fb427de`, of the committed reports (including the all-rows file above), and of the replay products the site reads.
 
-Warehouse reconciliation (prototyped: built locally, not yet run in Actions; [docs/DECISIONS.md](docs/DECISIONS.md) ADR-0011): the gold marts recompute the replay's numbers from the residual rows and match `reports/replay_2025-26.json` and `reports/replay_all_rows_2025-26.json` to within 1e-14 with exact row counts, and `reports/metrics.json` to within 0.0022 (the replay never slated 169 of the 22,244 holdout rows). `dbt build`: 24 models, 3 seeds, 1 snapshot, 53 tests.
+Warehouse reconciliation (built weekly on MotherDuck, run ids in `reports/runs.json`; [docs/DECISIONS.md](docs/DECISIONS.md) ADR-0011): the gold marts recompute the replay's numbers from the residual rows and match `reports/replay_2025-26.json` and `reports/replay_all_rows_2025-26.json` to within 1e-14 with exact row counts, and `reports/metrics.json` to within 0.0022 (the replay never slated 169 of the 22,244 holdout rows). `dbt build`: <!-- dbt-counts -->31 models (12 bronze, 5 silver, 14 gold; 3 incremental, 15 with enforced contracts), 4 seeds, 1 snapshot, 70 data tests (12 singular, 58 generic), 0 unit tests, 11 sources, 0 exposures, 621 documented columns<!-- /dbt-counts -->.
 
 Agent evals ([reports/agent_evals.json](reports/agent_evals.json) keys `grounding_pass`, `n_briefs`, `golden_pass`, `golden_total`, `golden_facts`; [reports/agent_pass_rates.json](reports/agent_pass_rates.json) key `overall`), model `openai/gpt-oss-120b`:
 
@@ -137,16 +143,17 @@ LightGBM needs OpenMP at runtime (`brew install libomp` on macOS). Secrets used 
 - **One data source, lagging, with known gaps.** The Kaggle dump is the only automated source: stats.nba.com is unreachable from GitHub Actions runners (the probe workflow timed out and got HTTP 403), so the pipeline lags the dump's own refresh. Seven 2024-25 games have no box scores in it (1,223 of 1,230; the ids are in docs/reconciliation.md and `list_data_gaps`) and are not filled in from anywhere. If the dump author stops publishing a season's schedule file, no slate can be written; fourteen such nights open a WARN issue (ADR-0018).
 - **The agent brief is not deterministic.** At temperature 0 the model's output can still vary, so a future brief can drop an ungrounded finding or miss a golden fact. The repeated-run evaluation is no longer pending: five Actions runs completed 25 of 25 briefs under golden set version 2, all passing both checks. That is evidence on five selected historical dates, not a guarantee for future dates.
 - **Model scope.** One LightGBM regressor per target on 23 rolling and situational features. It does not predict minutes or whether a player plays; a player with no game in their team's previous ten is not slated (169 holdout rows). No injury, lineup or betting-market input; no sportsbook lines anywhere.
-- **Deployment boundary.** The model, dataset, replay products, core Vercel site, and version-2 repeated agent evaluation have run or been published as described above. The decision policy, drift calibration, and warehouse are locally validated; this repository contains no run record proving that decision/drift products or gold marts reached HF, or that MotherDuck was reached. Workflow definitions show intended automation, not proof of execution.
+- **Deployment boundary.** "Ran" in this README means a run id in `reports/runs.json`; "deployed" means a URL that answers. By that standard: the model, dataset, replay products, site, repeated agent evaluation, nightly drift reports and the weekly MotherDuck build have run. Two things have not: the nightly's own warehouse build (rehearsed on a synthetic night, ADR-0028, never yet on a live slate) and a decisions file (none until the first slate). The `gold/` export on the dataset repo was three weeks stale when the Phase 0 audit found it (ADR-0022). The served `/decisions` page was one commit behind `main` on 2026-10-09 (owner step).
+- **Opening night depends on one uploader.** The Kaggle dump was last updated 2026-06-15 and has no 2026-27 schedule file (checked 2026-10-09); without it there is no slate, and if its daily box-score updates do not resume, nothing settles (ADR-0029). A free schedule fallback is specified; a free box-score fallback was not found.
 - **Off-season behaviour.** With no schedule file for the next season, or no games on the date, the nightly job logs one line and exits 0. The drift check reports `insufficient` (no rows in the window), no decisions file is written, and the site's `/predictions` and `/decisions` pages say so.
 
 ## Owner TODO (in execution order)
 
-1. Confirm a successful `warehouse.yml` run and record whether it selected MotherDuck or the local fallback; do not infer the target from the workflow definition.
-2. Confirm a subsequent `nightly.yml` run pushed `decisions/`, `drift/`, and `gold/` products to HF, and preserve the run id and resulting dataset revision.
-3. Verify the current Vercel deployment commit includes the decisions and replay-detail pages.
-4. Enable GitHub Pages for the dbt docs if it is not already enabled, and record the deployment URL.
-5. Push the regenerated model card to Hugging Face after review; the pinned model files and revision remain untouched.
+1. ~~Confirm a successful `warehouse.yml` run and its target~~ — done: four runs on `motherduck`, recorded in `reports/runs.json` (ADR-0022).
+2. After the first in-season `nightly.yml` run, confirm `WAREHOUSE build`, a dbt `ERROR=0` line and `PUBLISH pushed gold marts` in its summary, then `python scripts/record_run.py <run id> --target motherduck --pushed cbratkovics/nba-game-logs@<revision>` (checklist in [docs/RUNBOOK.md](docs/RUNBOOK.md)).
+3. Vercel: the served `/decisions` page lacks the `4f16543` wording (2026-10-09); read the deployment's commit in the Vercel dashboard and redeploy if it is behind.
+4. ~~Enable GitHub Pages~~ — done: <https://cbratkovics.github.io/nba-ai-ml/> (published by CI run `35935163627`).
+5. Push the regenerated model card to Hugging Face after review (the HF card `7dc0eafc` predates PR #6); the pinned model files and revision remain untouched.
 
 
 <details>
@@ -172,16 +179,18 @@ nba/
   decisions/         policy rule, artifact writer, nightly decisions
   drift/             PSI, day-aligned reference, check, policy, calibration, nightly runner, notifier
   agent/             tools (over the exported marts), loop, evals, golden, pass_rates
-  warehouse/         loader, build gate, gold publisher
+  warehouse/         loader, build gate, gold publisher, warning notifier (dbt warn -> issue)
   nightly.py         ingest -> residuals -> brief -> slate -> decisions -> drift for one date
+  rehearsal.py       the nightly on a synthetic game night, nothing pushed (ADR-0028)
 frontend/            Next.js pages over the published files
-dbt/                 medallion warehouse (bronze/silver/gold, snapshot, seeds, tests, docs overview)
-docs/                reconciliation.md, agent.md, DECISIONS.md, DATASET_CARD.md, MODEL_CARD.md
-reports/             metrics, replay, policy, drift reference and calibration, provenance, agent evals, golden set, pass rates
+dbt/                 medallion warehouse (bronze/silver/gold, snapshot, seeds, selectors.yml, tests, docs overview)
+docs/                reconciliation.md, agent.md, DECISIONS.md, RUNBOOK.md, AE_AUDIT.md, DATASET_CARD.md, MODEL_CARD.md
+reports/             metrics, replay, policy, drift reference and calibration, provenance, agent evals, golden set, pass rates, runs.json (run evidence)
+scripts/             check_dbt_descriptions, render_dbt_counts (README counts from the manifest), record_run (runs.json)
 docs/STORIES.md      the citable facts per phase with their artifact keys and ADRs
-AUDIT.md             read-only audit before the template pass (2026-09-15)
+AUDIT.md             read-only audit before the template pass (2026-09-15); docs/AE_AUDIT.md is the analytics-engineering audit (2026-10-09)
 tests/               unit tests and recorded agent traces
-.github/workflows/   ci (lint, tests, dbt slim CI, docs to Pages), nightly (+ warehouse step), warehouse (weekly full refresh), train, replay, agent, agent-eval, probe-nba-api
+.github/workflows/   ci (ruff, sqlfluff, tests, dbt slim CI, docs to Pages), nightly (+ warehouse step, rehearsal input), warehouse (weekly full refresh), train, replay, agent, agent-eval, probe-nba-api
 ```
 
 </details>

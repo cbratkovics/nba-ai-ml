@@ -4,10 +4,9 @@ on:
   push:
   pull_request:
 
+# Read-only by default; only the `pages` job gets the Pages deployment permissions.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   lint-and-test:
@@ -29,6 +28,13 @@ jobs:
 
       - name: Ruff (format check)
         run: ruff format --check .
+
+      - name: sqlfluff (dbt models, tests, snapshots; .sqlfluff)
+        # The dbt templater opens the local DuckDB file to render the project; the folder
+        # must exist (the file is created empty and never built here).
+        run: |
+          mkdir -p .duckdb
+          sqlfluff lint dbt/models dbt/tests dbt/snapshots
 
       - name: Pytest
         # Includes tests/test_dbt_incremental.py, which shells out to dbt against a scratch
@@ -113,6 +119,10 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: dbt
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

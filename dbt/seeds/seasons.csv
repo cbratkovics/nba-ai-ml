@@ -1,0 +1,7 @@
+season,start_year,status,note
+2021-22,2021,complete,first season in the data; career-long features are history-truncated (ADR-0017)
+2022-23,2022,complete,training season
+2023-24,2023,complete,training season
+2024-25,2024,complete,training season; 1223 games (season_exceptions)
+2025-26,2025,complete,holdout season; replayed on 164 dates
+2026-27,2026,current,first out-of-sample season; opens 2026-10-20

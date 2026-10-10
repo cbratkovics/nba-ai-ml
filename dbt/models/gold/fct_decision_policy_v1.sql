@@ -107,8 +107,10 @@ final_{{ t }} as (
                 or (season_mean_decision = 'under' and actual < baseline_last10) then 'hit'
             else 'miss'
         end as season_mean_outcome,
-        case when has_actual and threshold is not null then actual between band_low_50 and band_high_50 end as within_band_50,
-        case when has_actual and threshold is not null then actual between band_low_80 and band_high_80 end as within_band_80
+        case when has_actual and threshold is not null then actual between band_low_50 and band_high_50 end
+            as within_band_50,
+        case when has_actual and threshold is not null then actual between band_low_80 and band_high_80 end
+            as within_band_80
     from decided_{{ t }}
 ),
 {% endfor %}

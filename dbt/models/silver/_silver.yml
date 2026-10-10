@@ -2,40 +2,42 @@ version: 2
 
 models:
   - name: slv_game_logs
-    description: One row per (player_id, game_id) who played; typed game logs, incremental with a 14-day restatement lookback (see the model header and ADR-0004).
+    description: One row per (player_id, game_id) who played; typed game logs, incremental with a 14-day restatement lookback (see the model header and ADR-0004). The one contracted silver model (ADR-0025) because every gold mart and the feature parity proof read it, and its incremental materialisation is the project's only schema-change risk.
+    config:
+      contract: { enforced: true }
     data_tests:
       - unique_combination:
           arguments:
             columns: [player_id, game_id]
     columns:
-      - { name: player_id, description: nba.com player id, data_tests: [not_null] }
-      - { name: game_id, description: ten-character nba.com game id, data_tests: [not_null] }
-      - { name: game_date, description: game date (Eastern-time calendar date), data_tests: [not_null] }
-      - { name: season, description: season label such as 2025-26, data_tests: [not_null, { accepted_values: { arguments: { values: ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26", "2026-27"] } } }] }
-      - { name: player_name, description: player name as stored }
-      - { name: team, description: team abbreviation as stored for that season }
-      - { name: opponent, description: opponent abbreviation }
-      - { name: home, description: "true when the player's team was at home" }
-      - { name: minutes, description: minutes played, data_tests: [{ accepted_range: { arguments: { min_value: 0, max_value: 70 } } }] }
-      - { name: pts, description: points }
-      - { name: reb, description: total rebounds }
-      - { name: ast, description: assists }
-      - { name: fgm, description: field goals made }
-      - { name: fga, description: field goals attempted }
-      - { name: fg3m, description: three-pointers made }
-      - { name: fg3a, description: three-pointers attempted }
-      - { name: ftm, description: free throws made }
-      - { name: fta, description: free throws attempted }
-      - { name: oreb, description: offensive rebounds }
-      - { name: dreb, description: defensive rebounds }
-      - { name: stl, description: steals }
-      - { name: blk, description: blocks }
-      - { name: tov, description: turnovers }
-      - { name: pf, description: personal fouls }
-      - { name: plus_minus, description: plus/minus }
-      - { name: source, description: which ingest produced the row (kaggle_v515 backfill or kaggle_daily) }
-      - { name: dataset_revision, description: dataset-repo revision the loader pulled }
-      - { name: source_file, description: parquet file the row came from }
+      - { name: player_id, data_type: bigint, description: nba.com player id, constraints: [{ type: not_null }] }
+      - { name: game_id, data_type: varchar, description: ten-character nba.com game id, constraints: [{ type: not_null }] }
+      - { name: game_date, data_type: date, description: game date (Eastern-time calendar date), constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label such as 2025-26 (October starts the season); must be a row of the seasons seed, warn otherwise (ADR-0024), constraints: [{ type: not_null }], data_tests: [{ relationships: { arguments: { to: ref('seasons'), field: season }, config: { severity: warn } } }] }
+      - { name: player_name, data_type: varchar, description: player name as stored }
+      - { name: team, data_type: varchar, description: team abbreviation as stored for that season }
+      - { name: opponent, data_type: varchar, description: opponent abbreviation }
+      - { name: home, data_type: boolean, description: "true when the player's team was at home" }
+      - { name: minutes, data_type: double, description: minutes played, data_tests: [{ accepted_range: { arguments: { min_value: 0, max_value: 70 } } }] }
+      - { name: pts, data_type: integer, description: points }
+      - { name: reb, data_type: integer, description: total rebounds }
+      - { name: ast, data_type: integer, description: assists }
+      - { name: fgm, data_type: integer, description: field goals made }
+      - { name: fga, data_type: integer, description: field goals attempted }
+      - { name: fg3m, data_type: integer, description: three-pointers made }
+      - { name: fg3a, data_type: integer, description: three-pointers attempted }
+      - { name: ftm, data_type: integer, description: free throws made }
+      - { name: fta, data_type: integer, description: free throws attempted }
+      - { name: oreb, data_type: integer, description: offensive rebounds }
+      - { name: dreb, data_type: integer, description: defensive rebounds }
+      - { name: stl, data_type: integer, description: steals }
+      - { name: blk, data_type: integer, description: blocks }
+      - { name: tov, data_type: integer, description: turnovers }
+      - { name: pf, data_type: integer, description: personal fouls }
+      - { name: plus_minus, data_type: integer, description: plus/minus }
+      - { name: source, data_type: varchar, description: which ingest produced the row (kaggle_v515 backfill or kaggle_daily) }
+      - { name: dataset_revision, data_type: varchar, description: dataset-repo revision the loader pulled }
+      - { name: source_file, data_type: varchar, description: parquet file the row came from }
 
   - name: slv_predictions
     description: One row per (player_id, game_id, model_revision) the pipeline predicted, from the nightly slate files and the holdout-season replay; incremental by game date.
@@ -50,7 +52,7 @@ models:
       - { name: feature_version, description: version of the feature module (nba/features/asof.py FEATURE_VERSION) }
       - { name: run_kind, description: nightly or replay, data_tests: [{ accepted_values: { arguments: { values: [nightly, replay] } } }] }
       - { name: game_date, description: date of the predicted game }
-      - { name: season, description: season label of the game date }
+      - { name: season, description: season label of the game date (season_of macro); a row of the seasons seed, warn otherwise, data_tests: [{ relationships: { arguments: { to: ref('seasons'), field: season }, config: { severity: warn } } }] }
       - { name: player_name, description: player name at scoring time }
       - { name: team, description: team the roster rule assigned }
       - { name: opponent, description: opponent }
@@ -81,7 +83,7 @@ models:
       - { name: feature_version, description: feature module version }
       - { name: run_kind, description: nightly or replay, data_tests: [{ accepted_values: { arguments: { values: [nightly, replay] } } }] }
       - { name: game_date, description: date of the game }
-      - { name: season, description: season label of the game date }
+      - { name: season, description: season label of the game date (season_of macro); a row of the seasons seed, warn otherwise, data_tests: [{ relationships: { arguments: { to: ref('seasons'), field: season }, config: { severity: warn } } }] }
       - { name: player_name, description: player name at scoring time }
       - { name: team, description: team the roster rule assigned }
       - { name: opponent, description: opponent }

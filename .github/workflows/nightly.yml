@@ -14,10 +14,15 @@ name: Nightly ingest, residuals, slate
 #      without the token, or with DBT_TARGET=local, build into a local DuckDB file and upload
 #      it as a workflow artifact. Then export the gold marts and push them to gold/ in the
 #      dataset repo. Off-season zero-row runs skip the build and exit 0. A weekly full refresh
-#      is warehouse.yml.
+#      is warehouse.yml. Tests with severity warn open a `warehouse-warn` issue (ADR-0026).
 #
 # Days with no schedule file (season not published yet) or no games print one explicit
 # line each and exit 0. Schema validation errors and download failures fail the job.
+#
+# Dispatch with `rehearsal: true` to run steps 3 to 6 on a synthetic game night without
+# pushing anything (nba/rehearsal.py, ADR-0028): the slate, decisions and drift report are
+# written locally, the warehouse builds into a local DuckDB file that is uploaded as an
+# artifact, and the publish step only lists what it would push.
 
 on:
   schedule:
@@ -28,10 +33,14 @@ on:
         description: "Run date (YYYY-MM-DD); default today UTC. Residuals use the day before."
         required: false
         default: ""
+      rehearsal:
+        description: "Rehearse a game night (nba.rehearsal, ADR-0028): synthetic schedule, no pushes, local warehouse target, publish dry-run"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  issues: write  # HOLD / WARN issues (nba/drift/notify.py); labels are created idempotently
+  issues: write  # HOLD / WARN issues (nba/drift/notify.py, nba/warehouse/notify.py); labels are created idempotently
 
 jobs:
   nightly:
@@ -65,12 +74,26 @@ jobs:
         run: python -m pip install --quiet -c constraints.txt ".[warehouse]"
 
       - name: Run nightly pipeline
+        if: ${{ !inputs.rehearsal }}
         run: |
           set -o pipefail
           if [ -n "${{ inputs.date }}" ]; then
             python -m nba.nightly --date "${{ inputs.date }}" --push 2>&1 | tee nightly.log
           else
             python -m nba.nightly --push 2>&1 | tee nightly.log
+          fi
+
+      - name: Rehearse a game night (no pushes, no agent; ADR-0028)
+        if: ${{ inputs.rehearsal }}
+        env:
+          NBA_REHEARSAL: "1"  # nba.storage.hf refuses every write while this is set
+          GROQ_API_KEY: ""
+        run: |
+          set -o pipefail
+          if [ -n "${{ inputs.date }}" ]; then
+            python -m nba.rehearsal --date "${{ inputs.date }}" 2>&1 | tee nightly.log
+          else
+            python -m nba.rehearsal 2>&1 | tee nightly.log
           fi
 
       - name: Job summary
@@ -87,6 +110,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open an issue on HOLD or on a no-schedule streak (idempotent)
+        if: ${{ !inputs.rehearsal }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -124,6 +148,8 @@ jobs:
         if: steps.gate.outputs.verdict == 'build'
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+          # A rehearsal builds a scratch local DuckDB file, never the MotherDuck warehouse.
+          DBT_TARGET: ${{ inputs.rehearsal && 'local' || '' }}
         run: |
           if [ -n "$MOTHERDUCK_TOKEN" ] && [ "${DBT_TARGET:-}" != "local" ]; then
             echo "target=motherduck" >> "$GITHUB_OUTPUT"; echo "building on MotherDuck (nba)"
@@ -140,21 +166,54 @@ jobs:
         run: |
           mkdir -p .duckdb
           python -m nba.warehouse.load --root data/warehouse
-          # Incremental silver models with their parents (bronze copies) and children
-          # (snapshot, gold, tests); the tiny report copies are cheap and always rebuilt.
-          dbt build --project-dir dbt --profiles-dir dbt             --select "+slv_game_logs+" "+slv_predictions+" "+slv_residuals+" "+slv_daily_reports+"             "brz_metrics+" "brz_replay_report+" "brz_replay_all_rows+" "brz_policy_report+" "brz_policy_curve+" "brz_drift_reports+" 2>&1 | tee dbt.log
+          if [ "${{ inputs.rehearsal }}" = "true" ]; then
+            # Rehearsal: a first pass creates the scratch warehouse from the published files
+            # (seeds included, since no full refresh preceded it), then tonight's local products
+            # are staged where pull_products would have put them, so the second pass below is
+            # a genuine incremental run over new nightly rows (ADR-0028).
+            dbt build --project-dir dbt --profiles-dir dbt --full-refresh 2>&1 | tee dbt-rehearsal-first-pass.log
+            python -m nba.rehearsal stage-products --root . --warehouse data/warehouse
+          fi
+          # The `nightly` selector (dbt/selectors.yml, shared with `make dbt-nightly`): every
+          # model, seed and the snapshot with their tests (ADR-0023); the incremental silver
+          # models run incrementally.
+          dbt build --project-dir dbt --profiles-dir dbt --selector nightly 2>&1 | tee dbt.log
           dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
 
+      - name: Open an issue for each test that warned (idempotent; ADR-0026)
+        if: steps.gate.outputs.verdict == 'build' && !inputs.rehearsal
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python -m nba.warehouse.notify --run-results dbt/target/run_results.json --body-out issue_body.md | while read -r _ label title; do
+            gh label create "$label" --force --description "opened by the warehouse severity policy" || true
+            existing="$(gh issue list --label "$label" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+            if [ -z "$existing" ]; then
+              gh issue create --label "$label" --title "$title" --body-file issue_body.md
+            else
+              echo "issue #$existing already open for: $title"
+            fi
+          done
+
       - name: Push the exported gold marts to the dataset repo
-        if: steps.gate.outputs.verdict == 'build'
+        if: steps.gate.outputs.verdict == 'build' && !inputs.rehearsal
         run: python -m nba.warehouse.publish --export-dir data/warehouse/export
 
-      - name: Upload the local warehouse file (fallback target only)
+      - name: Rehearsal only - list what the publish step would have pushed
+        if: steps.gate.outputs.verdict == 'build' && inputs.rehearsal
+        env:
+          NBA_REHEARSAL: "1"
+        run: python -m nba.warehouse.publish --export-dir data/warehouse/export --dry-run
+
+      - name: Upload the local warehouse file (fallback target or rehearsal)
         if: steps.gate.outputs.verdict == 'build' && steps.target.outputs.target == 'local'
         uses: actions/upload-artifact@v4
         with:
           name: warehouse-local-${{ github.run_id }}
           path: |
             .duckdb/nba.duckdb
+            data/warehouse/export/
             dbt.log
+            dbt-rehearsal-first-pass.log
           if-no-files-found: warn

@@ -33,13 +33,23 @@ scored as (
         abs(r.edge) > g.threshold and r.side <> 0 as resolved,
         abs(r.edge) > g.threshold and r.side <> 0 and sign(r.edge) = r.side as hit,
         abs(r.edge) > g.threshold and r.side = 0 as push,
-        abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is not null and sign(r.season_edge) = r.side as sm_same_hit,
-        abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is not null and r.season_edge <> 0 and sign(r.season_edge) <> r.side as sm_same_miss,
+        abs(r.edge) > g.threshold
+        and r.side <> 0
+        and r.season_edge is not null
+        and sign(r.season_edge) = r.side as sm_same_hit,
+        abs(r.edge) > g.threshold
+        and r.side <> 0
+        and r.season_edge is not null
+        and r.season_edge <> 0
+        and sign(r.season_edge) <> r.side as sm_same_miss,
         abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge = 0 as sm_same_tie,
         abs(r.edge) > g.threshold and r.side <> 0 and r.season_edge is null as sm_same_missing,
         r.season_edge is not null and abs(r.season_edge) > g.threshold as sm_called,
         r.season_edge is not null and abs(r.season_edge) > g.threshold and r.side <> 0 as sm_resolved,
-        r.season_edge is not null and abs(r.season_edge) > g.threshold and r.side <> 0 and sign(r.season_edge) = r.side as sm_hit
+        r.season_edge is not null
+        and abs(r.season_edge) > g.threshold
+        and r.side <> 0
+        and sign(r.season_edge) = r.side as sm_hit
     from resolved as r
     inner join grid as g on r.target = g.target
 ),
@@ -91,9 +101,13 @@ select
     cast(
         case
             when n_resolved > 0
-                then (season_mean_same_rows_n_hit + 0.5 * (season_mean_same_rows_n_tie + season_mean_same_rows_n_missing)) / n_resolved
+                then (
+                    season_mean_same_rows_n_hit + 0.5 * (season_mean_same_rows_n_tie + season_mean_same_rows_n_missing)
+                )
+                / n_resolved
         end as double
     ) as season_mean_same_rows_hit_rate,
     cast(season_mean_own_n_called as integer) as season_mean_own_n_called,
-    cast(case when season_mean_own_resolved > 0 then season_mean_own_hit / season_mean_own_resolved end as double) as season_mean_own_hit_rate
+    cast(case when season_mean_own_resolved > 0 then season_mean_own_hit / season_mean_own_resolved end as double)
+        as season_mean_own_hit_rate
 from agg

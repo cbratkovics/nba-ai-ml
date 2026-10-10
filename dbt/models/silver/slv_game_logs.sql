@@ -35,9 +35,9 @@ with in_scope as (
     from {{ ref('brz_game_logs') }}
     {% if is_incremental() %}
     where game_date >= (
-        select coalesce(max(t.game_date), date '1900-01-01') - interval ({{ var('lookback_days') }}) day
-        from {{ this }} as t
-    )
+            select coalesce(max(t.game_date), date '1900-01-01') - interval ({{ var('lookback_days') }}) day
+            from {{ this }} as t
+        )
     {% endif %}
 ),
 
