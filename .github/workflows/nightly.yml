@@ -140,9 +140,10 @@ jobs:
         run: |
           mkdir -p .duckdb
           python -m nba.warehouse.load --root data/warehouse
-          # Incremental silver models with their parents (bronze copies) and children
-          # (snapshot, gold, tests); the tiny report copies are cheap and always rebuilt.
-          dbt build --project-dir dbt --profiles-dir dbt             --select "+slv_game_logs+" "+slv_predictions+" "+slv_residuals+" "+slv_daily_reports+"             "brz_metrics+" "brz_replay_report+" "brz_replay_all_rows+" "brz_policy_report+" "brz_policy_curve+" "brz_drift_reports+" 2>&1 | tee dbt.log
+          # The `nightly` selector (dbt/selectors.yml, shared with `make dbt-nightly`): every
+          # model, seed and the snapshot with their tests (ADR-0023); the incremental silver
+          # models run incrementally.
+          dbt build --project-dir dbt --profiles-dir dbt --selector nightly 2>&1 | tee dbt.log
           dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
 
       - name: Push the exported gold marts to the dataset repo

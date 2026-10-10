@@ -12,7 +12,7 @@ help:
 	@echo "dbt-load     - pull the warehouse sources from Hugging Face into data/warehouse"
 	@echo "dbt-build    - dbt build on the local DuckDB file (.duckdb/nba.duckdb)"
 	@echo "dbt-full     - dbt build --full-refresh (same target)"
-	@echo "dbt-nightly  - the nightly selection: incremental silver with parents and children"
+	@echo "dbt-nightly  - the nightly selection (dbt/selectors.yml): every model, seed and the snapshot, incremental"
 	@echo "dbt-docs     - dbt docs generate --static, then the description check"
 	@echo "dbt-export   - export gold marts to data/warehouse/export"
 	@echo "policy       - write reports/policy_<season>.json from the built gold marts, then rebuild (dbt-full) so the policy marts reconcile"
@@ -41,7 +41,7 @@ dbt-full:
 	$(DBT) build $(DBT_FLAGS) --full-refresh
 
 dbt-nightly:
-	$(DBT) build $(DBT_FLAGS) --select "+slv_game_logs+" "+slv_predictions+" "+slv_residuals+" "+slv_daily_reports+" "brz_metrics+" "brz_replay_report+" "brz_replay_all_rows+" "brz_policy_report+" "brz_policy_curve+" "brz_drift_reports+"
+	$(DBT) build $(DBT_FLAGS) --selector nightly
 
 policy:
 	$(PY) -m nba.decisions.evaluate --duckdb $(NBA_DUCKDB_PATH)
