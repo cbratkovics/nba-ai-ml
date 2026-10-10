@@ -743,8 +743,14 @@ No $0 source with documented terms reachable from a runner was found. Ranked: (1
 official NBA injury report PDFs (hub `https://official.nba.com/nba-injury-report-2025-26-season/`;
 files at `ak-static.cms.nba.com/referee/injury/Injury-Report_<date>_<time>.pdf`; deadlines
 5 p.m. local the day before and 1 p.m. day-of) are the legitimate source, but the host is an
-Akamai sibling of the blocked `cdn.nba.com` and **untested from runners** — a one-line
-addition to the dispatch-only `probe-nba-api.yml` would settle it, and the PDFs need parsing;
+Akamai sibling of the blocked `cdn.nba.com`. **Probed from a runner on 2026-10-10 (run
+`38010924812`): the PDF host answers (HTTP 200, `application/pdf`, 63,591 bytes for a 2025-26
+report) while the `official.nba.com` hub page returns 403, and `stats.nba.com` / `cdn.nba.com`
+are still blocked.** nba.com's Terms of Use allow downloading material "to any single computer
+only for your personal, noncommercial use" and prohibit reproduction or redistribution; they
+name nba.com and its sub-sites, not the Akamai host. Nothing is built on this (owner
+decision): it would need PDF parsing, and a scheduled job is automated access the terms do not
+address;
 (2) balldontlie injuries: GOAT tier only; (3) ESPN's injuries JSON: undocumented, and Disney's
 terms forbid "automated means" (`https://disneytermsofuse.com/english/`); (4) Rotowire and
 similar: paid or scraping. **Recommendation:** the recommendations view carries the plain
@@ -793,6 +799,37 @@ only — the rule is pre-registered without a line backtest, which is the honest
 an availability signal; settlement independent of the Kaggle author. The last item is the
 risk to name on every ledger page.
 
-## 10. Done, cut, and what to open first
+## 10. Phase 2 record (2026-10-10, branch `analytics-engineering`)
+
+Owner steps completed: `warehouse.yml` dispatched after the merge (run `38010452785`,
+MotherDuck, `PASS=106`, `gold/` pushed at HF `f197d840` — the first fresh export since
+2026-09-16; the `seasons` seed is now on MotherDuck); the scratch-MotherDuck rehearsal ran
+(`38011203767`, `delete+insert` on `nba_rehearsal`, dropped afterwards; ADR-0028); the
+injury-report probe ran (`38010924812`, §9.5).
+
+Built (ADR-0030, ADR-0031): The Odds API client and the fail-closed credit guard with its
+usage log; the capture command and `capture.yml` (scheduled 20:00 UTC, guard-gated, decision
+record before any priced call, out-of-scope games counted, no retries); the private lines
+repo layout and loader pull; deterministic name matching with an alias file and unmatched
+counts; the manual CSV path; the Odds API schedule fallback with provisional ids resolved by
+(date, team) when box scores arrive; `tip_off_utc`, `minutes_mean_last10`,
+`input_staleness_days`, `prediction_generated_at` and schedule provenance on every slate row;
+the source-stall signal and issue; the pre-registered rule as data with a hash pinned in dbt;
+`fct_paper_bet` (settlement computed, never stored; never exported), `mart_ledger`,
+`mart_ledger_by_edge`, `mart_ledger_coverage`; the two timestamp tests; the private
+recommendations view; the replay evidence artifact `reports/ledger_rule_evidence_2025-26.json`.
+
+Expected on 2026-10-20: a slate (from the Kaggle file if it appears, else the fallback), a
+capture of DraftKings points lines for every game after 16:00 EDT, matched names, **zero
+qualifying bets** (every player is a season debut), and the first `pending` rows a day or two
+later as players reach one prior game. The owner must add the `ODDS_API_KEY` secret; the
+private repo is created on the first capture.
+
+Cut or deferred: a public `/ledger` page (Phase 3 reads the gold JSON exports; the marts are
+ready); `docs/METRICS.md` entries for the ledger metrics (Phase 4); native unit tests of the
+settlement SQL against `nba.ledger.rule.settle` (Phase 4); alternate lines, live odds,
+Caesars through the API (paid), any availability signal.
+
+## 11. Done, cut, and what to open first
 
 Filled in at the end of the pass.

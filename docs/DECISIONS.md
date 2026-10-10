@@ -551,6 +551,14 @@ first pass `PASS=106`, three product files staged, incremental pass `PASS=106`, 
 (`fct_prediction` 38,855 rows = 38,372 replay + 483 nightly, `mart_drift` 25), publish
 dry-run listing 14 files. Nothing reached Hugging Face.
 
+**Scratch MotherDuck (owner decision, 2026-10-10).** `rehearsal_target=motherduck` builds into
+the scratch database `nba_rehearsal` (`CREATE DATABASE IF NOT EXISTS` before the build,
+`DROP DATABASE … CASCADE` in a final `always()` step; the helpers refuse any name outside
+`nba_rehearsal*`). Run `38011203767` **succeeded**: the same synthetic night, both passes on
+`target='motherduck'` (`PASS=106` each; the second a real `delete+insert` over the staged
+products), export, dry-run publish, database dropped. The gap named above is closed; the
+MotherDuck incremental path has run, on a scratch copy, against real data shapes.
+
 ## ADR-0029 — Opening night depends on one Kaggle uploader for both the schedule and the box scores (proposed, 2026-10-09; decision in Phase 2)
 
 Checked with the owner's own Kaggle API key on 2026-10-09: the dump
@@ -570,6 +578,151 @@ a team-name seed. For **box scores** no documented free source reachable from a 
 found (balldontlie stats need a paid tier; nba.com hosts are blocked; ESPN's JSON is
 undocumented and Disney's terms forbid automated access), so settlement depends on the
 Kaggle author resuming, and the ledger must be designed to settle late rather than never.
-Decision deferred to Phase 2, where the odds client lands: implement the schedule fallback
-through the same free key, keep the Kaggle file as the primary when present, and record in
-the slate which source the schedule came from.
+**Decision (owner, 2026-10-10): The Odds API `/events` is the schedule fallback.** Implemented
+in Phase 2 (`nba/lines/schedule.py`, `nba/nightly.py` step 3): when the dump has no schedule
+file for the date's season and `ODDS_API_KEY` is set, the night's events (0 credits) become
+a schedule frame in the loader's layout with the Eastern-time game date, both teams mapped
+to the game logs' abbreviations (`nba/lines/teams.py`, errors on an unknown name), a
+provisional game id `evt:<event id>` that can never collide with an nba.com id, the tip-off
+in UTC and `schedule_source = odds_api`; the Kaggle file wins whenever it exists. Event ids
+are not NBA game ids, so the mapping to the real id happens when the box scores arrive: by
+(game date, team), since a team plays at most once per date (`resolve_game_ids`, tested in
+`tests/test_lines_schedule.py`); the residual step keys the box score by the resolved id,
+carries it as `resolved_game_id` next to the slate's id, and reports the rows that stayed
+provisional (`n_unresolved_provisional_games` in the residual line and the run summary). The
+warehouse joins `fct_prediction.box_score_game_id` for every settlement. Every slate row now
+also carries `tip_off_utc`, `event_id` and `schedule_source` from either source.
+
+The box-score side has no fallback (ADR-0031 designs for it: bets settle whenever the box
+scores arrive, and a `source-stalled` issue is distinct from no-schedule).
+
+## ADR-0030 — The pre-registered paper-bet rule, version 1 (PROPOSED, 2026-10-10; final on the owner's sign-off, before 2026-10-20)
+
+The rule is data in `nba/ledger/rule.py` (`RULE`, hash `6f7f1c9917ab08dcf001d76842820cf7c96bf5ee1a9cffe1e13fc44d4695350b`), mirrored as
+dbt vars that `tests/test_project_config.py` pins to the same hash, so the recommendations
+view (Python) and `fct_paper_bet` (SQL) apply one rule. It is committed before the first live
+date it covers and is never tuned on 2026-27; a change is `ledger_rule_v2` with its own ADR.
+
+**Scope.** Markets: through the API, `player_points` only; by hand (`source = manual`),
+points, rebounds and assists. Books: DraftKings through the API (Caesars is paid-only on The
+Odds API free plan, docs/AE_AUDIT.md §9.1); DraftKings or Caesars by hand. Line source and
+book are columns on every bet and the marts report `api`, `manual` and `all` separately.
+
+**Snapshot.** One scheduled capture a day at 20:00 UTC (16:00 EDT, 15:00 EST), every game
+of the night. Games that commenced before the snapshot are out of scope by rule and counted
+(`mart_ledger_coverage.games_out_of_scope`); a manual dispatch uses its own time as the
+snapshot. Predictions are stamped by the nightly at 10:00 UTC, so `prediction_generated_at
+< snapshot_at_utc < tip_off_utc` holds by construction and is tested
+(`assert_predictions_precede_their_lines` fails the build; `assert_no_bet_violates_the_timestamp_rule`).
+
+**Eligibility (all three known before tip-off), from the 2025-26 replay
+(`reports/ledger_rule_evidence_2025-26.json`):**
+- at least **1 prior game this season** (`games_played_season >= 1`): the training
+  population requires an earlier game (both baselines defined), and on opening night this
+  alone makes every row ineligible, which is expected: 2026-10-20 is a smoke test of
+  capture, matching and timestamps, not a betting night;
+- **last-10 minutes mean ≥ 15.0** as the pre-game proxy for the 10-minute cut the model was
+  evaluated on. At that floor **95.7% of the proxy's rows are min10 rows** (precision) and it
+  **keeps 86.3% of the min10 population** (recall); the model's points MAE on the proxy
+  set is 4.989 against the last-10 baseline's 5.062 (keys
+  `proxy.table[minutes_floor=15]`). The neighbours: a 12-minute floor is 93.4% / 92.6%, a
+  20-minute floor 98.1% / 70.5%. Fifteen is where the proxy stops admitting
+  rows the model never saw in evaluation (under 5 % impurity) while keeping most of the
+  population; it is a proxy, and the marts report the realised population separately;
+- **inputs at most 10 days old** (`input_staleness_days`, the feature module's `days_rest`
+  at prediction time). In the training population the median staleness is 2 days,
+  p99 16; 98.2% of rows have inputs at most 10 days old. The cap is **not** about
+  accuracy — the model still beats the baseline at 8–10 days (4.658 vs 5.048, n=431) and
+  11–14 days (4.256 vs 4.750, n=135) — it is about what a gap longer than the
+  All-Star break (about 8 days) means: the player was out, and the model has no
+  availability or minutes-restriction information. Ten days keeps the season's scheduled
+  gaps and excludes most injury returns.
+
+**Decision.** `edge = prediction − line`. **Over** when `edge ≥ threshold`, **under** when
+`−edge ≥ threshold`, else pass. Thresholds per market are the committed `min10` policy
+thresholds already pre-registered on the replay (`reports/policy_2025-26.json`
+`populations.min10.targets.<target>.threshold`): points **1.75**, rebounds **0.70**, assists
+**0.50**. No historical line was available at $0 to tune an edge against a book, so the one
+pre-registered edge constant per target is reused unchanged; that is the honest position and
+it is what makes the season out of sample.
+
+**Stake and settlement.** Flat one unit at the captured American price on the bet side.
+`pending` until the game's box score is ingested; `won` / `lost` on the bet side of the
+line; `push` when the actual equals a whole-number line; `void` when the game is ingested
+and the player has no box-score row (did not play) or the game was not played. Settlement
+is computed in `fct_paper_bet` from the facts on every build, never stored, so it is
+idempotent and backfills itself when a late box score arrives.
+
+**Reporting.** `mart_ledger` (hit rate against the line with a 95 % half-width, the
+break-even hit rate implied by the prices taken, ROI in units with a half-width),
+`mart_ledger_by_edge`, `mart_ledger_coverage` (captured nights against game nights, bets
+per night, unmatched lines, pending counts). Rates are ratios of sums. Every row carries
+its n and `evaluation = out_of_sample`; in-sample results stay in the replay marts and are
+never pooled. Rule of thumb for reading them: at a true 55 % hit rate the 95 % half-width is
+±0.10 at 100 settled bets and ±0.05 at 400; below about 100 settled bets the ledger says
+"too early", and the README will say so.
+
+## ADR-0031 — Budgeted, bias-guarded line capture and the private ledger (implemented, 2026-10-10)
+
+**Budget.** The Odds API free plan: 500 credits a month; `/events` is free; a per-event
+props call costs `markets × region units` and a `bookmakers` filter of up to ten books is
+one unit (docs/AE_AUDIT.md §9.1–9.2). With points only and DraftKings only, one game costs
+one credit, an average night 7.5 and a 15-game night 15; every game every night fits with
+margin (about 200 of 500 a month), which is why the owner allowed a schedule. The guard
+(`nba/lines/guard.py`) never plans past `425` (the cap less a 15 % margin); a scheduled run
+stops at `375`, keeping `50` in reserve for a manual dispatch with `--use-reserve`. Before
+the night's priced calls it computes the plan's cost, reads the month's spend from the
+private usage log, reads the provider's own `x-requests-remaining` from the last answer (the
+provider's cycle is not the calendar month, so the smaller figure wins), and refuses in
+writing when either would be crossed. Every call and every refusal is logged with the cost
+the provider reported (`usage/odds_api.jsonl`). Nothing retries: a failed event call is
+logged once and skipped. `tests/test_lines_guard.py` proves the refusal paths;
+`tests/test_lines_capture.py` proves the refusal happens before any priced call.
+
+**No cherry-picked nights.** The capture writes and pushes `captures/<date>.json` (date,
+policy version, trigger, snapshot time, `decided_before_fetch: true`) before the first
+priced call; once that record exists every qualifying line of the night enters the ledger.
+The policy is `capture_policy_v1`: the schedule runs every day at the fixed time; a manual
+dispatch exists only to capture a night the schedule missed, and is recorded as such.
+`mart_ledger_coverage` reports captured nights against game nights on every ledger page,
+and a captured night cannot be deleted from the record (the private repo keeps history).
+
+**Private storage.** Raw lines, prices, capture records, the usage log and the
+recommendations live in the private dataset repo `cbratkovics/nba-lines` (The Odds API's
+terms permit storing the data and publishing derived values; they prohibit redistributing it
+as a raw data product). The warehouse loader pulls them with the token; CI has no token and
+builds the bronze copies empty and typed. `brz_lines`, `slv_lines` and `fct_paper_bet` are
+`meta: export: false` and never leave the warehouse; `mart_ledger*` carry aggregates only.
+
+**Matching.** Sportsbook names to `player_id` deterministically (`nba/lines/matching.py`):
+a normaliser (accents, periods, apostrophes, Jr/Sr/II/III), an exact match on the normalised
+name within the player's team roster for this and last season, then league-wide when unique,
+then the committed alias file (`nba/lines/aliases.csv`, confirmed mappings with a date and
+note). Anything else is `unmatched`, counted in the capture record and in
+`mart_ledger_coverage.lines_unmatched_player`, never guessed. Team names map through
+`nba/lines/teams.py`, which errors on an unknown name.
+
+**Manual lines.** `python -m nba.lines.manual ingest <csv>`: the template is validated row by
+row (ISO timestamp with zone, date, book, market, half-or-whole line in range, American
+prices, no duplicates), matched by the same step, written as `lines/<date>_manual.parquet`
+with `source = manual`, and reported separately as well as together.
+
+**Source stall.** Distinct from no-schedule: when slated nights go by without a single box
+score (`stall_streak` from the rolling residual lines, `STALL_WARN = 2`), the nightly logs
+`SOURCE … (source stalled)` and the workflow opens one issue labelled `source-stalled`.
+Predictions and captures continue; bets stay `pending` and settle whenever the dump resumes
+(settlement is computed, never stored). `mart_ledger_coverage.bets_pending` is on every page.
+
+**Staleness and eligibility stamps.** Every slate row carries `minutes_mean_last10`,
+`input_staleness_days` (the feature module's `days_rest` for the pending row) and
+`prediction_generated_at`, so the rule's eligibility is decided from the prediction itself.
+
+**Recommendations (private).** `python -m nba.ledger.recommend` writes
+`recommendations/<date>.json` for a captured night: player, market, line, prices, prediction,
+edge, decision, the reasons a row does not qualify, and on every row and in the header the
+plain statement that the model has no availability information.
+
+**Workflow.** `.github/workflows/capture.yml`: scheduled at 20:00 UTC and dispatchable
+(date, `use_reserve`, `dry_run`); needs the `ODDS_API_KEY` secret (owner step); until it
+exists a scheduled run stops green with a notice. Nothing in it writes to the public repo.
+

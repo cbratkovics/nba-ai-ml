@@ -710,6 +710,39 @@
       "started_at": "2026-10-10T00:24:42Z",
       "target": "local",
       "note": "rehearsal (ADR-0028): 15 synthetic games, 483 predictions, gate build, two local builds PASS=106, export, dry-run publish; nothing pushed"
+    },
+    {
+      "run_id": 38010452785,
+      "workflow": "warehouse.yml",
+      "event": "workflow_dispatch",
+      "branch": "main",
+      "commit": "2ccf6b8",
+      "conclusion": "success",
+      "started_at": "2026-10-10T00:46:01Z",
+      "target": "motherduck",
+      "pushed": "cbratkovics/nba-game-logs@f197d840",
+      "note": "first full refresh after the ADR-0022 publish fix: PASS=106 on MotherDuck, gold/ pushed (seasons seed now on MotherDuck)"
+    },
+    {
+      "run_id": 38010924812,
+      "workflow": "probe-nba-api.yml",
+      "event": "workflow_dispatch",
+      "branch": "analytics-engineering",
+      "commit": "191531c",
+      "conclusion": "success",
+      "started_at": "2026-10-10T00:52:54Z",
+      "note": "probe (ADR-0029 follow-up): injury-report PDF on ak-static.cms.nba.com reachable from a runner (HTTP 200, application/pdf, 63,591 bytes); official.nba.com hub 403; stats.nba.com timeout, cdn.nba.com 403 unchanged"
+    },
+    {
+      "run_id": 38011203767,
+      "workflow": "nightly.yml",
+      "event": "workflow_dispatch",
+      "branch": "analytics-engineering",
+      "commit": "fefcf0f",
+      "conclusion": "success",
+      "started_at": "2026-10-10T00:57:05Z",
+      "target": "motherduck",
+      "note": "rehearsal on the scratch MotherDuck database nba_rehearsal (ADR-0028): created, full pass PASS=106, 3 products staged, incremental delete+insert pass PASS=106, export, dry-run publish, database dropped; nothing pushed"
     }
   ],
   "hf_commits": [
