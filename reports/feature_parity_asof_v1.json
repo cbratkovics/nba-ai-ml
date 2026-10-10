@@ -1,0 +1,134 @@
+{
+  "feature_version": "asof_v1",
+  "generated_at": "2026-10-10T22:45:31+00:00",
+  "git_sha": "0bcde256217eed379a9cb077007f206643a60509",
+  "duckdb": ".duckdb/nba.duckdb",
+  "dataset_revision": "949cbd396e4bf2989206fd1bca840b3c375ff8cf",
+  "sql_table": "intermediate.int_player_game_features",
+  "module_table": "bronze.brz_features_asof_v1",
+  "tolerance": 1e-12,
+  "tolerance_note": "dbt var tol_feature_parity, applied to the double features by assert_int_features_match_feature_module; integer features must match exactly. Set from max_abs_diff_doubles with headroom for summation order; a formula difference would show as at least 1e-3.",
+  "rows_sql": 130414,
+  "rows_module": 130414,
+  "rows_joined": 130414,
+  "features": {
+    "pts_mean_last5": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "pts_mean_last10": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "pts_mean_last20": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "reb_mean_last5": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "reb_mean_last10": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "reb_mean_last20": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "ast_mean_last5": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "ast_mean_last10": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "ast_mean_last20": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "minutes_mean_last5": {
+      "kind": "double",
+      "max_abs_diff": 1.4210854715202004e-14,
+      "null_mismatches": 0
+    },
+    "minutes_mean_last10": {
+      "kind": "double",
+      "max_abs_diff": 1.4210854715202004e-14,
+      "null_mismatches": 0
+    },
+    "minutes_mean_last20": {
+      "kind": "double",
+      "max_abs_diff": 2.1316282072803006e-14,
+      "null_mismatches": 0
+    },
+    "pts_mean_season": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "reb_mean_season": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "ast_mean_season": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "minutes_mean_season": {
+      "kind": "double",
+      "max_abs_diff": 2.1316282072803006e-14,
+      "null_mismatches": 0
+    },
+    "games_played_season": {
+      "kind": "integer",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "days_rest": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "back_to_back": {
+      "kind": "integer",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "home": {
+      "kind": "integer",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "pts_mean_vs_opp": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "reb_mean_vs_opp": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    },
+    "ast_mean_vs_opp": {
+      "kind": "double",
+      "max_abs_diff": 0.0,
+      "null_mismatches": 0
+    }
+  },
+  "max_abs_diff_doubles": 2.1316282072803006e-14,
+  "max_abs_diff_integers": 0.0,
+  "total_null_mismatches": 0
+}
