@@ -70,7 +70,16 @@ def test_the_runs_the_status_claims_rest_on_are_present() -> None:
     assert len(warehouse) >= 4 and all(r["conclusion"] == "success" for r in warehouse)
     assert all(r.get("target") == "motherduck" for r in warehouse), "target must be recorded"
     assert runs[35048092357]["pushed"] == "cbratkovics/nba-game-logs@66404be0"
-    nightly = [r for r in runs.values() if r["workflow"] == "nightly.yml"]
+    # Live nightly runs only: a rehearsal dispatch (ADR-0028) is recorded with "rehearsal" in
+    # its note and may fail without touching the claim that every live night succeeded.
+    nightly = [
+        r
+        for r in runs.values()
+        if r["workflow"] == "nightly.yml" and "rehearsal" not in r.get("note", "")
+    ]
     assert len(nightly) >= 28 and all(r["conclusion"] == "success" for r in nightly)
+    assert any(
+        "rehearsal" in r.get("note", "") and r["conclusion"] == "success" for r in runs.values()
+    )
     assert runs[34666354516]["workflow"] == "train.yml"
     assert runs[34668262142]["workflow"] == "replay.yml"
