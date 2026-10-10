@@ -87,6 +87,9 @@ def _write_root(frame: pd.DataFrame, root: Path) -> Path:
         for p in (root / config.HF_DATASET_PREFIX).glob("*.parquet"):
             p.unlink()
     local.write_per_season(frame, root / config.HF_DATASET_PREFIX)
+    # The feature module's output over the same rows, so the parity proof
+    # (assert_int_features_match_feature_module) runs on every fixture build too.
+    load.write_features(root)
     load.write_manifest(
         root, "fixture", config.HOLDOUT_SEASON, loaded_at="2026-01-01T00:00:00+00:00"
     )
