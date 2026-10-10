@@ -127,6 +127,40 @@ def stage_products(root: Path, warehouse_root: Path) -> list[Path]:
     return staged
 
 
+SCRATCH_DATABASE = "nba_rehearsal"
+
+
+def _motherduck(token: str):
+    import duckdb
+
+    return duckdb.connect(f"md:?motherduck_token={token}")
+
+
+def create_scratch(database: str = SCRATCH_DATABASE, token: str | None = None) -> None:
+    """CREATE DATABASE IF NOT EXISTS <database> on MotherDuck: the rehearsal's own, empty
+    warehouse, so delete+insert is exercised on MotherDuck without touching `nba` (ADR-0028)."""
+    if not database.startswith("nba_rehearsal"):
+        raise ValueError(f"refusing to create {database!r}: scratch databases are nba_rehearsal*")
+    con = _motherduck(token or os.environ["MOTHERDUCK_TOKEN"])
+    try:
+        con.execute(f"create database if not exists {database}")
+        print(f"REHEARSAL created MotherDuck database {database} (if it did not exist)")
+    finally:
+        con.close()
+
+
+def drop_scratch(database: str = SCRATCH_DATABASE, token: str | None = None) -> None:
+    """DROP DATABASE IF EXISTS <database> CASCADE; refuses any name that is not a scratch one."""
+    if not database.startswith("nba_rehearsal"):
+        raise ValueError(f"refusing to drop {database!r}: scratch databases are nba_rehearsal*")
+    con = _motherduck(token or os.environ["MOTHERDUCK_TOKEN"])
+    try:
+        con.execute(f"drop database if exists {database} cascade")
+        print(f"REHEARSAL dropped MotherDuck database {database}")
+    finally:
+        con.close()
+
+
 def run(
     d: date,
     root: Path,
@@ -170,6 +204,12 @@ def main(argv: list[str] | None = None) -> int:
     p_stage = sub.add_parser("stage-products", help="copy local products into the warehouse root")
     p_stage.add_argument("--root", type=Path, default=Path("."))
     p_stage.add_argument("--warehouse", type=Path, default=Path("data") / "warehouse")
+    for name, text in (
+        ("create-scratch", "create the scratch MotherDuck database for a rehearsal"),
+        ("drop-scratch", "drop the scratch MotherDuck database after a rehearsal"),
+    ):
+        sp = sub.add_parser(name, help=text)
+        sp.add_argument("--database", default=SCRATCH_DATABASE)
     parser.add_argument("--date", type=date.fromisoformat, default=None)
     parser.add_argument("--root", type=Path, default=Path("."))
     parser.add_argument("--dump-dir", type=Path, default=config.DUMP_DIR)
@@ -182,6 +222,12 @@ def main(argv: list[str] | None = None) -> int:
         for p in staged:
             print(f"STAGED {p}")
         print(f"REHEARSAL staged {len(staged)} product files into {args.warehouse}")
+        return 0
+    if args.command == "create-scratch":
+        create_scratch(args.database)
+        return 0
+    if args.command == "drop-scratch":
+        drop_scratch(args.database)
         return 0
     d = args.date or datetime.now(UTC).date()
     histories = args.team_histories
