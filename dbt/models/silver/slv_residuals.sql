@@ -46,6 +46,8 @@ select
     has_actual,
     game_ingested,
     in_metrics_population,
+    resolved_game_id,
+    tip_off_utc,
     dataset_revision,
     source_file
 from unioned

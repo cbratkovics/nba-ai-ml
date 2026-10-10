@@ -240,10 +240,12 @@ def test_opening_nights_end_to_end(
     out_dir.mkdir()
     _dbt(db, wh, "run-operation", "export_gold", "--args", json.dumps({"out_dir": str(out_dir)}))
     manifest = json.loads((out_dir / "_export_manifest.json").read_text())
-    assert len(manifest) == 13 and {m["model"] for m in manifest} >= {
+    # 16 exported marts: fct_paper_bet (raw lines) is meta export=false and must be absent.
+    assert {m["model"] for m in manifest}.isdisjoint({"fct_paper_bet", "brz_lines", "slv_lines"})
+    assert len(manifest) == 16 and {m["model"] for m in manifest} >= {
         "fct_prediction",
         "mart_policy_metrics",
         "mart_drift",
     }
     assert publish.publish(out_dir, dry_run=True) is None
-    assert len(publish.export_files(out_dir)) == 14
+    assert len(publish.export_files(out_dir)) == 17

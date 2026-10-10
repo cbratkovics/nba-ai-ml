@@ -67,6 +67,12 @@ models:
       - { name: reb_mean_season, description: season-to-date mean of rebounds (nightly files only) }
       - { name: ast_mean_season, description: season-to-date mean of assists (nightly files only) }
       - { name: games_played_season, description: earlier games in the season (nightly files only) }
+      - { name: minutes_mean_last10, description: last-10 mean of minutes at scoring time (nightly files only; the pre-game eligibility proxy input, ADR-0030) }
+      - { name: input_staleness_days, description: "days from the player's newest stored game to the slate date (nightly files only; ADR-0030)" }
+      - { name: tip_off_utc, description: scheduled tip-off in UTC (nightly files only) }
+      - { name: event_id, description: The Odds API event id when the schedule came from it (ADR-0029) }
+      - { name: schedule_source, description: kaggle_dump or odds_api (nightly files only) }
+      - { name: prediction_generated_at, description: when the slate was scored (nightly files only; the timestamp the ledger's ordering rule reads, ADR-0030) }
       - { name: dataset_revision, description: dataset revision the features were built from }
       - { name: source_file, description: file the row came from }
 
@@ -104,6 +110,8 @@ models:
       - { name: has_actual, description: true when the box score exists }
       - { name: game_ingested, description: true when the game is in the stored logs }
       - { name: in_metrics_population, description: "the writer's training-population flag (minutes >= 10 and both baselines defined)" }
+      - { name: resolved_game_id, description: "the box score's game id; differs from game_id only when the slate ran on a provisional Odds API id (ADR-0029)" }
+      - { name: tip_off_utc, description: scheduled tip-off in UTC (nightly files only) }
       - { name: dataset_revision, description: dataset revision the features were built from }
       - { name: source_file, description: file the row came from }
 
@@ -139,3 +147,33 @@ models:
       - { name: restatement_lag_days, description: run date minus game date in days }
       - { name: changed_fields, description: "stored and incoming values per changed field, as JSON" }
       - { name: source_file, description: report file }
+
+  - name: slv_lines
+    description: One row per (game_date, source, book, market, player_name_raw, capture_id) line captured from The Odds API or typed by hand, with the matched player; the later book update wins a duplicate. Never exported (ADR-0031).
+    config:
+      meta: { export: false }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [game_date, source, book, market, player_name_raw, capture_id]
+    columns:
+      - { name: capture_id, description: capture the row belongs to, data_tests: [not_null] }
+      - { name: game_date, description: Eastern-time game date, data_tests: [not_null] }
+      - { name: season, description: season label of the game date (season_of macro) }
+      - { name: source, description: api or manual, data_tests: [{ accepted_values: { arguments: { values: [api, manual] } } }] }
+      - { name: book, description: sportsbook key, data_tests: [{ accepted_values: { arguments: { values: [draftkings, caesars] } } }] }
+      - { name: market, description: "player_points, player_rebounds or player_assists", data_tests: [{ accepted_values: { arguments: { values: [player_points, player_rebounds, player_assists] } } }] }
+      - { name: player_name_raw, description: player name as the book wrote it }
+      - { name: player_id, description: matched nba.com player id; null when unmatched }
+      - { name: match_method, description: "team, league, alias or unmatched", data_tests: [{ accepted_values: { arguments: { values: [team, league, alias, unmatched] } } }] }
+      - { name: team, description: "the player's team as matched" }
+      - { name: event_id, description: The Odds API event id (API rows) }
+      - { name: home_team, description: home team abbreviation (API rows) }
+      - { name: away_team, description: away team abbreviation (API rows) }
+      - { name: commence_time_utc, description: scheduled tip-off in UTC (API rows) }
+      - { name: snapshot_at_utc, description: when the snapshot was taken or the line read }
+      - { name: line_last_update_utc, description: "the book's last update (API) or the read time (manual)" }
+      - { name: line, description: the posted line }
+      - { name: over_price, description: American price of the over }
+      - { name: under_price, description: American price of the under }
+      - { name: source_file, description: parquet file the row came from }

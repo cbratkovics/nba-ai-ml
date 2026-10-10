@@ -59,6 +59,17 @@ vars:
   # The policy marts recompute reports/policy_<season>.json from the same rows with the same
   # thresholds (ADR-0015), so the tolerance is float noise.
   tol_policy: 0.000001
+  # The pre-registered paper-bet rule (ADR-0030): mirrored from nba/ledger/rule.py and checked by
+  # tests/test_project_config.py, so fct_paper_bet and the recommendations view apply one rule.
+  ledger_rule_version: "ledger_rule_v1"
+  ledger_rule_hash: "6f7f1c9917ab08dcf001d76842820cf7c96bf5ee1a9cffe1e13fc44d4695350b"
+  ledger_edge_threshold_pts: 1.75
+  ledger_edge_threshold_reb: 0.7
+  ledger_edge_threshold_ast: 0.5
+  ledger_min_prior_games_season: 1
+  ledger_min_minutes_mean_last10: 15.0
+  ledger_max_input_staleness_days: 10
+  ledger_unit: 1.0
 
 seeds:
   nba_dbt:

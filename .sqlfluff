@@ -49,4 +49,4 @@ require_final_semicolon = false
 
 [sqlfluff:rules:references.keywords]
 # Column names the models use that are also keywords somewhere in the SQL standard.
-ignore_words = window, position, date, filter, source, target, called
+ignore_words = window, position, date, filter, source, target, called, units, line

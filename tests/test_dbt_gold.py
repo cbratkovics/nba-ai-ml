@@ -110,6 +110,8 @@ def _fixture_replay_rows(game_logs: pd.DataFrame) -> pd.DataFrame:
     for t in config.TARGETS:
         both &= rows[f"{t}_mean_last10"].notna() & rows[f"{t}_mean_season"].notna()
     out["in_metrics_population"] = (out["minutes"] >= config.MIN_MINUTES) & both
+    out["resolved_game_id"] = out["game_id"]  # replay rows always carry the real id
+    out["tip_off_utc"] = pd.NaT
     out = out[list(residuals_module.RESIDUAL_COLUMNS)]
     season = {t: rows[f"{t}_mean_season"] for t in config.TARGETS}
     return out, season

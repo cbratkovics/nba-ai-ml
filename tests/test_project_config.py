@@ -31,6 +31,23 @@ def test_dbt_vars_mirror_config() -> None:
     assert v["lookback_days"] == 2 * config.DAILY_LOOKBACK_DAYS
 
 
+def test_ledger_vars_mirror_the_rule() -> None:
+    """fct_paper_bet applies the rule nba/ledger/rule.py carries; the hash pins the whole text."""
+    from nba.ledger import rule
+
+    v = _vars()
+    assert v["ledger_rule_version"] == rule.RULE["version"]
+    assert v["ledger_rule_hash"] == rule.rule_hash()
+    assert (
+        v["ledger_edge_threshold_pts"] == rule.RULE["edge"]["threshold_by_market"]["player_points"]
+    )
+    e = rule.RULE["eligibility"]
+    assert v["ledger_min_prior_games_season"] == e["min_prior_games_season"]
+    assert v["ledger_min_minutes_mean_last10"] == e["min_minutes_mean_last10"]
+    assert v["ledger_max_input_staleness_days"] == e["max_input_staleness_days"]
+    assert v["ledger_unit"] == rule.RULE["stake"]["units"]
+
+
 def test_seasons_seed_is_the_one_season_list() -> None:
     """The seed holds every season the pipeline knows (config.SEASONS) plus the current one by
     the October rule, each labelled by the same rule the package uses (ADR-0024)."""

@@ -52,6 +52,9 @@ def write_manifest(
         config.HF_DATASET_PREFIX: _count(root, config.HF_DATASET_PREFIX, "game_logs_*.parquet"),
         **{folder: _count(root, folder, pattern) for folder, pattern in PRODUCT_FAMILIES},
         replay_residuals_prefix(season): _count(root, replay_residuals_prefix(season), "*.parquet"),
+        # From the private lines repo (ADR-0031); 0 without a token.
+        config.LINES_DIR.as_posix(): _count(root, config.LINES_DIR.as_posix(), "*.parquet"),
+        config.CAPTURES_DIR.as_posix(): _count(root, config.CAPTURES_DIR.as_posix(), "*.json"),
     }
     manifest = {
         "loaded_at": loaded_at or datetime.now(UTC).isoformat(timespec="seconds"),
@@ -102,7 +105,33 @@ def load(root: Path = DEFAULT_ROOT, revision: str | None = None, season: str | N
                 for f in sorted(src.iterdir()):
                     if f.is_file():
                         shutil.copyfile(f, dest / f.name)
+    load_private_lines(root)
     return write_manifest(root, sha, season)
+
+
+def load_private_lines(root: Path) -> int | None:
+    """Pull lines/ and captures/ from the private lines repo (ADR-0031) when a token is present;
+    without one (CI, a fork) the families stay absent and bronze renders them empty and typed.
+    Returns the number of line files, or None when the repo was not reachable."""
+    from huggingface_hub.utils import HfHubHTTPError
+
+    from nba.lines import store
+
+    if not config.hf_token():
+        return None
+    for family in (config.LINES_DIR, config.CAPTURES_DIR):
+        dest = root / family
+        if dest.exists():
+            shutil.rmtree(dest)
+        dest.mkdir(parents=True, exist_ok=True)
+    try:
+        store.pull(root)
+    except HfHubHTTPError as exc:  # the private repo may not exist yet
+        print(
+            f"LOAD lines: private repo unavailable ({exc.__class__.__name__}); families left empty"
+        )
+        return None
+    return len(list((root / config.LINES_DIR).glob("*.parquet")))
 
 
 def main(argv: list[str] | None = None) -> int:
