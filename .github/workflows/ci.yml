@@ -4,10 +4,9 @@ on:
   push:
   pull_request:
 
+# Read-only by default; only the `pages` job gets the Pages deployment permissions.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   lint-and-test:
@@ -113,6 +112,10 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: dbt
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
