@@ -75,6 +75,7 @@ class Capture:
     n_events: int = 0
     n_in_scope: int = 0
     n_out_of_scope: int = 0
+    n_out_of_season: int = 0  # events on the date that are not regular-season NBA games
     planned_cost: int = 0
     charged: int = 0
     n_calls_ok: int = 0
@@ -100,19 +101,55 @@ def eastern_day_bounds_utc(d: date) -> tuple[str, str]:
     return start.astimezone(UTC).strftime(fmt), end.astimezone(UTC).strftime(fmt)
 
 
+def classify(events: list[dict[str, Any]], d: date, snapshot: datetime) -> list[dict[str, Any]]:
+    """Every event the free endpoint returned, with the Eastern date and one verdict each:
+    in_scope (priced), started (on the date but already under way: out of scope by rule),
+    out_of_season (not a regular-season `basketball_nba` game: never priced, whatever the
+    date), or other_date. The season guard comes first so a preseason, All-Star or play-in
+    game is out of season even when it is on the date (ADR-0031)."""
+    out = []
+    for e in events:
+        game_date = lines_schedule.eastern_date(e["commence_time"])
+        season_class = lines_schedule.classify_event(e)
+        if season_class != "regular_season":
+            verdict = "out_of_season"
+        elif game_date != d:
+            verdict = "other_date"
+        elif datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00")) <= snapshot:
+            verdict = "started"
+        else:
+            verdict = "in_scope"
+        out.append(
+            {
+                "event_id": str(e.get("id")),
+                "sport_key": e.get("sport_key", config.ODDS_SPORT),
+                "commence_time": e["commence_time"],
+                "game_date": game_date.isoformat(),
+                "home_team": e.get("home_team"),
+                "away_team": e.get("away_team"),
+                "season_class": season_class,
+                "verdict": verdict,
+            }
+        )
+    return out
+
+
 def plan_events(
     events: list[dict[str, Any]], d: date, snapshot: datetime
-) -> tuple[list[dict], int]:
-    """Events on the Eastern date `d` whose commence time is after the snapshot, in tip-off order;
-    second value is how many of the date's games were already under way (out of scope)."""
-    todays = [e for e in events if lines_schedule.eastern_date(e["commence_time"]) == d]
-    in_scope = [
-        e
-        for e in todays
-        if datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00")) > snapshot
-    ]
+) -> tuple[list[dict], int, int]:
+    """Events to price: regular-season games on the Eastern date `d` that commence after the
+    snapshot, in tip-off order; then how many of the date's regular-season games were already
+    under way (out of scope), and how many of the date's events were out of season."""
+    verdicts = {c["event_id"]: c["verdict"] for c in classify(events, d, snapshot)}
+    in_scope = [e for e in events if verdicts[str(e.get("id"))] == "in_scope"]
     in_scope.sort(key=lambda e: e["commence_time"])
-    return in_scope, len(todays) - len(in_scope)
+    started = sum(1 for v in verdicts.values() if v == "started")
+    out_of_season = sum(
+        1
+        for c in classify(events, d, snapshot)
+        if c["verdict"] == "out_of_season" and c["game_date"] == d.isoformat()
+    )
+    return in_scope, started, out_of_season
 
 
 def flatten(
@@ -227,21 +264,64 @@ def run(
     api = api or OddsApi()
     guard = CreditGuard(root / config.ODDS_USAGE_FILE, now=now)
 
-    # 2. the night's games (free)
+    # 2. the night's games (free). The provider's usage headers are printed on every run so a
+    # log shows the credits spent (x-requests-used) and left (x-requests-remaining).
     start, end = eastern_day_bounds_utc(d)
     answer = api.events(commence_from=start, commence_to=end)
     guard.record(answer.endpoint, None, 0, "ok", answer.usage)
-    in_scope, out_of_scope = plan_events(answer.data, d, snapshot)
-    cap.n_events, cap.n_in_scope, cap.n_out_of_scope = (
-        len(in_scope) + out_of_scope,
+    u = answer.usage
+    print(
+        f"USAGE after the free events call: remaining={u.remaining} used={u.used} "
+        f"last_call_cost={u.last} (events window {start} to {end}, {len(answer.data)} events)"
+    )
+    if dry_run:
+        # A dry run also lists everything the endpoint returns without a date window (still
+        # free), so the log shows which upcoming games would and would not be priced.
+        upcoming = api.events()
+        guard.record(upcoming.endpoint, None, 0, "ok", upcoming.usage)
+        print(f"UPCOMING {len(upcoming.data)} events on the endpoint (no date window):")
+        for c in classify(upcoming.data, d, snapshot):
+            would = "would price" if c["verdict"] == "in_scope" else "would not price"
+            why = c["verdict"]
+            if c["season_class"] != "regular_season":
+                why += ", " + c["season_class"]
+            print(
+                f"UPCOMING {c['event_id']} {c['commence_time']} ET {c['game_date']} "
+                f"{c['away_team']} @ {c['home_team']} [{c['sport_key']}] -> {would} ({why})"
+            )
+    for c in classify(answer.data, d, snapshot):
+        print(
+            f"EVENT {c['event_id']} {c['commence_time']} ET {c['game_date']} "
+            f"{c['away_team']} @ {c['home_team']} [{c['sport_key']}] -> {c['verdict']}"
+            + ("" if c["season_class"] == "regular_season" else f" ({c['season_class']})")
+        )
+    in_scope, out_of_scope, out_of_season = plan_events(answer.data, d, snapshot)
+    cap.n_events = len(in_scope) + out_of_scope + out_of_season
+    cap.n_in_scope, cap.n_out_of_scope, cap.n_out_of_season = (
         len(in_scope),
         out_of_scope,
+        out_of_season,
     )
+    if not lines_schedule.in_regular_season(d):
+        cap.status = "out_of_season"
+        cap.notes.append(
+            f"{d} is outside the regular-season window "
+            f"{config.REGULAR_SEASON_WINDOWS}; no priced call is ever made out of season"
+        )
+        save(final=True)
+        print(
+            f"CAPTURE {d}: out of season ({out_of_season} non-regular-season events on the "
+            "date); no priced call"
+        )
+        return cap
     if not in_scope:
         cap.status = "no_games"
-        cap.notes.append("no game on this date commences after the snapshot")
+        cap.notes.append("no regular-season game on this date commences after the snapshot")
         save(final=True)
-        print(f"CAPTURE {d}: no in-scope games ({out_of_scope} already under way)")
+        print(
+            f"CAPTURE {d}: no in-scope games ({out_of_scope} already under way, "
+            f"{out_of_season} out of season)"
+        )
         return cap
 
     # 3. the guard, once, for the whole plan
@@ -311,7 +391,8 @@ def run(
     cap.lines_revision = sha
     cap_path.write_text(json.dumps(asdict(cap), indent=2) + "\n")
     print(
-        f"CAPTURE {d}: {cap.n_in_scope} games ({cap.n_out_of_scope} out of scope), "
+        f"CAPTURE {d}: {cap.n_in_scope} games ({cap.n_out_of_scope} out of scope, "
+        f"{cap.n_out_of_season} out of season), "
         f"{cap.n_lines} lines, {cap.n_unmatched} unmatched names, {cap.charged} credits "
         f"({guard.summary()['spent_this_month']} this month); pushed at {sha}"
     )

@@ -743,6 +743,38 @@
       "started_at": "2026-10-10T00:57:05Z",
       "target": "motherduck",
       "note": "rehearsal on the scratch MotherDuck database nba_rehearsal (ADR-0028): created, full pass PASS=106, 3 products staged, incremental delete+insert pass PASS=106, export, dry-run publish, database dropped; nothing pushed"
+    },
+    {
+      "run_id": 38090542048,
+      "workflow": "warehouse.yml",
+      "event": "workflow_dispatch",
+      "branch": "main",
+      "commit": "1d7ce73",
+      "conclusion": "success",
+      "started_at": "2026-10-10T22:12:26Z",
+      "target": "motherduck",
+      "pushed": "cbratkovics/nba-game-logs@29d445bc",
+      "note": "full refresh after PR #8 (ledger models): PASS=134 incl. the first unit test; gold/ pushed; private lines repo did not exist yet so the lines families built empty"
+    },
+    {
+      "run_id": 38090769175,
+      "workflow": "capture.yml",
+      "event": "workflow_dispatch",
+      "branch": "analytics-engineering",
+      "commit": "94859a7",
+      "conclusion": "success",
+      "started_at": "2026-10-10T22:15:58Z",
+      "note": "capture.yml dry run from the branch (first; before the usage/upcoming listing): date 2026-10-10 out of season, 0 events in the day window, no priced call, 0 credits; created the private repo cbratkovics/nba-lines"
+    },
+    {
+      "run_id": 38090879502,
+      "workflow": "capture.yml",
+      "event": "workflow_dispatch",
+      "branch": "analytics-engineering",
+      "commit": "4c31ca9",
+      "conclusion": "success",
+      "started_at": "2026-10-10T22:17:44Z",
+      "note": "capture.yml dry run from the branch with the season guard: date 2026-10-10 out of season, 0 events in the day window, 46 upcoming basketball_nba events listed from 2026-10-20 on, no priced call; provider headers remaining=500 used=0 (zero credits spent)"
     }
   ],
   "hf_commits": [

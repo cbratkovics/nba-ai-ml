@@ -214,7 +214,82 @@ def test_dispatch_snapshot_is_now_and_plan_cost_follows_the_rule() -> None:
         {"id": "b", "commence_time": "2026-10-20T19:30:00Z"},
         {"id": "c", "commence_time": "2026-10-21T02:30:00Z"},  # 22:30 ET, same ET date
     ]
-    plan, out = capture.plan_events(events, D, SNAPSHOT)
-    assert [e["id"] for e in plan] == ["a", "c"] and out == 1
+    plan, out, out_of_season = capture.plan_events(events, D, SNAPSHOT)
+    assert [e["id"] for e in plan] == ["a", "c"] and out == 1 and out_of_season == 0
     start, end = capture.eastern_day_bounds_utc(D)
     assert start == "2026-10-20T04:00:00Z" and end == "2026-10-21T04:00:00Z"
+
+
+def test_no_priced_call_out_of_season_and_preseason_keys_are_never_priced(
+    root: Path, game_logs: pd.DataFrame
+) -> None:
+    """Before opening night (2026-10-20) nothing is priced, whatever the events endpoint lists;
+    on a regular-season date a basketball_nba_preseason event is out of season by key; a date
+    outside every configured window (a play-in in April before the end date is set is NOT
+    guarded by date, only by key) is out of season by date."""
+    events, odds, _, _ = _events_and_odds(game_logs)
+    # 1. A preseason date: the same three events re-dated to 2026-10-15.
+    pre = [
+        dict(
+            e,
+            commence_time=e["commence_time"]
+            .replace("2026-10-20", "2026-10-15")
+            .replace("2026-10-21", "2026-10-16"),
+        )
+        for e in events
+    ]
+    api = FakeApi(pre, odds)
+    cap = capture.run(
+        date(2026, 10, 15),
+        root,
+        trigger="schedule",
+        pull=False,
+        api=api,
+        now=datetime(2026, 10, 15, 20, 0, tzinfo=UTC),
+    )
+    assert cap.status == "out_of_season" and api.calls == ["events"]
+    assert cap.n_in_scope == 0 and cap.n_out_of_season >= 1 and cap.planned_cost == 0
+    assert not (root / config.LINES_DIR).exists() or not list(
+        (root / config.LINES_DIR).glob("*.parquet")
+    )
+    # 2. Opening night, but one event carries the preseason sport key: never priced.
+    (root / config.CAPTURES_DIR / "2026-10-20.json").unlink(missing_ok=True)
+    tagged = [dict(events[0], sport_key="basketball_nba_preseason"), events[1], events[2]]
+    api = FakeApi(tagged, odds)
+    cap = capture.run(D, root, trigger="schedule", pull=False, api=api, now=SNAPSHOT)
+    assert api.calls == ["events"] and cap.status == "no_games"
+    assert cap.n_out_of_season == 1 and cap.n_out_of_scope == 1
+    # 3. A date whose season has no window at all (2030) is out of season.
+    far = [dict(e, commence_time=e["commence_time"].replace("2026", "2030")) for e in events]
+    api = FakeApi(far, odds)
+    cap = capture.run(
+        date(2030, 10, 20),
+        root,
+        trigger="schedule",
+        pull=False,
+        api=api,
+        now=datetime(2030, 10, 20, 20, 0, tzinfo=UTC),
+    )
+    assert cap.status == "out_of_season" and api.calls == ["events"]
+
+
+def test_classification_lists_every_event_with_a_verdict(game_logs: pd.DataFrame) -> None:
+    events, _, _, _ = _events_and_odds(game_logs)
+    events.append(
+        {
+            "id": "pre",
+            "sport_key": "basketball_nba_preseason",
+            "commence_time": "2026-10-20T23:00:00Z",
+            "home_team": "Miami Heat",
+            "away_team": "Denver Nuggets",
+        }
+    )
+    got = {c["event_id"]: c["verdict"] for c in capture.classify(events, D, SNAPSHOT)}
+    assert got == {
+        "late": "in_scope",
+        "early": "started",
+        "tomorrow": "other_date",
+        "pre": "out_of_season",
+    }
+    plan, started, out_of_season = capture.plan_events(events, D, SNAPSHOT)
+    assert [e["id"] for e in plan] == ["late"] and started == 1 and out_of_season == 1

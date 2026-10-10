@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from nba import config
 from nba.ingest.kaggle_dump import season_from_date
 from nba.lines.teams import abbreviation
 
@@ -31,6 +32,30 @@ SOURCE_KAGGLE = "kaggle_dump"
 def eastern_date(commence_time: str) -> date:
     t = datetime.fromisoformat(commence_time.replace("Z", "+00:00"))
     return t.astimezone(EASTERN).date()
+
+
+def in_regular_season(d: date) -> bool:
+    """True when the Eastern date falls inside its season's configured regular-season window
+    (config.REGULAR_SEASON_WINDOWS); an unknown season or a date before opening night is out.
+    An open-ended window (end None) accepts every date from opening night on."""
+    window = config.REGULAR_SEASON_WINDOWS.get(season_from_date(pd.Timestamp(d)))
+    if window is None:
+        return False
+    start, end = window
+    if d < date.fromisoformat(start):
+        return False
+    return end is None or d <= date.fromisoformat(end)
+
+
+def classify_event(event: dict[str, Any]) -> str:
+    """regular_season, or why the event is out of season: wrong sport key (preseason, All-Star,
+    summer league are separate keys at The Odds API) or a date outside the window."""
+    key = event.get("sport_key", config.ODDS_SPORT)
+    if key not in config.ODDS_SPORT_KEYS_IN_SCOPE:
+        return f"sport_key:{key}"
+    if not in_regular_season(eastern_date(event["commence_time"])):
+        return "outside_regular_season_window"
+    return "regular_season"
 
 
 def events_to_games(events: list[dict[str, Any]]) -> pd.DataFrame:
@@ -68,7 +93,10 @@ def is_provisional(game_id: pd.Series) -> pd.Series:
 
 
 def fallback_schedule(events: list[dict[str, Any]]) -> pd.DataFrame:
-    """game_id, game_date, home, away, season, event_id, schedule_source, in the slate's layout."""
+    """game_id, game_date, home, away, season, event_id, schedule_source, in the slate's layout.
+    Only regular-season events (classify_event) become games; a preseason or play-in event
+    never produces a slate."""
+    events = [e for e in events if classify_event(e) == "regular_season"]
     g = events_to_games(events)
     out = pd.DataFrame(
         {
