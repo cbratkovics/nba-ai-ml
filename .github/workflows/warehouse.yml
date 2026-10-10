@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  issues: write  # warehouse-warn issues for tests with severity warn (nba/warehouse/notify.py)
 
 concurrency:
   group: warehouse
@@ -68,6 +69,21 @@ jobs:
           python -m nba.warehouse.load --root data/warehouse
           dbt build --project-dir dbt --profiles-dir dbt --full-refresh 2>&1 | tee dbt.log
           dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
+
+      - name: Open an issue for each test that warned (idempotent; ADR-0026)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python -m nba.warehouse.notify --run-results dbt/target/run_results.json --body-out issue_body.md | while read -r _ label title; do
+            gh label create "$label" --force --description "opened by the warehouse severity policy" || true
+            existing="$(gh issue list --label "$label" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+            if [ -z "$existing" ]; then
+              gh issue create --label "$label" --title "$title" --body-file issue_body.md
+            else
+              echo "issue #$existing already open for: $title"
+            fi
+          done
 
       - name: Push the exported gold marts to the dataset repo
         # Scheduled runs always push. On a dispatch the `publish` input decides. (The earlier

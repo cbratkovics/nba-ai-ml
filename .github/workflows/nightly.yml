@@ -14,7 +14,7 @@ name: Nightly ingest, residuals, slate
 #      without the token, or with DBT_TARGET=local, build into a local DuckDB file and upload
 #      it as a workflow artifact. Then export the gold marts and push them to gold/ in the
 #      dataset repo. Off-season zero-row runs skip the build and exit 0. A weekly full refresh
-#      is warehouse.yml.
+#      is warehouse.yml. Tests with severity warn open a `warehouse-warn` issue (ADR-0026).
 #
 # Days with no schedule file (season not published yet) or no games print one explicit
 # line each and exit 0. Schema validation errors and download failures fail the job.
@@ -40,7 +40,7 @@ on:
 
 permissions:
   contents: read
-  issues: write  # HOLD / WARN issues (nba/drift/notify.py); labels are created idempotently
+  issues: write  # HOLD / WARN issues (nba/drift/notify.py, nba/warehouse/notify.py); labels are created idempotently
 
 jobs:
   nightly:
@@ -179,6 +179,22 @@ jobs:
           # models run incrementally.
           dbt build --project-dir dbt --profiles-dir dbt --selector nightly 2>&1 | tee dbt.log
           dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
+
+      - name: Open an issue for each test that warned (idempotent; ADR-0026)
+        if: steps.gate.outputs.verdict == 'build' && !inputs.rehearsal
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python -m nba.warehouse.notify --run-results dbt/target/run_results.json --body-out issue_body.md | while read -r _ label title; do
+            gh label create "$label" --force --description "opened by the warehouse severity policy" || true
+            existing="$(gh issue list --label "$label" --state open --search "\"$title\" in:title" --json number --jq '.[0].number')"
+            if [ -z "$existing" ]; then
+              gh issue create --label "$label" --title "$title" --body-file issue_body.md
+            else
+              echo "issue #$existing already open for: $title"
+            fi
+          done
 
       - name: Push the exported gold marts to the dataset repo
         if: steps.gate.outputs.verdict == 'build' && !inputs.rehearsal
