@@ -81,6 +81,8 @@ data/cache/
 !tests/traces/*.trace.json
 # dbt seeds are committed CSV; the warehouse loader's copies and dbt's own outputs are not.
 !dbt/seeds/*.csv
+# Confirmed sportsbook-name aliases (nba/lines/matching.py); never fuzzy, always committed.
+!nba/lines/aliases.csv
 !dbt/package-lock.yml
 # The owner's ~/.gitignore_global ignores *.sql machine-wide; the dbt project is SQL.
 !dbt/**/*.sql
@@ -146,6 +148,8 @@ reports/*
 !reports/drift_calibration_*.json
 # Run evidence: every cited GitHub Actions run id with its conclusion (ADR-0022).
 !reports/runs.json
+# Replay evidence for the pre-registered ledger rule (ADR-0030).
+!reports/ledger_rule_evidence_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git (data/warehouse/ is the loader's copy).
