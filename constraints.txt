@@ -6,3 +6,6 @@
 dbt-core==1.12.5
 dbt-duckdb==1.11.0
 duckdb==1.5.5
+# SQL lint for dbt/ (dev tool, not a dbt package; ADR-0027). The templater imports dbt-core.
+sqlfluff==4.4.0
+sqlfluff-templater-dbt==4.4.0

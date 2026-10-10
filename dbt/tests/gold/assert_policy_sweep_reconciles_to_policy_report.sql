@@ -41,6 +41,14 @@ where
     or p.season_mean_same_rows_n_missing <> c.season_mean_same_rows_n_missing
     or p.season_mean_own_n_called <> c.season_mean_own_n_called
     or abs(p.coverage - c.coverage) > {{ var('tol_policy') }}
-    or coalesce(abs(p.hit_rate - c.hit_rate) > {{ var('tol_policy') }}, p.hit_rate is not null or c.hit_rate is not null)
-    or coalesce(abs(p.season_mean_same_rows_hit_rate - c.season_mean_same_rows_hit_rate) > {{ var('tol_policy') }}, p.season_mean_same_rows_hit_rate is not null or c.season_mean_same_rows_hit_rate is not null)
-    or coalesce(abs(p.season_mean_own_hit_rate - c.season_mean_own_hit_rate) > {{ var('tol_policy') }}, p.season_mean_own_hit_rate is not null or c.season_mean_own_hit_rate is not null)
+    or coalesce(
+        abs(p.hit_rate - c.hit_rate) > {{ var('tol_policy') }}, p.hit_rate is not null or c.hit_rate is not null
+    )
+    or coalesce(
+        abs(p.season_mean_same_rows_hit_rate - c.season_mean_same_rows_hit_rate) > {{ var('tol_policy') }},
+        p.season_mean_same_rows_hit_rate is not null or c.season_mean_same_rows_hit_rate is not null
+    )
+    or coalesce(
+        abs(p.season_mean_own_hit_rate - c.season_mean_own_hit_rate) > {{ var('tol_policy') }},
+        p.season_mean_own_hit_rate is not null or c.season_mean_own_hit_rate is not null
+    )

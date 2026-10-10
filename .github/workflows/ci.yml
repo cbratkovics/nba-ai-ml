@@ -29,6 +29,9 @@ jobs:
       - name: Ruff (format check)
         run: ruff format --check .
 
+      - name: sqlfluff (dbt models, tests, snapshots; .sqlfluff)
+        run: sqlfluff lint dbt/models dbt/tests dbt/snapshots
+
       - name: Pytest
         # Includes tests/test_dbt_incremental.py, which shells out to dbt against a scratch
         # DuckDB file with fixture game logs; no network.

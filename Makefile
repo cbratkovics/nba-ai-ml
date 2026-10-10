@@ -1,4 +1,4 @@
-.PHONY: help install test lint dbt-load dbt-build dbt-full dbt-nightly dbt-docs dbt-export policy drift-reference drift-calibrate check-docs frontend-build
+.PHONY: help install test lint lint-sql dbt-load dbt-build dbt-full dbt-nightly dbt-docs dbt-export policy drift-reference drift-calibrate check-docs frontend-build
 
 PY ?= .venv/bin/python
 DBT ?= .venv/bin/dbt
@@ -8,7 +8,8 @@ export NBA_DUCKDB_PATH ?= .duckdb/nba.duckdb
 
 help:
 	@echo "install      - pip install -c constraints.txt -e .[dev]"
-	@echo "test         - ruff + pytest (skips the two LightGBM test files where libomp is missing)"
+	@echo "test         - ruff + sqlfluff + pytest (skips the two LightGBM test files where libomp is missing)"
+	@echo "lint-sql     - sqlfluff over the dbt models, tests and snapshots (.sqlfluff)"
 	@echo "dbt-load     - pull the warehouse sources from Hugging Face into data/warehouse"
 	@echo "dbt-build    - dbt build on the local DuckDB file (.duckdb/nba.duckdb)"
 	@echo "dbt-full     - dbt build --full-refresh (same target)"
@@ -26,7 +27,10 @@ install:
 lint:
 	.venv/bin/ruff check . && .venv/bin/ruff format --check .
 
-test: lint
+lint-sql:
+	.venv/bin/sqlfluff lint dbt/models dbt/tests dbt/snapshots
+
+test: lint lint-sql
 	$(PY) -m pytest -q
 
 dbt-load:

@@ -1,0 +1,52 @@
+# SQL lint for the dbt project (ADR-0027). The rules match the style the models already
+# use: lower-case keywords, four-space indents, trailing commas, lines up to 120 characters,
+# Jinja blocks that do not indent their contents. Rules that fight DuckDB or dbt idioms are
+# excluded on purpose rather than silenced per line:
+#   RF01  struct field access (counts."new", "window".n_rows) looks like a missing table
+#   RF03  single-table selects may mix qualified and bare columns (the typed_select macro)
+#   RF06  "new" and "window" must be quoted in DuckDB
+#   LT09  one-line `select 'all' as population, * exclude (population) from x` is intended
+#   LT14  a trailing `where` on a short CTE line is intended
+#   ST06/ST07/AM04  column ordering, USING and `select *` are deliberate in the bronze copies
+# Run: make lint-sql  (sqlfluff lint dbt/models dbt/tests dbt/snapshots)
+[sqlfluff]
+dialect = duckdb
+templater = dbt
+max_line_length = 120
+exclude_rules = ST06, ST07, AM04, RF01, RF03, RF06, LT09, LT14
+
+[sqlfluff:templater:dbt]
+project_dir = dbt
+profiles_dir = dbt
+target = local
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = false
+indented_using_on = true
+allow_implicit_indents = true
+template_blocks_indent = false
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:convention.terminator]
+multiline_newline = true
+require_final_semicolon = false
+
+[sqlfluff:rules:references.keywords]
+# Column names the models use that are also keywords somewhere in the SQL standard.
+ignore_words = window, position, date, filter, source, target, called
