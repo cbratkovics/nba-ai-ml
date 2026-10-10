@@ -264,10 +264,31 @@ def run(
     api = api or OddsApi()
     guard = CreditGuard(root / config.ODDS_USAGE_FILE, now=now)
 
-    # 2. the night's games (free)
+    # 2. the night's games (free). The provider's usage headers are printed on every run so a
+    # log shows the credits spent (x-requests-used) and left (x-requests-remaining).
     start, end = eastern_day_bounds_utc(d)
     answer = api.events(commence_from=start, commence_to=end)
     guard.record(answer.endpoint, None, 0, "ok", answer.usage)
+    u = answer.usage
+    print(
+        f"USAGE after the free events call: remaining={u.remaining} used={u.used} "
+        f"last_call_cost={u.last} (events window {start} to {end}, {len(answer.data)} events)"
+    )
+    if dry_run:
+        # A dry run also lists everything the endpoint returns without a date window (still
+        # free), so the log shows which upcoming games would and would not be priced.
+        upcoming = api.events()
+        guard.record(upcoming.endpoint, None, 0, "ok", upcoming.usage)
+        print(f"UPCOMING {len(upcoming.data)} events on the endpoint (no date window):")
+        for c in classify(upcoming.data, d, snapshot):
+            would = "would price" if c["verdict"] == "in_scope" else "would not price"
+            why = c["verdict"]
+            if c["season_class"] != "regular_season":
+                why += ", " + c["season_class"]
+            print(
+                f"UPCOMING {c['event_id']} {c['commence_time']} ET {c['game_date']} "
+                f"{c['away_team']} @ {c['home_team']} [{c['sport_key']}] -> {would} ({why})"
+            )
     for c in classify(answer.data, d, snapshot):
         print(
             f"EVENT {c['event_id']} {c['commence_time']} ET {c['game_date']} "
