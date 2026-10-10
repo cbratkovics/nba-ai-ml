@@ -1,0 +1,778 @@
+{
+  "description": "Run evidence for every 'ran' claim in the README, docs/DECISIONS.md and the workflow headers (ADR-0022). Append with scripts/record_run.py; tests/test_runs.py fails when a cited run id is missing here.",
+  "repo": "cbratkovics/nba-ai-ml",
+  "updated_at": "2026-10-09",
+  "runs": [
+    {
+      "run_id": 34665925555,
+      "workflow": "train.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "50a3b2e",
+      "conclusion": "success",
+      "started_at": "2026-09-12T01:49:07Z",
+      "note": "first train run on the same commit"
+    },
+    {
+      "run_id": 34666354516,
+      "workflow": "train.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "50a3b2e",
+      "conclusion": "success",
+      "started_at": "2026-09-12T01:58:23Z",
+      "note": "train and evaluate the published model (reports/metrics.json git_sha 50a3b2e)"
+    },
+    {
+      "run_id": 34666765396,
+      "workflow": "probe-nba-api.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "267e682",
+      "conclusion": "success",
+      "started_at": "2026-09-12T02:07:05Z",
+      "note": "probe: stats.nba.com timed out and cdn.nba.com returned 403 from a runner"
+    },
+    {
+      "run_id": 34668092730,
+      "workflow": "nightly.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "cf4ebac",
+      "conclusion": "success",
+      "started_at": "2026-09-12T02:35:38Z",
+      "note": "first live nightly: Kaggle single-file download, zero changed rows (docs/reconciliation.md)"
+    },
+    {
+      "run_id": 34668262142,
+      "workflow": "replay.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "e19a6d0",
+      "conclusion": "success",
+      "started_at": "2026-09-12T02:39:25Z",
+      "note": "replay of the 2025-26 season, 164 dates",
+      "pushed": "cbratkovics/nba-game-logs@8a127c93"
+    },
+    {
+      "run_id": 34673015904,
+      "workflow": "replay.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "e2e7a9c",
+      "conclusion": "success",
+      "started_at": "2026-09-12T04:26:42Z",
+      "note": "replay attempt during the 2026-09-12 rebuild (AUDIT.md \u00a76)"
+    },
+    {
+      "run_id": 34676082455,
+      "workflow": "replay.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "73f8409",
+      "conclusion": "failure",
+      "started_at": "2026-09-12T05:38:05Z",
+      "note": "replay attempt during the 2026-09-12 rebuild (AUDIT.md \u00a76)"
+    },
+    {
+      "run_id": 34676187318,
+      "workflow": "replay.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "0f426d2",
+      "conclusion": "success",
+      "started_at": "2026-09-12T05:40:35Z",
+      "note": "replay attempt during the 2026-09-12 rebuild (AUDIT.md \u00a76)"
+    },
+    {
+      "run_id": 34695782154,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "master",
+      "commit": "7ba7421",
+      "conclusion": "success",
+      "started_at": "2026-09-12T13:12:27Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 34701742530,
+      "workflow": "agent-eval.yml",
+      "event": "workflow_dispatch",
+      "branch": "master",
+      "commit": "26b18ea",
+      "conclusion": "success",
+      "started_at": "2026-09-12T15:16:41Z",
+      "note": "first pass-rate attempt, capped at 10 of 25 briefs by the Groq daily limit"
+    },
+    {
+      "run_id": 34761266325,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "master",
+      "commit": "4b55a6b",
+      "conclusion": "success",
+      "started_at": "2026-09-13T13:57:16Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 34866015709,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "master",
+      "commit": "4b55a6b",
+      "conclusion": "success",
+      "started_at": "2026-09-14T16:01:55Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 34982267301,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "master",
+      "commit": "4b55a6b",
+      "conclusion": "success",
+      "started_at": "2026-09-15T14:31:52Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35048092357,
+      "workflow": "warehouse.yml",
+      "event": "workflow_dispatch",
+      "branch": "main",
+      "commit": "f27e660",
+      "conclusion": "success",
+      "started_at": "2026-09-16T02:28:07Z",
+      "target": "motherduck",
+      "pushed": "cbratkovics/nba-game-logs@66404be0",
+      "note": "first warehouse full refresh on MotherDuck and the only gold/ export pushed before the publish fix (ADR-0022)"
+    },
+    {
+      "run_id": 35048189295,
+      "workflow": "nightly.yml",
+      "event": "workflow_dispatch",
+      "branch": "main",
+      "commit": "f27e660",
+      "conclusion": "success",
+      "started_at": "2026-09-16T02:29:38Z",
+      "note": "dispatched nightly on the merged template branch; warehouse steps skipped by the off-season gate"
+    },
+    {
+      "run_id": 35073930571,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "f27e660",
+      "conclusion": "success",
+      "started_at": "2026-09-16T08:28:05Z",
+      "note": "measured one golden date (5 briefs) and committed reports/agent_pass_rates.json"
+    },
+    {
+      "run_id": 35108517774,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "1a7b38f",
+      "conclusion": "success",
+      "started_at": "2026-09-16T14:26:18Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35200296421,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "1a7b38f",
+      "conclusion": "success",
+      "started_at": "2026-09-17T08:33:21Z",
+      "note": "measured one golden date (5 briefs) and committed reports/agent_pass_rates.json"
+    },
+    {
+      "run_id": 35234068308,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "9c00766",
+      "conclusion": "success",
+      "started_at": "2026-09-17T14:30:50Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35322849219,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "9c00766",
+      "conclusion": "success",
+      "started_at": "2026-09-18T08:08:15Z",
+      "note": "measured one golden date (5 briefs) and committed reports/agent_pass_rates.json"
+    },
+    {
+      "run_id": 35353223513,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "57040dd",
+      "conclusion": "success",
+      "started_at": "2026-09-18T13:56:58Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35430694570,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "57040dd",
+      "conclusion": "success",
+      "started_at": "2026-09-19T07:57:11Z",
+      "note": "measured one golden date (5 briefs) and committed reports/agent_pass_rates.json"
+    },
+    {
+      "run_id": 35446047448,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "fccc78c",
+      "conclusion": "success",
+      "started_at": "2026-09-19T13:32:01Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35499665725,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "fccc78c",
+      "conclusion": "success",
+      "started_at": "2026-09-20T08:28:49Z",
+      "note": "measured one golden date (5 briefs) and committed reports/agent_pass_rates.json"
+    },
+    {
+      "run_id": 35506971007,
+      "workflow": "warehouse.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "01abea5",
+      "conclusion": "success",
+      "started_at": "2026-09-20T11:07:47Z",
+      "target": "motherduck",
+      "note": "scheduled; gold/ push skipped by the inputs.publish bug"
+    },
+    {
+      "run_id": 35514499673,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "01abea5",
+      "conclusion": "success",
+      "started_at": "2026-09-20T13:46:48Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35539759857,
+      "workflow": "replay.yml",
+      "event": "workflow_dispatch",
+      "branch": "replay-slates",
+      "commit": "498b003",
+      "conclusion": "success",
+      "started_at": "2026-09-20T21:47:41Z",
+      "note": "replay with per-date slates for /replay",
+      "pushed": "cbratkovics/nba-game-logs@4a26635f"
+    },
+    {
+      "run_id": 35579813780,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "bbfff6f",
+      "conclusion": "success",
+      "started_at": "2026-09-21T08:48:16Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 35623159670,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "bbfff6f",
+      "conclusion": "success",
+      "started_at": "2026-09-21T16:03:56Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35704747752,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "bbfff6f",
+      "conclusion": "success",
+      "started_at": "2026-09-22T08:25:45Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 35738884217,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "bbfff6f",
+      "conclusion": "success",
+      "started_at": "2026-09-22T14:14:06Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35837254448,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "bbfff6f",
+      "conclusion": "success",
+      "started_at": "2026-09-23T08:27:48Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 35874609707,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "bbfff6f",
+      "conclusion": "success",
+      "started_at": "2026-09-23T14:29:58Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 35935163627,
+      "workflow": "ci.yml",
+      "event": "push",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-23T23:45:28Z",
+      "note": "CI on main at 4f16543; published the dbt docs to Pages (generated 2026-09-23T23:46:25Z)"
+    },
+    {
+      "run_id": 35974642130,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-24T08:20:17Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36013223264,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-24T14:29:47Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36114406197,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-25T08:42:43Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36150115769,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-25T14:49:59Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36229932515,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-26T08:29:33Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36246811152,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-26T13:56:17Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36308417293,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-27T09:08:26Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36317104881,
+      "workflow": "warehouse.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-27T11:51:53Z",
+      "target": "motherduck",
+      "note": "scheduled; gold/ push skipped by the inputs.publish bug"
+    },
+    {
+      "run_id": 36327567862,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-27T14:53:46Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36404650832,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-28T09:37:07Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36461083770,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-28T17:51:20Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36550794662,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-29T09:41:35Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36595875326,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-29T16:11:20Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36696855502,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-30T09:33:17Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36742040330,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-09-30T16:08:40Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36846288658,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-01T09:59:42Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 36894433492,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-01T16:45:56Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 36990703965,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-02T09:35:57Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37030914030,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-02T16:00:12Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37111695319,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-03T09:02:20Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37129625525,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-03T14:27:00Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37192610132,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-04T09:34:45Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37201223219,
+      "workflow": "warehouse.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-04T12:10:56Z",
+      "target": "motherduck",
+      "note": "scheduled; PASS=102; gold/ push skipped by the inputs.publish bug"
+    },
+    {
+      "run_id": 37211445005,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-04T15:01:27Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37295492968,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-05T10:16:10Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37359693127,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-05T18:56:03Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37447008847,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-06T10:01:46Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37494966939,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-06T16:20:48Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37605129726,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-07T10:06:02Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37656165778,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-07T17:04:21Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37762817392,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-08T10:20:25Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37813588044,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-08T17:03:22Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 37917032257,
+      "workflow": "agent-eval.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-09T10:20:54Z",
+      "note": "scheduled; every golden date complete, exited before installing"
+    },
+    {
+      "run_id": 37960899102,
+      "workflow": "nightly.yml",
+      "event": "schedule",
+      "branch": "main",
+      "commit": "4f16543",
+      "conclusion": "success",
+      "started_at": "2026-10-09T16:41:15Z",
+      "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    }
+  ],
+  "hf_commits": [
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "b20b5601",
+      "date": "2026-09-12",
+      "title": "Update game logs",
+      "note": "dataset revision the published model was trained and evaluated on (nba/config.py DATASET_REVISION)"
+    },
+    {
+      "repo": "cbratkovics/nba-stat-predictor",
+      "repo_type": "model",
+      "revision": "fb427de1",
+      "date": "2026-09-12",
+      "title": "Update model",
+      "note": "the pinned model files (MODEL_REVISION)"
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "8a127c93",
+      "date": "2026-09-12",
+      "title": "Replay 2025-26",
+      "run_id": 34668262142
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "6cbc915b",
+      "date": "2026-09-12",
+      "title": "Replay 2025-26",
+      "note": "second identical replay; the copy of daily_mae.json committed as reports/replay_all_rows_2025-26.json"
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "66404be0",
+      "date": "2026-09-16",
+      "title": "Export gold marts",
+      "run_id": 35048092357,
+      "note": "the only gold/ export on the dataset repo until the publish fix (ADR-0022)"
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "197216fa",
+      "date": "2026-09-16",
+      "title": "Update dataset card"
+    },
+    {
+      "repo": "cbratkovics/nba-stat-predictor",
+      "repo_type": "model",
+      "revision": "7dc0eafc",
+      "date": "2026-09-16",
+      "title": "Update model card",
+      "note": "behind docs/MODEL_CARD.md since PR #6 (owner step)"
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "17fd9fb1",
+      "date": "2026-09-16",
+      "title": "Nightly 2026-09-16",
+      "note": "first drift/<date>.json pushed by the nightly"
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "4a26635f",
+      "date": "2026-09-20",
+      "title": "Replay 2025-26",
+      "run_id": 35539759857,
+      "note": "per-date replay slates read by /replay"
+    },
+    {
+      "repo": "cbratkovics/nba-game-logs",
+      "repo_type": "dataset",
+      "revision": "949cbd39",
+      "date": "2026-10-09",
+      "title": "Nightly 2026-10-09",
+      "run_id": 37960899102,
+      "note": "dataset revision the Phase 0 audit build loaded"
+    }
+  ]
+}
