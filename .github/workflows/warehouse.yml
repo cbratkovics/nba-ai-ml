@@ -70,7 +70,10 @@ jobs:
           dbt run-operation export_gold --project-dir dbt --profiles-dir dbt
 
       - name: Push the exported gold marts to the dataset repo
-        if: ${{ inputs.publish != false }}
+        # Scheduled runs always push. On a dispatch the `publish` input decides. (The earlier
+        # `inputs.publish != false` was false on schedule events, where `inputs` is empty and
+        # both sides coerce to 0, so no scheduled refresh ever pushed; ADR-0022.)
+        if: ${{ github.event_name == 'schedule' || inputs.publish }}
         run: python -m nba.warehouse.publish --export-dir data/warehouse/export
 
       - name: Job summary
