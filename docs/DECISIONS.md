@@ -1,12 +1,14 @@
 # Decisions
 
-Architecture decision records for the template pass (branch `template`, 2026-09-15 onward).
+Architecture decision records for the template pass (branch `template`, 2026-09-15 onward)
+and the analytics-engineering pass (branch `analytics-engineering`, 2026-10-09 onward).
 ADR-0001 to ADR-0008 are the brief's fixed decisions in its numbering; later ADRs record
 what building the warehouse decided. Each ADR says whether it is implemented (code exists
-and has run in GitHub Actions), prototyped (code and tests exist, has not run in Actions),
-or planned.
+and has run in GitHub Actions; the run ids are in `reports/runs.json`), prototyped (code and
+tests exist, has not run in Actions), or planned. Statuses were re-checked against the run
+evidence on 2026-10-09 (ADR-0022); "implemented" below means a run id exists for it.
 
-## ADR-0001 — Decision unit: line-free directional calls (prototyped, Phase 2)
+## ADR-0001 — Decision unit: line-free directional calls (implemented; decisions are written only on nights with a slate, so none before 2026-27)
 
 The decision is one call per (player, game, target) against the player's own last-10-game
 mean, the number every slate row already carries: `edge = prediction − baseline_last10`;
@@ -35,7 +37,7 @@ that shows a metric names its population. On all rows the last-10 mean has the l
 every target; the model's edge exists only on the training population. The warehouse carries
 the same two populations as a `population` column (ADR-0009).
 
-## ADR-0003 — Bronze loads from Hugging Face parquet at a pinned revision (prototyped)
+## ADR-0003 — Bronze loads from Hugging Face parquet at a pinned revision (implemented; ran on MotherDuck in warehouse.yml, run ids in reports/runs.json)
 
 `python -m nba.warehouse.load` pulls the five per-season parquet files, the nightly products
 and the holdout-season replay residuals from the dataset repo at one revision (the `main`
@@ -44,10 +46,10 @@ every `brz_game_logs` row carries it. Bronze never reads the Kaggle CSV: the nig
 400 MB dump download stays where it is and the loader adds nothing to it (7.7 MB per load).
 Hugging Face remains the system of record; the warehouse is a typed copy that reconciles to
 the committed reports. On MotherDuck the same SQL reads the loader's local files through
-DuckDB's hybrid execution; that path has not run yet (owner: create database `nba`, add
-`MOTHERDUCK_TOKEN`).
+DuckDB's hybrid execution; that path first ran on 2026-09-16 (`warehouse.yml` run
+`35048092357`, target `motherduck`, PASS=102) and weekly since (`reports/runs.json`).
 
-## ADR-0004 — Silver restatement lookback: 14 days (prototyped)
+## ADR-0004 — Silver restatement lookback: 14 days (implemented; the in-season incremental path is rehearsed, not yet run live: ADR-0028)
 
 `slv_game_logs`, `slv_predictions` and `slv_residuals` are incremental (delete+insert on
 their grain keys). An incremental run reprocesses every row whose game date is within 14
@@ -69,7 +71,7 @@ identity is displayed everywhere: `commit 50a3b2e / HF fb427de` (`nba/config.py`
 `MODEL_COMMIT`, `MODEL_REVISION`, mirrored in `frontend/lib/data.ts` and `dbt_project.yml`,
 checked by tests).
 
-## ADR-0006 — Thresholds and bands are in-sample on 2025-26 (prototyped, Phase 2)
+## ADR-0006 — Thresholds and bands are in-sample on 2025-26 (implemented; the out-of-sample test begins with the 2026-27 season)
 
 There is one evaluated season, so the thresholds and bands are chosen on the same replay
 rows they are scored on: 22,075 training-population rows and 26,031 all rows
@@ -82,7 +84,7 @@ the artifact records rather than presents as evidence. The selection rule is ADR
 first untouched season (2026-27, scored nightly with the same thresholds) is the
 out-of-sample test; `mart_policy_metrics` reports the nightly rows next to the replay rows.
 
-## ADR-0007 — MotherDuck compute guard (prototyped)
+## ADR-0007 — MotherDuck compute guard (implemented; the gate skipped every off-season night, so the nightly build first runs live in 2026-27)
 
 The nightly job builds only the incremental silver models with their parents (bronze copies
 of the loaded files, seconds of work) and children (snapshot, gold, tests), plus the five
@@ -94,7 +96,7 @@ run prints `WAREHOUSE skip` and exits 0 without touching the warehouse. Without
 and upload it as a workflow artifact, so the warehouse never blocks on the owner's MotherDuck
 setup. CI builds the local target only and never holds the token.
 
-## ADR-0008 — Restatement lag is measured by the ingest (implemented in code, prototyped in the warehouse)
+## ADR-0008 — Restatement lag is measured by the ingest (implemented; the mart builds weekly on MotherDuck)
 
 `nba/ingest/kaggle_daily.py` writes `restatement_lag_days` (run date minus game date) on
 every changed-row example and a `restatement_lag` summary (count, max, p50, p90 over every
@@ -104,7 +106,7 @@ compares the observed maximum with `lookback_days`. Today: four daily reports, z
 rows, maximum lag none, lookback 14 — the test passes trivially, which is the point of
 logging it.
 
-## ADR-0009 — Population as the warehouse's cohort (prototyped)
+## ADR-0009 — Population as the warehouse's cohort (implemented)
 
 There is one model per target and no player cohort, so the cohort dimension of the template
 is the population: `min10` (training population) or `all`. Fact rows carry the narrowest
@@ -114,7 +116,7 @@ report one row per population, where `all` aggregates every row and `min10` the 
 subset. `assert_population_flag_matches_replay` proves the warehouse's history counts
 reproduce the feature module's rule on all 26,031 replayed rows with a box score.
 
-## ADR-0010 — Grain is the game date and game id (prototyped)
+## ADR-0010 — Grain is the game date and game id (implemented)
 
 The template's ordinal `period` seam is replaced by `game_date` (a date) and `game_id`
 everywhere: incremental lookbacks are in days, the snapshot's as-of column is a game date,
@@ -124,7 +126,7 @@ logs alone on the first local build (2026-09-15), 2,003 stints for 1,027 players
 pipeline's labels (`2025-26`), derived in SQL by the same rule as the package
 (`season_of` macro: October starts the season).
 
-## ADR-0011 — Reconciliation tolerances and the observed differences (prototyped)
+## ADR-0011 — Reconciliation tolerances and the observed differences (implemented; the tests pass on every weekly MotherDuck build, PASS=102 on 37201223219)
 
 Measured on the first local build (2026-09-15, DuckDB 1.5.5, four threads):
 
@@ -148,7 +150,7 @@ left as-is and recorded here: `metrics.json` is read at the model revision `fb42
 replay files at the dataset repo's `resolve/main`, which holds a later run of the same replay
 with identical numbers (provenance file, `hub_replay_json_equals_committed_report: false`).
 
-## ADR-0012 — Season contract with declared exceptions (prototyped)
+## ADR-0012 — Season contract with declared exceptions (implemented)
 
 `mart_season_coverage` and `assert_season_game_counts` require 1,230 distinct games per
 completed season unless `dbt/seeds/season_exceptions.csv` declares otherwise: 2024-25 is
@@ -158,7 +160,7 @@ completed season unless `dbt/seeds/season_exceptions.csv` declares otherwise: 20
 (`dim_game.is_cup_final` must be false everywhere); every game has 13 to 30 players with a
 box score (`accepted_range` on `dim_game.n_players`; observed 16 to 26).
 
-## ADR-0013 — Plausibility warns and cites (prototyped)
+## ADR-0013 — Plausibility warns and cites (implemented)
 
 `assert_plausible_box_scores` warns (never fails) on a box score above 70 points, 30 rebounds
 or 25 assists unless `known_stat_exceptions.csv` lists it with a verification. Seeded: game
@@ -167,14 +169,14 @@ or 25 assists unless `known_stat_exceptions.csv` lists it with a verification. S
 on 2023-02-26, Dončić 73 on 2024-01-26, Nurkić 31 rebounds on 2024-03-03) were verified the
 same way on 2026-09-15 and seeded; the warning now reports nothing.
 
-## ADR-0014 — No dbt packages (prototyped)
+## ADR-0014 — No dbt packages (implemented; reaffirmed by ADR-0027)
 
 The project ships its own two generic tests (`unique_combination`, `accepted_range`) instead
 of dbt_utils / dbt_expectations: two macros are cheaper than a package install in every job
 and the `dbt deps` quirks the template documents. Revisit if a third package feature is
 needed.
 
-## ADR-0015 — Threshold selection by a coverage floor, reconciled in both directions (prototyped, Phase 2)
+## ADR-0015 — Threshold selection by a coverage floor, reconciled in both directions (implemented)
 
 **Rule.** Per target and population the threshold is the largest value on a fixed grid
 (`POLICY_THRESHOLD_GRID`: pts 0–8 by 0.25, reb and ast 0–4 by 0.1) whose coverage, the
@@ -238,7 +240,7 @@ selection adds `brz_policy_report+` and `brz_policy_curve+`. The artifact record
 commit that wrote it (`git_sha`), which is the commit before the one that adds it; the same
 is true of every committed report.
 
-## ADR-0016 — Drift is PSI per model feature against a reference built from the gold marts (prototyped, Phase 3)
+## ADR-0016 — Drift is PSI per model feature against a reference built from the gold marts (implemented; drift/<date>.json pushed by every nightly run since 2026-09-16)
 
 The nightly job checks the 14-day window of games played before the run date
 (`DRIFT_WINDOW_DAYS`): training-population rows (`min10`, ADR-0009), features from the one
@@ -260,7 +262,7 @@ population is the evaluation population (86,814 rows), not the 88,257 rows the t
 saw: the trainer keeps season debuts, whose season-to-date mean is undefined, and the
 population rule does not (ADR-0009).
 
-## ADR-0017 — The reference is aligned by season day, from seasons with history (prototyped, Phase 3)
+## ADR-0017 — The reference is aligned by season day, from seasons with history (implemented)
 
 Calibrating on the 164 replay dates (every one of them normal data the model was evaluated
 on, so any firing is a false positive) found three failures of a naive reference, in order:
@@ -304,7 +306,7 @@ the data has no playoffs. The season-position labels come from `SEASON_CALENDAR`
 window, trade-deadline week, All-Star break) and the first ten game dates; only the labels
 depend on that calendar, the reference does not.
 
-## ADR-0018 — WARN by default, HOLD only once calibrated, never blocking; no-schedule streak (prototyped, Phase 3)
+## ADR-0018 — WARN by default, HOLD only once calibrated, never blocking; no-schedule streak (implemented; the streak reached 9 on 2026-10-09)
 
 **Rule.** `HOLD` when at least `min_features` = 3 features have PSI at or above the threshold
 in one window; `WARN` when one or two do, or when three or more do while the thresholds are
@@ -332,10 +334,12 @@ in the dump (it was already there on 2026-09-12, the first live run); revise whe
 file shows up. The off-season "no games" days do not count: only the season's own
 no-schedule line does.
 
-**First run.** The dispatched nightly run is an owner step (the branch is not pushed); the
-local fallback `python -m nba.nightly --date 2026-09-16 --local-dump data_dump` wrote
-`drift/2026-09-16.json`: `insufficient`, 0 rows in the window (off-season), calibrated
-threshold 0.15, streak 0, no issue, and `mart_drift` built from it holds the one run row.
+**First run.** The dispatched nightly run `35048189295` (2026-09-16) and every scheduled run
+since wrote and pushed `drift/<date>.json` (first at dataset revision `17fd9fb1`): `insufficient`,
+0 rows in the window (off-season), calibrated threshold 0.15, no issue. By 2026-10-09 the
+dataset repo held 24 drift reports and the no-schedule streak stood at 9 (`drift/2026-10-09.json`),
+so the WARN issue is expected around 2026-10-14 unless the 2026-27 schedule file appears first
+(docs/RUNBOOK.md).
 
 **Sensitivity and the insufficient dates.** The calibration carries an injected-drift probe
 (`sensitivity`): on 2026-03-24 (regular position, 2,071 rows) shifting three features
@@ -353,7 +357,7 @@ time it runs on a season it has not seen. A HOLD there is to be reviewed against
 reference and the calibration, not treated as a bug in the rule or in the data: the
 opening reference comes from three prior openings and a fourth may sit outside them.
 
-## ADR-0019 — Agent tools read the exported gold marts, with the files as fallback; return shapes are versioned (prototyped, Phase 4)
+## ADR-0019 — Agent tools read the exported gold marts, with the files as fallback; return shapes are versioned (implemented; the export they read was frozen at 2026-09-16 until ADR-0022)
 
 The seven-tool contract stands (`get_daily_report`, `get_upstream_freshness`,
 `get_residuals`, `get_rolling_metrics`, `get_player_recent`, `get_team_context`,
@@ -378,7 +382,7 @@ the reconciliation the marts already carry. `brief/index.json` is built from the
 repo's file listing unioned with the local folder (`hf.list_brief_dates`), so a partial
 pull can no longer drop dates (risk 8); the listing failing is logged, never fatal.
 
-## ADR-0020 — Golden set version 2: one decision fact and one drift fact per date (prototyped, Phase 4)
+## ADR-0020 — Golden set version 2: one decision fact and one drift fact per date (implemented; 25 of 25 briefs in agent-eval.yml)
 
 `reports/agent_golden.json` is version 2: each date keeps its largest-points-residual
 player and gains a decision fact (the policy's pts hit rate to date on the training
@@ -409,3 +413,158 @@ on every push. The same class of failure (a global or repo-wide ignore silently 
 files a claim depends on) is what `test_no_warehouse_file_is_git_ignored` guards for the
 dbt project (Phase 1). Reading: an artifact a claim rests on must be in the repository,
 and a test that skips on "nothing to check" must fail instead.
+
+## ADR-0022 — Run evidence is an artifact; status words are checked against it (implemented, 2026-10-09)
+
+**Finding.** The README, ADR titles, `warehouse.yml` header and `docs/STORIES.md` said
+"prototyped" and "no committed run record proves a MotherDuck run" while `warehouse.yml` had
+four green runs on target `motherduck` (`35048092357` dispatched 2026-09-16; `35506971007`,
+`36317104881`, `37201223219` scheduled) and the nightly had run green every day since
+2026-09-12, pushing `drift/<date>.json` each night. Two undersold claims were nonetheless true:
+the `gold/` export on the dataset repo was frozen at its first push (`66404be0`, 2026-09-16)
+because `warehouse.yml`'s publish step was gated on `inputs.publish != false`, which is false
+on `schedule` events (the `inputs` context is empty and both sides coerce to 0), and the
+nightly's own warehouse steps had never executed because every off-season night stops at
+the gate (ADR-0007).
+
+**Decision.** `reports/runs.json` records every cited run (id, workflow, event, branch,
+commit, conclusion, start time, and where known the warehouse target and the Hugging Face
+revision it pushed); `scripts/record_run.py <run id>` appends one from `gh api`;
+`tests/test_runs.py` fails when a run id cited anywhere in the README, docs or workflow
+headers is missing from it. Status words now have one meaning each: **ran** needs a run id
+in that file; **deployed** needs a URL that answers; **implemented, not verified** is the
+word for code that exists and has not executed in Actions. The README's dbt counts are
+rendered from `dbt/target/manifest.json` between `<!-- dbt-counts -->` markers
+(`scripts/render_dbt_counts.py`; `tests/test_dbt_counts.py` parses the project and fails
+on drift), the same mechanism as the agent pass-rate row. The publish condition is now
+`github.event_name == 'schedule' || inputs.publish`; the owner approved the resulting
+`gold/` push, and the first run after the fix is to be dispatched and recorded here.
+
+**Status after this ADR.** Weekly MotherDuck build: ran (ids above). Gold export: pushed
+once on 2026-09-16, not since; fresh pushes resume with the first scheduled or dispatched
+refresh on `main` after this change. Nightly incremental build on MotherDuck: implemented,
+rehearsed on a synthetic night (ADR-0028), not yet run live.
+
+## ADR-0023 — The nightly selection is a named selector, and it is the whole project (implemented, 2026-10-09)
+
+The ten-item `--select` list lived twice (`Makefile`, `nightly.yml`) and omitted
+`slv_restatements`: `+slv_daily_reports+` selects that model's parents and children, and
+`slv_restatements` is a sibling, so on a nightly run `mart_restatement_lag` would have been
+rebuilt against a `slv_restatements` last refreshed by the weekly job. `dbt/selectors.yml`
+now defines `nightly` once; `make dbt-nightly` and `nightly.yml` use `--selector nightly`;
+`tests/test_dbt_selectors.py` resolves it with `dbt ls` and asserts it covers every model,
+seed and the snapshot. The definition is deliberately the whole project (`fqn:*`): the
+bronze copies and gold marts are seconds of work, the four seeds are a few dozen rows, and
+the season relationship tests (ADR-0024) reference the `seasons` seed, so a nightly build
+must not depend on a weekly refresh having loaded it. ADR-0007's compute guard remains the
+gate that decides *whether* to build; this selector is where to narrow *what* if MotherDuck
+compute ever matters. A caveat found on the way: dbt ignores `--exclude` next to
+`--selector`, so a build that needs exclusions spells the selection out.
+
+## ADR-0024 — The season list is a seed, tested against the pipeline's rule (implemented, 2026-10-09)
+
+`var('seasons')` in `dbt_project.yml` was read by no model, test or macro; the only season
+gate was a hand-typed `accepted_values` list on `slv_game_logs.season` that someone had
+already extended to 2026-27 by hand. The var is removed. `dbt/seeds/seasons.csv` is the one
+list (season, start year, status, note); `slv_game_logs.season`, `slv_predictions.season` and
+`slv_residuals.season` carry `relationships` tests to it with severity `warn` (ADR-0026),
+so the first rows of a season the seed does not list warn and open an issue rather than
+fail the build; `tests/test_project_config.py` asserts the seed's complete seasons equal
+`config.SEASONS`, every row obeys the October rule, and the current season is present
+(so the test, not the warehouse, is what fails when a season is forgotten). A date/season
+dimension (Phase 4) will be built from this seed.
+
+## ADR-0025 — One silver contract: slv_game_logs (implemented, 2026-10-09)
+
+Contracts were enforced on gold only. `slv_game_logs` now has one too, and the other four
+silver models do not, because: every gold mart and the feature parity proof (Phase 3) read
+`slv_game_logs`, so a column type drifting there would move published numbers; it is
+incremental with `on_schema_change='fail'`, so a contract is the only *typed* statement of
+what the table is between refreshes; and its columns are the canonical game-log schema
+(`nba/schema.py`), already fixed. `slv_predictions` and `slv_residuals` are typed copies of
+the product files whose shapes the `product_columns` macros already pin, and
+`slv_daily_reports` / `slv_restatements` are small operational tables; contracting them would
+add forty lines of YAML and no new guarantee. Revisit if a second consumer reads them.
+
+## ADR-0026 — Severity policy: a wrong published number blocks, an operational threshold warns (implemented, 2026-10-09)
+
+**error** (fails the build, nothing exports): grain uniqueness, contracts, the
+reconciliation tests to the committed reports, `assert_known_missing_games_are_absent`,
+`assert_season_game_counts`. **warn** (build and export continue; the workflow opens one
+idempotent issue labelled `warehouse-warn` per warning test through `nba/warehouse/notify.py`,
+the same protocol as the drift notifier): `assert_plausible_box_scores` (already),
+`assert_lookback_covers_restatement_lag` (changed from error: a lag beyond the lookback means
+"raise `lookback_days` and full-refresh", docs/RUNBOOK.md, not "the numbers are wrong"), and
+the season relationship tests (ADR-0024). `nightly.yml` and `warehouse.yml` run the notifier
+after every build (`issues: write`). `store_failures` stays off until Phase 4, where the
+reconciliation tests get it so a failure leaves the disagreeing rows behind.
+
+## ADR-0027 — sqlfluff lints the dbt project; ADR-0014 stands (implemented, 2026-10-09)
+
+`sqlfluff==4.4.0` with `sqlfluff-templater-dbt==4.4.0` resolve against the pinned
+`dbt-core==1.12.5` / `dbt-duckdb==1.11.0` and run in `make lint-sql` and CI. The config
+(`.sqlfluff`) matches the style the models already had: lower-case keywords, four-space
+indents, 120-character lines, Jinja blocks that do not indent their contents; rules that
+fight DuckDB struct access, quoted keywords or the project's deliberate one-line selects
+are excluded by name with the reason recorded in the file. The first lint found 326
+violations under default settings and 27 under this config, all whitespace; `sqlfluff fix`
+applied them to eight files and a token-level comparison of every compiled model and test
+before and after showed no change. sqlfluff is a Python dev dependency, not a dbt package,
+so ADR-0014 (no dbt packages) stands unchanged.
+
+## ADR-0028 — The nightly's warehouse steps are rehearsed on a synthetic game night (implemented, 2026-10-09; run id to be recorded)
+
+**Problem.** Steps 10–14 of `nightly.yml` (gate, target, loader, incremental `dbt build`,
+`export_gold`, `publish`) had executed zero times: every run since 2026-09-16 was an
+off-season night the gate skipped. Opening night (2026-10-20) would have been their first
+execution, with the ledger depending on it.
+
+**Design.** `nightly.yml` gains a `rehearsal` dispatch input. `python -m nba.rehearsal`
+pulls the real game logs (a read), writes a dump directory with the real `TeamHistories.csv`,
+a header-only `PlayerStatistics.csv` (the daily ingest sees an empty window and changes
+nothing) and a synthetic `LeagueSchedule26_27.csv` that re-dates the most recent real game
+night to the rehearsal date with `0022600001`-style ids, then runs `nba.nightly.run` with
+push disabled and no agent key. The slate, decisions, daily report and drift report are
+written locally; the summary says "slate written", so the gate says build; the target step
+is forced to `local`; a first `dbt build --full-refresh` creates the scratch warehouse from
+the published files, `nba.rehearsal stage-products` copies the night's products where
+`pull_products` would have put them, and the normal `dbt build --selector nightly` then runs
+as a genuine incremental pass over new nightly rows; `export_gold` runs; the publish step
+runs `--dry-run`; the DuckDB file, the export and both dbt logs are uploaded as an artifact.
+Nothing can reach Hugging Face: `nba.storage.hf` refuses to build a write client while
+`NBA_REHEARSAL` is set, and `tests/test_rehearsal.py` proves it.
+
+**What it proves and what it does not.** It proves the code path of steps 10–14 end to end
+on real data shapes, including the bronze families switching from empty typed relations to
+real files and the incremental models accepting a season no stored row carried.
+`tests/test_season_readiness.py` proves the same on fixtures in CI, plus the second night's
+residuals and a restatement inside the lookback. It does **not** exercise `delete+insert` on
+MotherDuck itself (the weekly full refresh does exercise MotherDuck, but with
+`--full-refresh`); a rehearsal against a scratch MotherDuck database (`NBA_MOTHERDUCK_DATABASE`)
+would close that gap and is offered to the owner as an option, since it writes to MotherDuck.
+
+**Record.** The first rehearsal run id and its outcome are recorded in `reports/runs.json`
+with `note: rehearsal` when the owner has dispatched it (or approved the dispatch).
+
+## ADR-0029 — Opening night depends on one Kaggle uploader for both the schedule and the box scores (proposed, 2026-10-09; decision in Phase 2)
+
+Checked with the owner's own Kaggle API key on 2026-10-09: the dump
+(`eoinamoore/historical-nba-data-and-player-box-scores`) is at version 515, **last updated
+2026-06-15**, and lists `LeagueSchedule24_25.csv` and `LeagueSchedule25_26.csv` but no
+`LeagueSchedule26_27.csv`. Two consequences, in order of severity: (1) without the schedule
+file there is no slate and so no ledger (`SLATE: no schedule file`, streak WARN at 14);
+(2) if the author does not resume daily updates once games are played, no box scores
+arrive either, so residuals, settlement of paper bets, drift windows and the incremental
+build all stall; the pipeline would exit 0 every night with nothing to do.
+
+Free, legitimate fallbacks found (docs/AE_AUDIT.md §9): for the **schedule**, The Odds API
+`GET /v4/sports/basketball_nba/events` costs 0 credits under its documented terms and returns
+upcoming games with teams and tip-off times, and balldontlie's `/games` endpoint is on its
+free tier with permissive terms; either can be mapped to the schedule loader's shape through
+a team-name seed. For **box scores** no documented free source reachable from a runner was
+found (balldontlie stats need a paid tier; nba.com hosts are blocked; ESPN's JSON is
+undocumented and Disney's terms forbid automated access), so settlement depends on the
+Kaggle author resuming, and the ledger must be designed to settle late rather than never.
+Decision deferred to Phase 2, where the odds client lands: implement the schedule fallback
+through the same free key, keep the Kaggle file as the primary when present, and record in
+the slate which source the schedule came from.

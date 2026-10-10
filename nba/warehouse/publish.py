@@ -1,8 +1,11 @@
 """Push the exported gold marts (dbt run-operation export_gold) to the dataset repo.
 
-Files land under gold/<alias>.parquet plus gold/_export_manifest.json, so the site and the
-analyst tools can read a mart the same way they read every other product: by public URL at
-resolve/main. Nothing else in the repo is touched.
+Files land under gold/<alias>.parquet plus gold/_export_manifest.json, so a consumer can read
+a mart the same way it reads every other product: by public URL at resolve/main. Today the
+analyst tools are the only reader (nba/agent/tools.py); the site reads the product files and
+will read small JSON exports of the marts from Phase 3 (docs/AE_AUDIT.md). Nothing else in the
+repo is touched. Run by warehouse.yml after every full refresh and by nightly.yml after a
+night that built the warehouse (ADR-0022).
 
 Usage:
     python -m nba.warehouse.publish [--export-dir data/warehouse/export] [--dry-run]

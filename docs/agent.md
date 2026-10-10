@@ -46,10 +46,13 @@ fixtures (`tests/test_agent_tools.py`).
 
 ### Marts and fallbacks (ADR-0019)
 
-The marts arrive through `pull_products` (the `gold/` folder the nightly warehouse step
-pushes after its build); until the first warehouse build has run in Actions the tools use
-the fallbacks, which compute the same numbers (the decisions fallback was checked equal
-to the mart on two golden dates, every count and rate). A tool whose return shape grew
+The marts arrive through `pull_products` (the `gold/` folder that `warehouse.yml` pushes
+after each weekly full refresh and that a nightly warehouse build pushes after its run).
+From 2026-09-16 to the ADR-0022 fix that export stayed at its first push (`66404be0`), so in
+Actions the tools read a `mart_drift` with no rows and fell through to the `drift/<date>.json`
+fallback, which computes the same numbers (the decisions fallback was checked equal to the
+mart on two golden dates, every count and rate). A tool therefore always says in `source`
+which it used. A tool whose return shape grew
 carries `tool_version: 2` and keeps every version-1 key; the test suite freezes the
 version-1 keys per tool, so a shape change is a versioned, additive change with a test.
 

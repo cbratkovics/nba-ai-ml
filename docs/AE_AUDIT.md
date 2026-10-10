@@ -577,7 +577,222 @@ the new citable facts with keys; `docs/RESUME.md` holds the two bullets and thre
 11. **`frontend/lib/policy_summary 2.json`** is a stray local file on your machine (ignored by
     git); delete it yourself, or shall I?
 
-## 8. Done, cut, and what to open first
+## 8. Phase 1 record (2026-10-09, branch `analytics-engineering`)
 
-Filled in at the end of the pass. Phase 0 (this document) is complete; no other file was
-changed.
+What changed, in commit order: `dbt/.user.yml` untracked and anonymous usage stats off;
+CI permissions scoped to the `pages` job; `warehouse.yml` publish condition fixed
+(ADR-0022); `dbt/selectors.yml` with the `nightly` selector used by the Makefile and
+`nightly.yml` (ADR-0023; the hand-typed list had omitted `slv_restatements`); sqlfluff with
+a config matching the existing style, 27 whitespace-only fixes, token-identical compiled SQL
+(ADR-0027); the `seasons` seed replacing the dead var, with `relationships` tests at
+severity warn (ADR-0024); a contract on `slv_game_logs` (ADR-0025); the severity policy and
+the `warehouse-warn` notifier (ADR-0026); `reports/runs.json` with `scripts/record_run.py` and
+`tests/test_runs.py`; README counts rendered from the manifest with a parse-based test;
+README, ADR statuses, `warehouse.yml` header, `docs/STORIES.md`, `docs/agent.md` and three
+docstrings rewritten to the three-way status; `nba/rehearsal.py` and the `rehearsal` dispatch
+input (ADR-0028); `tests/test_season_readiness.py` (two opening nights end to end on
+fixtures: new season label, bronze families switching on, incremental build, residuals, a
+restatement inside the lookback, export, dry-run publish); `docs/RUNBOOK.md`.
+
+Verification: `make dbt-full` 106 of 106 (31 models, 4 seeds, 1 snapshot, 70 tests);
+`make dbt-docs` with every column described; `make lint`, `make lint-sql`; `pytest` (the two
+LightGBM files still fail at collection on this machine without `libomp`). Run ids for the
+rehearsal dispatch and the post-merge `warehouse.yml` dispatch are recorded in
+`reports/runs.json` when they exist.
+
+Choices made on my recommendation (overrule any): restatement-lag test → warn (ruling);
+silver contract on `slv_game_logs` only (ruling); the `nightly` selector is the whole project
+including seeds (ADR-0023: a nightly must not depend on the weekly refresh having loaded the
+`seasons` seed); the season `relationships` tests warn rather than error; the stray
+`frontend/lib/policy_summary 2.json` on your machine was left alone (git-ignored, yours to
+delete); the agent's "push failed" wording was left alone (out of scope).
+
+Schedule dependency (ADR-0029): the Kaggle dump is at version 515, last updated
+**2026-06-15**, with no `LeagueSchedule26_27.csv` (checked with your Kaggle key on
+2026-10-09). The free, legitimate schedule fallback is in §9; the box-score dependency has no
+free fallback and is the largest risk to the ledger.
+
+## 9. Phase 0b — free-tier feasibility for the paper ledger (read-only, 2026-10-09)
+
+Sources are the providers' own pages, fetched 2026-10-09; where only a third party states a
+fact, it says so. Nothing was signed up for and no API was called. Full citations are in the
+research log for this phase (summarised here with URLs).
+
+### 9.1 Odds source
+
+**The Odds API v4** (`the-odds-api.com`). The pricing table's "Starter" row is **FREE, 500
+credits per month**, all sports, "all betting markets" (`https://the-odds-api.com/#get-access`).
+Whether a card is needed is **not stated on any primary page**; third-party comparisons say
+no card. Quota reset timing is not documented. Costing, from the v4 guide
+(`https://the-odds-api.com/liveapi/guides/v4/`): `/odds` costs `markets × regions`; the
+per-event odds endpoint costs `unique markets returned × regions`; `GET /v4/sports`,
+`GET /v4/sports/{sport}/events` and the participants endpoint **do not count against the
+quota**; scores cost 1 (2 with `daysFrom`); responses with no data do not consume quota;
+"every group of 10 bookmakers is the equivalent of 1 region", and a `bookmakers` filter takes
+priority over `regions`, so `bookmakers=draftkings` is one region-unit. Historical odds cost
+10 per region per market and the historical endpoints are "only available on paid usage
+plans" (the homepage row lists "Historical Odds" under Starter; the docs are authoritative,
+so assume none at $0). Response headers `x-requests-remaining`, `x-requests-used`,
+`x-requests-last` report the quota, which is what the Phase 2 credit guard reads.
+
+NBA player props exist "one event at a time" through `/v4/sports/basketball_nba/events/{eventId}/odds`
+with market keys `player_points`, `player_rebounds`, `player_assists` (plus `_alternate`
+variants, threes, blocks, steals, turnovers, combos, `player_fantasy_points`)
+(`https://the-odds-api.com/sports-odds-data/betting-markets.html`). Bookmakers in
+`regions=us` include `draftkings`; **Caesars (`williamhill_us`) and Fanatics are marked
+"Only available on paid subscriptions"**
+(`https://the-odds-api.com/sports-odds-data/bookmaker-apis.html`). So at $0 the Maine-legal
+pair collapses to **DraftKings only**; Caesars lines can enter only by hand (§9.3).
+
+Terms (`https://the-odds-api.com/terms-and-conditions.html`, updated 2026-08-31) permit, in
+their words, "Storing our data and retaining it indefinitely", "Calculating and displaying
+values you derive from our data", "Displaying our data in a UI, website, or mobile app", and
+training models on it; they prohibit reselling or redistributing the data "as a standalone
+data product", including "downloadable files … intended to serve as a source of raw data for
+others". Reading for this project: a **private** HF dataset repo or MotherDuck table of raw
+lines is storage (allowed); public pages showing hit rates, ROI and coverage are derived
+values (allowed); publishing the raw line snapshots publicly as files would be the prohibited
+case, which the brief already rules out. Attribution is "not required, but is always
+appreciated"; the terms also say to verify with the operator before acting on a line.
+
+**Alternatives.** balldontlie: free tier (5 requests/minute) covers games, teams and players;
+**odds and injuries require the GOAT tier ($39.99/month)**, and paid tiers come with a
+48-hour trial that converts — excluded (`https://nba.balldontlie.io/`,
+`https://www.balldontlie.io/terms.html`). OddsPapi: the vendor's blog claims 250 free
+requests/month with no card, but the pricing page is a JavaScript calculator and the docs do
+not list NBA prop keys or DraftKings coverage — unverifiable from primary sources, so not a
+basis for the ledger. SportsGameOdds: a free "Amateur" plan of 2,500 *objects*/month with
+props included; object metering makes it tight and the card question is unstated. odds-api.io:
+"new free API keys are paused indefinitely". **Verdict: The Odds API free plan, DraftKings
+only, is the one option whose costs and terms are documented well enough to build on.**
+
+### 9.2 Credit budget, with arithmetic
+
+Definitions: one *capture* = one night's lines for the chosen markets and games; the free
+`/events` call lists the night's games at 0 credits; each per-event props call costs
+`markets × 1` with `bookmakers=draftkings`. The 2025-26 regular season had 1,230 games on 164
+game dates, **7.5 games per night on average** (`reports/replay_2025-26.json`
+`n_dates`), typically 2 to 15.
+
+| Option | Credits per average night (7.5 games) | Worst night (15 games) |
+|---|---:|---:|
+| three markets (pts, reb, ast), every game | 22.5 | 45 |
+| points only, every game | 7.5 | 15 |
+| three markets, half the games (by a fixed rule, e.g. the earliest tip-offs) | 11.25 | 22.5 |
+| one book vs two | same (10 books = 1 region-unit); Caesars is not available free anyway | |
+
+Budget: 500 credits/month minus a **15 % margin = 425**; I would hold a further fixed
+**reserve of 50** for retries that must never happen automatically (so 375 planned).
+
+- Three markets, every game: 375 / 22.5 ≈ **16 captures a month on average**, with a hard
+  floor of 375 / 45 = 8 if every night were a 15-game night. A month has about 27 game
+  nights, so this is roughly every other game night.
+- Points only, every game: 375 / 7.5 = **50**, i.e. every game night of the month with room
+  to spare (27 × 7.5 ≈ 200).
+- Three markets, every game, **every night** would cost 27 × 22.5 ≈ 610 > 500: does not fit.
+
+Over a season (≈ 164 game nights, 6 months, 3,000 credits): points-only every night ≈ 1,230
+credits (fits); three markets every night ≈ 3,700 (does not fit); three markets on 16
+pre-chosen nights a month ≈ 2,160 (fits with the margin). **Recommendation for the Phase 2
+ADR:** three markets, DraftKings, every game on the night, on a **fixed set of weekdays**
+(e.g. Tuesday, Friday, Sunday ≈ 13 nights a month ≈ 290 credits; or add Wednesday ≈ 17
+nights ≈ 380 credits, right at the planned 375) — fixed in advance so the nights are chosen
+by the calendar and not by you, which is the no-cherry-picking rule the brief asks for, and
+the credit guard refuses any capture that would cross 425. Hand-entered nights
+(`source = manual`, §9.3) cost nothing and are reported separately.
+
+### 9.3 Manual fallback at zero credits
+
+CSV template (`lines_manual.csv`, one row per player-market line, read from your own
+sportsbook account before tip-off):
+
+```
+read_at_utc,game_date,book,player_name,team,market,line,over_price,under_price,notes
+2026-10-20T20:05:00Z,2026-10-20,caesars,Jayson Tatum,BOS,player_points,27.5,-115,-105,
+```
+
+Validation on load (Phase 2): `read_at_utc` parses and is before the game's tip-off and after
+the prediction's timestamp; `book` ∈ {draftkings, caesars}; `market` ∈ the three keys; `line`
+is a half-point or whole number in a plausible range per market; prices are American odds
+(≤ −100 or ≥ +100); `player_name` passes the same normaliser and mapping seed as API names,
+unmatched rows go to the counted queue; duplicates on (game_date, book, player, market) are
+rejected. **Is this alone enough for the ledger?** Yes for correctness: a hand-read line with
+its timestamp settles exactly like an API line, and it is the only way Caesars lines enter.
+No for scale and for trust: it is a few minutes of typing per market per night, and the
+`read_at_utc` stamp is self-reported, so manual rows must be labelled `source = manual` and
+reported separately from API rows as the brief requires (the API rows carry a server
+timestamp and the response's `last_update`).
+
+### 9.4 DraftKings salaries and scoring
+
+The DraftKings rules and terms pages (`https://www.draftkings.com/help/rules/nba`,
+`/help/terms`) returned **HTTP 403 to the research fetcher**, so the scoring values below are
+from secondary sources and must be **confirmed by you in a browser** before Phase 5 uses
+them: Point +1, three-pointer made +0.5, rebound +1.25, assist +1.5, steal +2, block +2,
+turnover −0.5, double-double +1.5 (max 1), triple-double +3 (max 1); roster PG, SG, SF, PF,
+C, G, F, UTIL; salary cap $50,000. The draft screen's "Export to CSV" (player, position,
+salary, game info, DK average points) is referenced by third parties, not by a DraftKings
+page I could read; confirm the link exists in your contest view. DraftKings' terms (mirrored
+copy, 2026-09-13) prohibit "automated means … to obtain, collect or access any information
+on the Website"; a manual export by a logged-in user is not automated, and that is the only
+way salaries enter this project. No clause about personal use of one's own export was found.
+
+### 9.5 Availability (injuries, expected starters)
+
+No $0 source with documented terms reachable from a runner was found. Ranked: (1) the
+official NBA injury report PDFs (hub `https://official.nba.com/nba-injury-report-2025-26-season/`;
+files at `ak-static.cms.nba.com/referee/injury/Injury-Report_<date>_<time>.pdf`; deadlines
+5 p.m. local the day before and 1 p.m. day-of) are the legitimate source, but the host is an
+Akamai sibling of the blocked `cdn.nba.com` and **untested from runners** — a one-line
+addition to the dispatch-only `probe-nba-api.yml` would settle it, and the PDFs need parsing;
+(2) balldontlie injuries: GOAT tier only; (3) ESPN's injuries JSON: undocumented, and Disney's
+terms forbid "automated means" (`https://disneytermsofuse.com/english/`); (4) Rotowire and
+similar: paid or scraping. **Recommendation:** the recommendations view carries the plain
+flag "the model has no availability information" (already required by the brief), the ledger
+settles did-not-play as the pre-registered rule says (void, counted and reported), and the
+injury-report probe is run once to decide whether a PDF reader is worth building later.
+
+### 9.6 Timing
+
+- **Box scores → dump → ingest.** The dump's in-season cadence is undocumented (its page
+  says "updated daily"; the last update was 2026-06-15, after the Finals). The nightly runs
+  at 10:00 UTC (06:00 ET) and re-reads the last 7 days, so a box score the author publishes
+  within a day lands the next morning; settlement of a paper bet is therefore **T+1 at the
+  earliest** and later if the dump lags. ADR-0029 covers the case where it never arrives.
+- **Predictions.** Stamped by the nightly at ~06:00 ET on game day (`generated_at` on every
+  slate row), from game logs through the previous night.
+- **Lines.** DraftKings posts NBA player props the morning of game day, sometimes the night
+  before; a capture dispatched by you between **~15:00 and 18:00 ET** sees most games'
+  props posted and precedes the earliest tip-off (19:00 ET); each API row carries the
+  response's `last_update` and the request time.
+- **Salaries.** Contest salaries are available once the slate is posted (typically the day
+  before); a hand export any time before lock is fine.
+- **Timestamp test (Phase 2):** `prediction.generated_at < line.read_at < game.tip_off`
+  for every ledger row; a row that fails is excluded and counted, never silently reordered.
+
+### 9.7 Every other free limit this plan touches
+
+| Service | Limit (source) | Use today | Headroom / what exhausts it |
+|---|---|---|---|
+| GitHub Actions | free for public repos on standard runners; cache 10 GB per repo, entries evicted after 7 days without access; artifacts 90 days by default; 6 h per job (`docs.github.com/.../github-actions`, `dependency-caching-reference`) | ~8 nightly + ~1 weekly + CI runs; slim-CI state in cache | minutes: none for a public repo; the 7-day cache eviction already means the first PR after a quiet week does a full build (acceptable) |
+| MotherDuck Lite | 10 GB storage, 10 h Pulse compute per month, no card (`motherduck.com/pricing`) | weekly refresh ≈ 1 min; nightly builds in season ≈ 1 min each → ≈ 35 min/month | compute 10 h: ~17× headroom; a ledger table adds kilobytes; a scratch rehearsal database would add one more ≈ 90 MB |
+| Hugging Face | private storage 100 GB for free accounts; ≤ 100k files per repo (`huggingface.co/docs/hub/storage-limits`) | public dataset repo ≈ 50 MB; private lines repo would add ≈ 50 KB per captured night | nothing in sight |
+| Groq free | `openai/gpt-oss-120b`: 30 RPM, 1,000 RPD, 8k TPM, **200k tokens per day** (`console.groq.com/docs/rate-limits`) | one brief ≈ 5k tokens/night | a pass-rate run (25 briefs) is half the daily cap; nothing new here uses Groq |
+| The Odds API free | 500 credits/month | 0 today | §9.2 |
+| Kaggle API | no documented quota for single-file downloads at this volume | one 390 MB download per night | an undocumented limit would surface as a download failure (red run) |
+| Vercel Hobby | personal, non-commercial; builds and bandwidth within the hobby plan | 5 static pages | a private recommendations view adds one page; keep it behind the same static-file model (no server) |
+
+### 9.8 What Phase 2 can and cannot promise at $0
+
+Can: DraftKings points/rebounds/assists lines on a pre-declared subset of game nights (about
+16 a month with three markets, or every night with points only), captured on demand with a
+guard that fails closed; hand-entered Caesars or DraftKings lines on any night; a paper ledger
+settled T+1 or later from the Kaggle box scores; public aggregates with sample sizes. Cannot:
+Caesars lines through the API; historical odds for a backtest of the betting rule (paid
+only — the rule is pre-registered without a line backtest, which is the honest position);
+an availability signal; settlement independent of the Kaggle author. The last item is the
+risk to name on every ledger page.
+
+## 10. Done, cut, and what to open first
+
+Filled in at the end of the pass.

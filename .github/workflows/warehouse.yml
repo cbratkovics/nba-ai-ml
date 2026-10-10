@@ -6,8 +6,11 @@ name: Warehouse full refresh
 # builds the incremental models; this is where a restatement older than the 14-day lookback,
 # a model-SQL change, or a new season gets picked up. Also exports and pushes the gold marts.
 #
-# Status: implemented. No committed run record currently proves that this workflow has
-# completed against MotherDuck; the selected target must be verified from a run log.
+# Status: ran on MotherDuck on 2026-09-16 (dispatch 35048092357) and every Sunday since
+# (reports/runs.json records each run with its target). Until ADR-0022 the publish step's
+# condition was false on scheduled runs, so gold/ on the dataset repo stayed at the first
+# export (66404be0); scheduled runs now push. Tests with severity warn open a
+# `warehouse-warn` issue (ADR-0026).
 
 on:
   schedule:
