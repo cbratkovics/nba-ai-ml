@@ -830,6 +830,56 @@ ready); `docs/METRICS.md` entries for the ledger metrics (Phase 4); native unit 
 settlement SQL against `nba.ledger.rule.settle` (Phase 4); alternate lines, live odds,
 Caesars through the API (paid), any availability signal.
 
-## 11. Done, cut, and what to open first
+## 11. Phase 3 record (2026-10-10, branch `analytics-engineering`)
+
+Scope as approved: SQL features with the row-for-row parity proof, the site reading gold
+through JSON exports with the current files as fallback, and exposures. The `/ledger` page
+deferred from Phase 2 is included.
+
+**Features in SQL (ADR-0032).** `int_player_game_features` (new `intermediate` layer) renders
+all 23 `asof_v1` features over `slv_game_logs`. The loader now also runs the Python feature
+module over the loaded game logs and writes `features/asof_v1.parquet`
+(`nba/warehouse/features.py`, ~75 s of pandas on 130k rows); `brz_features_asof_v1` types it,
+and `assert_int_features_match_feature_module` full-outer-joins the two and fails on a row on
+one side only, a null on one side only, any integer difference, or a double difference above
+`tol_feature_parity`. Measured over 130,414 rows (`reports/feature_parity_asof_v1.json`,
+`make parity`): 0.0 on 19 features, 2.13e-14 at most on the four minutes means, no null
+mismatch; at tolerance 0 the test fails on 42,828 rows, all on those four columns. Tolerance
+set at 1e-12 from that measurement (the audit's 1e-9 was a guess). `tests/test_feature_parity.py`
+holds the var to the report, the SQL feature list to the module's, and proves the dbt test
+fails on exactly one row when one value of the module's file is perturbed by 0.01. The Python
+module still serves; the ADR records what switching would take.
+
+**The site reads gold (ADR-0033).** `export_gold` writes `gold/<mart>.json` for the ten marts
+with `meta.export_json` (sizes 6 B to 264 KB), the publisher pushes them, and
+`frontend/lib/data.ts` gained `getGoldMart`, `pinnedRows`, `dailyRowsToDays` and
+`goldSourceNote`. `/` (all-rows comparison and a training-population cross-check), `/replay`
+(daily chart, season figures) and `/decisions` (hit rates, coverage, baselines, band coverage,
+coverage curve) read the marts first and the files they read before as fallback; the headline
+holdout table stays on `metrics.json`; thresholds, band quantiles and verdict text stay the
+artifact's; every section names the source it rendered. New `/ledger` page: the rule from a
+committed mirror (`frontend/lib/ledger_rule.json`, `python -m nba.ledger.rule --mirror`,
+tested), coverage and pending counts, headline and manual ledgers, the split by side, the
+"what this is not" paragraph; honestly empty until 2026-10-20. `next build` passes with every
+gold file absent (all pages on their fallbacks).
+
+**Exposures (ADR-0033).** `dbt/models/exposures.yml`: six pages, the agent, the Hugging Face
+export (exactly the exported set), `nba.decisions.evaluate`, the drift reference/calibration
+scripts, and the private recommendations view. `tests/test_dbt_exposures.py` keeps them in step
+with the pages (every `page.tsx` has one; every mart a page fetches is listed and exported as
+JSON), the export set, the scripts' `gold.<table>` reads, and the README count.
+
+Verification: `dbt build --full-refresh` locally `PASS=140` (41 models, 4 seeds, 1 snapshot,
+93 data tests, 1 unit test, 11 exposures); `dbt docs generate` with every column described;
+`sqlfluff`; `ruff`; `pytest` (see the checkpoint message for the count); `next build`. Run ids
+for CI and the post-merge `warehouse.yml` dispatch go into `reports/runs.json` when they exist.
+
+Choices made on my recommendation: the parity tolerance 1e-12 (50× the largest observed
+difference); the headline holdout table stays on `metrics.json` rather than the mart; the
+mart's JSON exports include `mart_season_coverage` and `mart_restatement_lag` though no page
+reads them yet (small, and the agent's fallback-free marts should be fetchable); `/ledger`
+built now rather than in Phase 6; `/predictions` and `/brief` unchanged (the audit's cut).
+
+## 12. Done, cut, and what to open first
 
 Filled in at the end of the pass.
