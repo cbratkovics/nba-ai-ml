@@ -95,9 +95,13 @@ the ledger cannot settle; say so on the ledger page rather than finding a scrape
 | a hand-read line to add | | `python -m nba.lines.manual template > lines.csv`, fill it from your own account (prices as American odds, time read in UTC with `Z`), then `python -m nba.lines.manual ingest lines.csv` |
 | `assert_predictions_precede_their_lines` fails | a prediction was stamped after its line was captured: the nightly and the capture ran out of order | find why (a re-run of the nightly after 20:00 UTC?); do not change the test; the bet is already excluded |
 
-How many bets before the numbers mean anything: at a true 55 % hit rate the 95 % half-width
-is about ±0.10 at 100 settled bets and ±0.05 at 400. Under about 100 settled bets the ledger
-page should read "too early", and `mart_ledger.hit_rate_half_width_95` is on every row.
+How many bets before the numbers mean anything (ADR-0030): under 100 settled bets the
+`verdict` column reads "too early"; above that the interval and the break-even rate implied
+by the prices taken are shown, and a verdict is given only when the interval excludes
+break-even. Separating a true 55 % hit rate from the 52.4 % break-even of −110 takes about
+1,400 settled bets ((1.96 × √(0.55 × 0.45) / 0.026)² ≈ 1,406); at 100 the half-width is
+±0.10, at 400 ±0.05. Headline numbers are API lines only; manual lines are reported in their
+own rows.
 
 ## Red runs
 

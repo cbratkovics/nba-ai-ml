@@ -5,7 +5,12 @@
 --
 --   hit_rate              won / (won + lost); pushes and voids are counted, not scored
 --   breakeven_hit_rate    mean implied probability of the prices taken on settled bets
---   roi_units             profit / units staked on settled (won + lost) bets
+--   roi_units             profit / units staked on settled (won + lost) bets; one unit is
+--                         risked per bet and a win pays the captured price
+--   verdict               too early under 100 settled bets; otherwise a verdict only when the
+--                         95% interval of the hit rate excludes the break-even rate
+--                         (ADR-0030 amendment 4; separating 55% from 52.4% takes ~1,400 bets)
+--   is_headline           source_group = api: manual lines never enter the headline numbers
 with bets as (
     select * from {{ ref('fct_paper_bet') }} where is_bet
 ),
@@ -39,6 +44,7 @@ grouped as (
 select
     cast(season as varchar) as season,
     cast(source_group as varchar) as source_group,
+    cast(source_group = 'api' as boolean) as is_headline,
     cast(book_group as varchar) as book,
     cast(market as varchar) as market,
     cast(n_bets as integer) as n_bets,
@@ -63,5 +69,15 @@ select
     cast(
         case when n_settled > 1 then 1.96 * profit_sd / sqrt(n_settled) end as double
     ) as roi_half_width_95,
+    cast(
+        case
+            when n_settled < 100 then 'too early'
+            when n_won / n_settled - 1.96 * sqrt((n_won / n_settled) * (1 - n_won / n_settled) / n_settled)
+                > sum_implied / n_settled then 'beats break-even'
+            when n_won / n_settled + 1.96 * sqrt((n_won / n_settled) * (1 - n_won / n_settled) / n_settled)
+                < sum_implied / n_settled then 'below break-even'
+            else 'inconclusive'
+        end as varchar
+    ) as verdict,
     cast('out_of_sample' as varchar) as evaluation
 from grouped

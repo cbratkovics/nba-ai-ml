@@ -596,9 +596,9 @@ also carries `tip_off_utc`, `event_id` and `schedule_source` from either source.
 The box-score side has no fallback (ADR-0031 designs for it: bets settle whenever the box
 scores arrive, and a `source-stalled` issue is distinct from no-schedule).
 
-## ADR-0030 — The pre-registered paper-bet rule, version 1 (PROPOSED, 2026-10-10; final on the owner's sign-off, before 2026-10-20)
+## ADR-0030 — The pre-registered paper-bet rule, version 1 (FINAL, 2026-10-10: approved by the owner with five amendments, before the first live date 2026-10-20)
 
-The rule is data in `nba/ledger/rule.py` (`RULE`, hash `6f7f1c9917ab08dcf001d76842820cf7c96bf5ee1a9cffe1e13fc44d4695350b`), mirrored as
+The rule is data in `nba/ledger/rule.py` (`RULE`, hash `ae7b1a2e00534761ff4814fc9fa536d4a10282c370a9ccb1ba176b52931a917f`), mirrored as
 dbt vars that `tests/test_project_config.py` pins to the same hash, so the recommendations
 view (Python) and `fct_paper_bet` (SQL) apply one rule. It is committed before the first live
 date it covers and is never tuned on 2026-27; a change is `ledger_rule_v2` with its own ADR.
@@ -646,21 +646,48 @@ thresholds already pre-registered on the replay (`reports/policy_2025-26.json`
 pre-registered edge constant per target is reused unchanged; that is the honest position and
 it is what makes the season out of sample.
 
-**Stake and settlement.** Flat one unit at the captured American price on the bet side.
-`pending` until the game's box score is ingested; `won` / `lost` on the bet side of the
-line; `push` when the actual equals a whole-number line; `void` when the game is ingested
-and the player has no box-score row (did not play) or the game was not played. Settlement
-is computed in `fct_paper_bet` from the facts on every build, never stored, so it is
-idempotent and backfills itself when a late box score arrives.
+**Stake (amendment 1).** One unit is risked per bet, every bet; the profit on a win comes
+from the captured American price on the bet side (−110 pays 0.909 units, +120 pays 1.2);
+a loss costs the unit. `units_staked` and `units_profit` are additive sums; `roi_units` is
+their ratio and is never averaged across rows.
 
-**Reporting.** `mart_ledger` (hit rate against the line with a 95 % half-width, the
-break-even hit rate implied by the prices taken, ROI in units with a half-width),
-`mart_ledger_by_edge`, `mart_ledger_coverage` (captured nights against game nights, bets
-per night, unmatched lines, pending counts). Rates are ratios of sums. Every row carries
-its n and `evaluation = out_of_sample`; in-sample results stay in the replay marts and are
-never pooled. Rule of thumb for reading them: at a true 55 % hit rate the 95 % half-width is
-±0.10 at 100 settled bets and ±0.05 at 400; below about 100 settled bets the ledger says
-"too early", and the README will say so.
+**Settlement (amendment 2).** `pending` while the game's box score is **absent** from the
+stored logs; `void` only when the game's box score is **present and the player has no row
+in it** (did not play); a row with any minutes played, even under one, means the action
+stands and the bet settles on the line; `won` / `lost` on the bet side of the line; `push`
+when the actual equals a whole-number line. Settlement is computed in `fct_paper_bet` from
+the facts on every build, never stored, so it is idempotent and backfills itself when a late
+box score arrives. The dbt unit test `fct_paper_bet_settles_pending_void_and_sub_minute_action`
+covers the absent game (pending), the present game without the player (void), a 0.7-minute
+row (settled on the line) and an exact whole-line hit (push).
+
+**Side bias (amendment 3).** The model is a LightGBM regressor trained on squared error
+(`nba/config.py` `LGBM_PARAMS`, LightGBM's default `regression` objective), that is, a
+conditional **mean**. A book's line sits near the **median**, and points are right-skewed,
+so a mean-type prediction tends to sit above the line and the rule may lean to overs.
+Nothing is adjusted for it; `mart_ledger_by_side` reports hit rate, n and ROI for overs and
+unders separately so the lean and its cost, if any, are visible.
+
+**Reporting and the reading rule (amendment 4).** `mart_ledger` (hit rate against the
+line with a 95 % half-width, the break-even hit rate implied by the prices actually taken,
+ROI in units with a half-width, and a `verdict`), `mart_ledger_by_side`, `mart_ledger_by_edge`,
+`mart_ledger_coverage` (captured nights against game nights, bets per night, unmatched lines,
+pending counts). Rates are ratios of sums; every row carries its n and
+`evaluation = out_of_sample`; in-sample results stay in the replay marts and are never
+pooled. **Headline numbers are `source_group = api` only (`is_headline`); manual lines never
+enter them.** The verdict: **"too early" under 100 settled bets**; above that, the interval
+and the break-even rate are shown and a verdict ("beats break-even" / "below break-even") is
+given only when the hit rate's 95 % interval excludes the break-even rate, else
+"inconclusive". How long that takes: to separate a true 55 % hit rate from the 52.4 %
+break-even of −110 prices at 95 % confidence needs
+n = (1.96 × √(0.55 × 0.45) / (0.55 − 0.524))² = (1.96 × 0.4975 / 0.026)² ≈ 37.5² ≈ **1,400
+settled bets**; at 100 settled bets the half-width is ±0.10, at 400 it is ±0.05. A season of
+every-night DraftKings points lines will not reach 1,400 qualifying bets, so the expected
+honest verdict for 2026-27 is "inconclusive" unless the edge is large.
+
+**Privacy guard (amendment 5).** `nba.lines.store.push` reads the lines repo's visibility
+before every commit and refuses to push unless it is private; `ensure_private_repo` creates
+it private and refuses a public one; `tests/test_lines_store.py` proves both.
 
 ## ADR-0031 — Budgeted, bias-guarded line capture and the private ledger (implemented, 2026-10-10)
 

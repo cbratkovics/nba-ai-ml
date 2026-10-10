@@ -37,6 +37,7 @@ grouped as (
 select
     cast(season as varchar) as season,
     cast(source_group as varchar) as source_group,
+    cast(source_group = 'api' as boolean) as is_headline,
     cast(market as varchar) as market,
     cast(edge_bucket as varchar) as edge_bucket,
     cast(n_bets as integer) as n_bets,

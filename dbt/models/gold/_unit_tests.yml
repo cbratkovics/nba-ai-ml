@@ -1,0 +1,40 @@
+version: 2
+
+# Native unit tests (dbt >= 1.8) on mocked inputs. The first covers ADR-0030 amendment 2:
+# a bet is pending while the game's box score is absent, void when it is present and the
+# player has no row, and the action stands for a player with under one minute played.
+unit_tests:
+  - name: fct_paper_bet_settles_pending_void_and_sub_minute_action
+    description: "Settlement (ADR-0030): box score absent -> pending; present without the player -> void; present with a 0.7-minute row -> won/lost on the line; a whole line hit exactly -> push. Eligibility and the timestamp order hold on every row."
+    model: fct_paper_bet
+    given:
+      - input: ref('slv_lines')
+        format: dict
+        rows:
+          - { capture_id: c1, game_date: 2026-10-20, season: 2026-27, source: api, book: draftkings, market: player_points, player_name_raw: A Pending, player_id: 1, match_method: team, team: BOS, event_id: e1, home_team: BOS, away_team: NYK, commence_time_utc: 2026-10-20 23:30:00, snapshot_at_utc: 2026-10-20 20:00:00, line_last_update_utc: 2026-10-20 19:50:00, line: 20.5, over_price: -110, under_price: -110, source_file: f }
+          - { capture_id: c1, game_date: 2026-10-20, season: 2026-27, source: api, book: draftkings, market: player_points, player_name_raw: B Void, player_id: 2, match_method: team, team: LAL, event_id: e2, home_team: LAL, away_team: SAN, commence_time_utc: 2026-10-21 02:00:00, snapshot_at_utc: 2026-10-20 20:00:00, line_last_update_utc: 2026-10-20 19:50:00, line: 20.5, over_price: -110, under_price: -110, source_file: f }
+          - { capture_id: c1, game_date: 2026-10-20, season: 2026-27, source: api, book: draftkings, market: player_points, player_name_raw: C SubMinute, player_id: 3, match_method: team, team: LAL, event_id: e2, home_team: LAL, away_team: SAN, commence_time_utc: 2026-10-21 02:00:00, snapshot_at_utc: 2026-10-20 20:00:00, line_last_update_utc: 2026-10-20 19:50:00, line: 15.5, over_price: -120, under_price: 100, source_file: f }
+          - { capture_id: c1, game_date: 2026-10-20, season: 2026-27, source: api, book: draftkings, market: player_points, player_name_raw: D Push, player_id: 4, match_method: team, team: SAN, event_id: e2, home_team: LAL, away_team: SAN, commence_time_utc: 2026-10-21 02:00:00, snapshot_at_utc: 2026-10-20 20:00:00, line_last_update_utc: 2026-10-20 19:50:00, line: 20.0, over_price: -110, under_price: -110, source_file: f }
+      - input: ref('fct_prediction')
+        format: dict
+        rows:
+          - { player_id: 1, game_id: "0022600001", box_score_game_id: "0022600001", model_revision: m, feature_version: asof_v1, run_kind: nightly, game_date: 2026-10-20, player_name: A Pending, tip_off_utc: 2026-10-20 23:30:00, prediction_generated_at: 2026-10-20 10:00:00, games_played_season: 3, minutes_mean_last10: 30.0, input_staleness_days: 2.0, pred_pts: 23.0, pred_reb: 5.0, pred_ast: 4.0, baseline_last10_pts: 21.0, baseline_last10_reb: 5.0, baseline_last10_ast: 4.0 }
+          - { player_id: 2, game_id: "0022600002", box_score_game_id: "0022600002", model_revision: m, feature_version: asof_v1, run_kind: nightly, game_date: 2026-10-20, player_name: B Void, tip_off_utc: 2026-10-21 02:00:00, prediction_generated_at: 2026-10-20 10:00:00, games_played_season: 3, minutes_mean_last10: 30.0, input_staleness_days: 2.0, pred_pts: 23.0, pred_reb: 5.0, pred_ast: 4.0, baseline_last10_pts: 21.0, baseline_last10_reb: 5.0, baseline_last10_ast: 4.0 }
+          - { player_id: 3, game_id: "0022600002", box_score_game_id: "0022600002", model_revision: m, feature_version: asof_v1, run_kind: nightly, game_date: 2026-10-20, player_name: C SubMinute, tip_off_utc: 2026-10-21 02:00:00, prediction_generated_at: 2026-10-20 10:00:00, games_played_season: 3, minutes_mean_last10: 30.0, input_staleness_days: 2.0, pred_pts: 12.0, pred_reb: 5.0, pred_ast: 4.0, baseline_last10_pts: 14.0, baseline_last10_reb: 5.0, baseline_last10_ast: 4.0 }
+          - { player_id: 4, game_id: "0022600002", box_score_game_id: "0022600002", model_revision: m, feature_version: asof_v1, run_kind: nightly, game_date: 2026-10-20, player_name: D Push, tip_off_utc: 2026-10-21 02:00:00, prediction_generated_at: 2026-10-20 10:00:00, games_played_season: 3, minutes_mean_last10: 30.0, input_staleness_days: 2.0, pred_pts: 22.5, pred_reb: 5.0, pred_ast: 4.0, baseline_last10_pts: 21.0, baseline_last10_reb: 5.0, baseline_last10_ast: 4.0 }
+      - input: ref('dim_game')
+        format: dict
+        rows:
+          - { game_id: "0022600002" }  # game 0022600001's box score is absent
+      - input: ref('fct_player_game')
+        format: dict
+        rows:
+          - { player_id: 3, game_id: "0022600002", pts: 2, reb: 1, ast: 0, minutes: 0.7 }
+          - { player_id: 4, game_id: "0022600002", pts: 20, reb: 4, ast: 3, minutes: 31.0 }
+    expect:
+      format: dict
+      rows:
+        - { player_id: 1, side: over, is_bet: true, game_ingested: false, played: false, outcome: pending, profit_units: 0.0 }
+        - { player_id: 2, side: over, is_bet: true, game_ingested: true, played: false, outcome: void, profit_units: 0.0 }
+        - { player_id: 3, side: under, is_bet: true, game_ingested: true, played: true, outcome: won, profit_units: 1.0 }  # +100 pays one unit exactly
+        - { player_id: 4, side: over, is_bet: true, game_ingested: true, played: true, outcome: push, profit_units: 0.0 }

@@ -435,12 +435,12 @@ models:
       - { name: is_bet, data_type: boolean, description: eligible and side is over or under, constraints: [{ type: not_null }] }
       - { name: price, data_type: integer, description: American price on the bet side }
       - { name: implied_probability, data_type: double, description: break-even probability of the price taken }
-      - { name: units, data_type: double, description: flat stake in units, constraints: [{ type: not_null }] }
+      - { name: units, data_type: double, description: "units risked on the bet: one, every bet", constraints: [{ type: not_null }] }
       - { name: actual, data_type: double, description: "the player's actual stat once the box score exists" }
       - { name: game_ingested, data_type: boolean, description: the game is in the stored logs, constraints: [{ type: not_null }] }
       - { name: played, data_type: boolean, description: the player has a box-score row, constraints: [{ type: not_null }] }
-      - { name: outcome, data_type: varchar, description: "pending, won, lost, push or void for a bet; null otherwise", data_tests: [{ accepted_values: { arguments: { values: [pending, won, lost, push, void] } } }] }
-      - { name: profit_units, data_type: double, description: profit of the bet in units at the price taken; 0 for push, void and pending }
+      - { name: outcome, data_type: varchar, description: "pending while the game's box score is absent; void when it is present and the player has no row (any minutes played, even under one, means the action stands); won, lost or push otherwise; null when not a bet", data_tests: [{ accepted_values: { arguments: { values: [pending, won, lost, push, void] } } }] }
+      - { name: profit_units, data_type: double, description: "profit of the bet in units: a win pays the captured American price, a loss costs the unit; 0 for push, void and pending" }
       - { name: rule_version, data_type: varchar, description: the pre-registered rule version, constraints: [{ type: not_null }] }
       - { name: rule_hash, data_type: varchar, description: sha256 of the rule text (nba/ledger/rule.py), constraints: [{ type: not_null }] }
 
@@ -455,6 +455,7 @@ models:
     columns:
       - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
       - { name: source_group, data_type: varchar, description: "api, manual or all", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [api, manual, all] } } }] }
+      - { name: is_headline, data_type: boolean, description: "true for source_group api: the headline numbers; manual lines never enter them (ADR-0030)", constraints: [{ type: not_null }] }
       - { name: book, data_type: varchar, description: "sportsbook key, or all for the combined rows", constraints: [{ type: not_null }] }
       - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
       - { name: n_bets, data_type: integer, description: bets placed on paper, constraints: [{ type: not_null }] }
@@ -468,11 +469,39 @@ models:
       - { name: hit_rate, data_type: double, description: n_won / n_settled }
       - { name: hit_rate_half_width_95, data_type: double, description: 1.96 * sqrt(p (1 - p) / n_settled) }
       - { name: breakeven_hit_rate, data_type: double, description: mean implied probability of the prices taken on settled bets }
-      - { name: units_staked, data_type: double, description: units at risk on settled bets }
-      - { name: units_profit, data_type: double, description: profit in units on settled bets }
+      - { name: units_staked, data_type: double, description: "units risked on settled bets: one unit per bet, every bet (additive)" }
+      - { name: units_profit, data_type: double, description: "profit in units on settled bets: a win pays the captured American price, a loss costs the unit (additive)" }
+      - { name: roi_units, data_type: double, description: "units_profit / units_staked (a ratio of sums; not additive, never averaged across rows)" }
+      - { name: roi_half_width_95, data_type: double, description: 1.96 * sd(profit per bet) / sqrt(n_settled) }
+      - { name: verdict, data_type: varchar, description: "too early under 100 settled bets; else beats break-even / below break-even when the hit rate's 95% interval excludes breakeven_hit_rate, else inconclusive (ADR-0030)", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [too early, beats break-even, below break-even, inconclusive] } } }] }
+      - { name: evaluation, data_type: varchar, description: out_of_sample (the 2026-27 ledger); never pooled with in-sample results, constraints: [{ type: not_null }] }
+
+  - name: mart_ledger_by_side
+    description: "One row per (season, source_group, market, side) with hit rate, n and ROI for overs and unders separately (ADR-0030 amendment 3): the model is a squared-error regressor and a book's line sits near the median, so the rule may lean to overs on a right-skewed stat; nothing is adjusted, this shows it. Ratios of sums with 95% half-widths."
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, source_group, market, side]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: source_group, data_type: varchar, description: "api, manual or all", constraints: [{ type: not_null }] }
+      - { name: is_headline, data_type: boolean, description: "true for source_group api", constraints: [{ type: not_null }] }
+      - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
+      - { name: side, data_type: varchar, description: over or under, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [over, under] } } }] }
+      - { name: n_bets, data_type: integer, description: bets on the side, constraints: [{ type: not_null }] }
+      - { name: n_settled, data_type: integer, description: bets won or lost }
+      - { name: n_won, data_type: integer, description: bets won }
+      - { name: n_pending, data_type: integer, description: bets pending }
+      - { name: hit_rate, data_type: double, description: n_won / n_settled }
+      - { name: hit_rate_half_width_95, data_type: double, description: 1.96 * sqrt(p (1 - p) / n_settled) }
+      - { name: breakeven_hit_rate, data_type: double, description: mean implied probability of the prices taken on settled bets }
+      - { name: units_staked, data_type: double, description: "units risked on settled bets (one per bet)" }
+      - { name: units_profit, data_type: double, description: profit in units at the captured prices }
       - { name: roi_units, data_type: double, description: units_profit / units_staked }
       - { name: roi_half_width_95, data_type: double, description: 1.96 * sd(profit per bet) / sqrt(n_settled) }
-      - { name: evaluation, data_type: varchar, description: out_of_sample (the 2026-27 ledger); never pooled with in-sample results, constraints: [{ type: not_null }] }
+      - { name: evaluation, data_type: varchar, description: out_of_sample, constraints: [{ type: not_null }] }
 
   - name: mart_ledger_by_edge
     description: One row per (season, source_group, market, edge_bucket) with hit rate and ROI by how far the prediction sat from the line; ratios of sums; buckets start at the rule's threshold.
@@ -485,6 +514,7 @@ models:
     columns:
       - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
       - { name: source_group, data_type: varchar, description: "api, manual or all", constraints: [{ type: not_null }] }
+      - { name: is_headline, data_type: boolean, description: "true for source_group api", constraints: [{ type: not_null }] }
       - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
       - { name: edge_bucket, data_type: varchar, description: "|prediction - line| band", constraints: [{ type: not_null }] }
       - { name: n_bets, data_type: integer, description: bets in the band, constraints: [{ type: not_null }] }

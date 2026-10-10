@@ -81,6 +81,10 @@ def push(root: Path, files: list[Path], message: str, repo_id: str = config.HF_L
     if not operations:
         raise ValueError("nothing to push")
     api = hf._api(require_token=True)
+    # Privacy guard (ADR-0030 amendment 5): raw lines never reach a public repo, whatever the
+    # caller believes about the repo's state.
+    if not api.dataset_info(repo_id).private:
+        raise RuntimeError(f"{repo_id} is not private; refusing to push lines to it")
     info = api.create_commit(
         repo_id=repo_id, repo_type="dataset", operations=operations, commit_message=message
     )

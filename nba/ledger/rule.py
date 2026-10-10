@@ -24,7 +24,7 @@ from typing import Any
 
 RULE: dict[str, Any] = {
     "version": "ledger_rule_v1",
-    "status": "proposed",  # final once the owner signs off on ADR-0030
+    "status": "final",  # ADR-0030 approved with five amendments, 2026-10-10
     "registered_on": "2026-10-10",
     "first_live_date": "2026-10-20",
     "model": {
@@ -69,17 +69,38 @@ RULE: dict[str, Any] = {
             "(reports/policy_2025-26.json populations.min10.targets.<target>.threshold)"
         ),
     },
-    "stake": {"units": 1.0, "price": "the captured American price on the bet side"},
+    "stake": {
+        "units": 1.0,
+        "risked": "one unit risked per bet, every bet",
+        "profit_on_win": "from the captured American price on the bet side",
+    },
     "settlement": {
-        "pending": "box score for the game not ingested yet",
+        "pending": "the game's box score is absent from the stored logs",
         "won": "actual on the bet side of the line",
         "lost": "actual on the other side of the line",
         "push": "actual equals the line (whole-number lines only)",
         "void": (
-            "game ingested and the player has no box-score row (did not play), or the game "
-            "was not played"
+            "the game's box score is present and the player has no row in it (did not "
+            "play); a row with any minutes played, even under one, means the action stands"
         ),
     },
+    "side_bias": (
+        "the model is a LightGBM regressor trained on squared error (a conditional mean); "
+        "a book's line sits near the median and points are right-skewed, so the rule may "
+        "lean to overs; not adjusted for, reported by side in mart_ledger_by_side"
+    ),
+    "reading": {
+        "too_early_below_settled_bets": 100,
+        "then": (
+            "show the 95% interval and the break-even rate implied by the actual prices; a "
+            "verdict only when the interval excludes break-even"
+        ),
+        "power_note": (
+            "separating a 55% hit rate from the 52.4% break-even of -110 takes about 1,400 "
+            "settled bets: n = (1.96 * sqrt(0.55 * 0.45) / (0.55 - 0.524))^2 = 1,406"
+        ),
+    },
+    "headline": "source api only; manual lines never enter the headline numbers",
     "reporting": (
         "in-sample (2025-26 replay) and out-of-sample (2026-27 ledger) are labelled and never "
         "pooled; no profitability claim without n and a confidence interval"
