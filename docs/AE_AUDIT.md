@@ -880,6 +880,64 @@ mart's JSON exports include `mart_season_coverage` and `mart_restatement_lag` th
 reads them yet (small, and the agent's fallback-free marts should be fetchable); `/ledger`
 built now rather than in Phase 6; `/predictions` and `/brief` unchanged (the audit's cut).
 
-## 12. Done, cut, and what to open first
+## 12. Contingency: box scores for 2026-27 if the Kaggle dump stays silent (read-only, 2026-10-10)
+
+Question from the owner: if the dump has not resumed nightly updates by 2026-10-22, what are
+the free options with documented licences for 2026-27 player box scores, what would each take
+to adopt, and what does waiting cost? Nothing below was built; every fact was read on
+2026-10-10 with the owner's Kaggle key (REST `datasets/view` and `datasets/list`) or from the
+provider's public pages.
+
+**The primary.** `eoinamoore/historical-nba-data-and-player-box-scores`: CC0, version 515,
+`lastUpdated 2026-06-15`, page still says "updated nightly" / "updated daily"; files list
+`LeagueSchedule24_25.csv` and `LeagueSchedule25_26.csv`, no 2026-27 schedule. The page states
+no plan beyond "updated daily"; the June pause matches the previous off-season pattern (the
+2025-26 schedule file appeared before that season), so silence until 10-20 is not yet
+evidence of abandonment.
+
+**Options that are not $0 or not licensed for automated access (ruled out).**
+balldontlie: per-game player stats need the ALL-STAR tier ($9.99/month); the free tier has
+teams, players and games only (docs.balldontlie.io). Sports Reference: the data-use policy
+forbids "any automated means to access or use the Site" without written permission and a
+competing data store (sports-reference.com/data_use.html). MySportsFeeds: personal tier from
+CAD 5/month. SportsDataIO: trial that converts. API-Sports: free plan exists (100 requests a
+day) but its terms page returned 403 from here, so the licence is unverified and it is not
+listed as an option. stats.nba.com / nba_api: blocked from runners (probe) and against the
+owner's rule in any case.
+
+**Free, licensed candidates on Kaggle (all currently paused for the off-season, like the
+primary; all ultimately derived from NBA.com by their authors, as the primary is).**
+
+| Dataset | Licence | Player box-score file | Last updated | Stated cadence | Adoption cost |
+|---|---|---|---|---|---|
+| `chevronronson/nba-stats-dataset` | CC0 | `csv/player_boxscores.csv` (767 MB, 1996–present) | 2026-08-01 | "Updates: Daily … occasionally backfilled" | a second loader mapping its columns to `nba/schema.py` (one module next to `kaggle_dump.py`), one 767 MB single-file download a night instead of 390 MB, a row-for-row reconciliation of the 2025-26 overlap against the stored game logs before any 2026-27 row is accepted, dataset-card attribution; same licence as today |
+| `szymonjwiak/nba-traditional` | CC BY-NC-SA 4.0 | `traditional.csv` (94 MB, 1997–2026) | 2026-07-19 | not stated (slug says 1997-2023; title 1997-2026, so periodic rebuilds) | the smallest file and the closest shape (traditional player box scores); same loader work plus share-alike on the derived parquet on Hugging Face (the public dataset repo would need the same licence) and non-commercial, which this project already is; cadence is the unknown |
+| `wyattowalsh/basketball` | CC BY-SA 4.0 | none (team `game.csv`, 2.3 GB play-by-play) | 2026-06-29 | daily and monthly updater notebooks published | player lines would have to be derived from play-by-play: not a box score source for this pipeline |
+| `deocheng/nba-data-1946-2026` | Apache 2.0 | ESPN boxes as JSON columns inside a 92-table export | 2026-08-18 | not stated | mixed provenance (Basketball-Reference crawl ids, ESPN JSON, dunksandthrees), heavy; ruled out |
+
+**Cost of simply waiting.** Predictions continue (the Odds API `/events` schedule fallback,
+ADR-0029) but no bet settles, and the pre-registered rule's staleness cap turns a stall into
+an empty ledger, not a wrong one: `input_staleness_days` grows a day at a time, every row
+crosses the 10-day cap by about 10-30, and from then on the ledger places nothing (the
+coverage mart shows `lines_ineligible` rising and `bets_total` flat). Bets placed in the first
+ten days stay `pending` and settle idempotently on the first build after the dump resumes.
+The drift check reports `insufficient`; the `source-stalled` issue opens after two slated
+nights without a box score (`STALL_WARN = 2`). Every day of waiting after about 10-30 is a
+day of lost out-of-sample sample size (≈ 40-60 eligible lines a night at the rule's floor,
+per the 2025-26 replay proxy), and the 1,400-bet power arithmetic in ADR-0030 already says one
+season of points lines is not enough; losing weeks makes the final verdict "too early" more
+likely. Nothing is corrupted by waiting; the loss is sample size.
+
+**Recommendation.** Wait to 2026-10-22 as asked, then decide on one number: whichever of the
+primary and `chevronronson/nba-stats-dataset` shows a `lastUpdated` on or after 2026-10-21.
+If only the latter has resumed, adopt it as a second source behind the existing ingest
+contract (same schema, same reconciliation test, same CC0 terms, attribution on the dataset
+card), with the overlap reconciliation as the gate; budget two working days. If neither has
+resumed by 2026-10-29 (ten days, the rule's staleness cap), re-run this check against
+`szymonjwiak/nba-traditional` and accept the share-alike consequence if it has resumed. Do not
+build a fallback before 10-22: both candidates are as silent as the primary today, and a
+loader for a source that may never resume is work the owner has not asked for.
+
+## 13. Done, cut, and what to open first
 
 Filled in at the end of the pass.
