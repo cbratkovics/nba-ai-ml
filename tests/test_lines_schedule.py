@@ -65,3 +65,22 @@ def test_provisional_ids_resolve_by_date_and_team_and_count_the_rest() -> None:
     assert n == 1 and again.equals(out)  # idempotent; the LAL game is still not ingested
     none, n0 = schedule.resolve_game_ids(preds[preds["game_id"] == "0022600099"], logs)
     assert n0 == 0
+
+
+def test_regular_season_window_and_fallback_drop_preseason() -> None:
+    assert not schedule.in_regular_season(date(2026, 10, 15))  # preseason
+    assert schedule.in_regular_season(date(2026, 10, 20))  # opening night
+    assert schedule.in_regular_season(date(2027, 3, 1))  # open-ended window until the end is set
+    assert schedule.in_regular_season(date(2026, 4, 12)) and not schedule.in_regular_season(
+        date(2026, 4, 13)
+    )
+    assert not schedule.in_regular_season(date(2030, 1, 1))  # no window configured
+    pre = [
+        dict(e, commence_time=e["commence_time"].replace("2026-10-2", "2026-10-1")) for e in EVENTS
+    ]  # 2026-10-10 and 2026-10-11: preseason dates
+    assert schedule.fallback_schedule(pre).empty
+    tagged = [dict(EVENTS[0], sport_key="basketball_nba_preseason"), EVENTS[1]]
+    assert schedule.fallback_schedule(tagged)["game_id"].tolist() == ["evt:def456"]
+    assert schedule.classify_event(
+        dict(EVENTS[0], sport_key="basketball_nba_all_stars")
+    ).startswith("sport_key:")

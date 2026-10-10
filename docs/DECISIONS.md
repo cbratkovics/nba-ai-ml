@@ -706,6 +706,20 @@ the provider reported (`usage/odds_api.jsonl`). Nothing retries: a failed event 
 logged once and skipped. `tests/test_lines_guard.py` proves the refusal paths;
 `tests/test_lines_capture.py` proves the refusal happens before any priced call.
 
+**Season guard (owner question, 2026-10-10).** No priced call is made for anything that is
+not a 2026-27 regular-season game. Two independent checks, both before the plan is costed:
+the event's `sport_key` must be `basketball_nba` (The Odds API lists preseason, All-Star and
+summer-league games under their own keys, `basketball_nba_preseason` and so on), and the
+event's Eastern game date must fall inside the season's configured regular-season window
+(`config.REGULAR_SEASON_WINDOWS`: 2026-27 opens 2026-10-20; the end date is set when the
+league schedule is published, and until then the window is open-ended and must be closed
+before the play-in). A capture dated outside the window ends `out_of_season` with the
+events listed and no priced call; an out-of-season event on a regular-season date is counted
+and never priced. The same classifier filters the nightly's schedule fallback, so a preseason
+game never produces a slate either. `tests/test_lines_capture.py::test_no_priced_call_out_of_season_and_preseason_keys_are_never_priced`
+and `tests/test_lines_schedule.py::test_regular_season_window_and_fallback_drop_preseason`
+prove both. Every run logs one `EVENT …` line per event the endpoint returned with its verdict.
+
 **No cherry-picked nights.** The capture writes and pushes `captures/<date>.json` (date,
 policy version, trigger, snapshot time, `decided_before_fetch: true`) before the first
 priced call; once that record exists every qualifying line of the night enters the ledger.

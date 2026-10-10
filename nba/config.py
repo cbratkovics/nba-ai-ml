@@ -187,6 +187,16 @@ ODDS_RESERVE_CREDITS: int = 50
 # The scheduled snapshot (UTC; 16:00 EDT / 15:00 EST). Games that commenced before the
 # snapshot are out of scope by rule and counted (ADR-0030).
 CAPTURE_SNAPSHOT_UTC: str = "20:00"
+# Regular-season windows per season (Eastern dates, inclusive). The capture prices only
+# `basketball_nba` events whose game date falls inside the current season's window, so no
+# credit is ever spent on preseason, All-Star, play-in or playoff games (ADR-0031). The end
+# date is None until the league schedule is published; until then the window is open-ended
+# and must be closed before the regular season ends (docs/RUNBOOK.md).
+REGULAR_SEASON_WINDOWS: dict[str, tuple[str, str | None]] = {
+    "2025-26": ("2025-10-21", "2026-04-12"),
+    "2026-27": ("2026-10-20", None),
+}
+ODDS_SPORT_KEYS_IN_SCOPE: tuple[str, ...] = ("basketball_nba",)
 LINES_DIR: Path = Path("lines")
 CAPTURES_DIR: Path = Path("captures")
 RECOMMENDATIONS_DIR: Path = Path("recommendations")
