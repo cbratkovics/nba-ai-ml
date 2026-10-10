@@ -301,3 +301,38 @@ models:
       - { name: n_lines, description: line rows captured }
       - { name: n_players, description: distinct player names captured }
       - { name: n_unmatched, description: line rows whose player name did not match }
+
+  - name: brz_features_asof_v1
+    description: Typed copy of features/asof_v1.parquet, the Python feature module's 23 as-of features over the loaded game logs (nba/warehouse/features.py); the reference side of the feature parity proof (ADR-0032). Empty (typed) when the loader step was skipped. Never exported.
+    columns:
+      - { name: source_file, description: parquet file }
+      - { name: player_id, description: nba.com player id }
+      - { name: game_id, description: ten-character nba.com game id }
+      - { name: game_date, description: game date }
+      - { name: season, description: season label }
+      - { name: team, description: team abbreviation }
+      - { name: opponent, description: opponent abbreviation }
+      - { name: pts_mean_last5, description: module's mean points over the previous 5 games }
+      - { name: pts_mean_last10, description: module's mean points over the previous 10 games }
+      - { name: pts_mean_last20, description: module's mean points over the previous 20 games }
+      - { name: reb_mean_last5, description: module's mean rebounds over the previous 5 games }
+      - { name: reb_mean_last10, description: module's mean rebounds over the previous 10 games }
+      - { name: reb_mean_last20, description: module's mean rebounds over the previous 20 games }
+      - { name: ast_mean_last5, description: module's mean assists over the previous 5 games }
+      - { name: ast_mean_last10, description: module's mean assists over the previous 10 games }
+      - { name: ast_mean_last20, description: module's mean assists over the previous 20 games }
+      - { name: minutes_mean_last5, description: module's mean minutes over the previous 5 games }
+      - { name: minutes_mean_last10, description: module's mean minutes over the previous 10 games }
+      - { name: minutes_mean_last20, description: module's mean minutes over the previous 20 games }
+      - { name: pts_mean_season, description: module's season-to-date mean points before this game }
+      - { name: reb_mean_season, description: module's season-to-date mean rebounds before this game }
+      - { name: ast_mean_season, description: module's season-to-date mean assists before this game }
+      - { name: minutes_mean_season, description: module's season-to-date mean minutes before this game }
+      - { name: games_played_season, description: module's previous games this season }
+      - { name: days_rest, description: module's days since the previous game }
+      - { name: back_to_back, description: module's back-to-back flag }
+      - { name: home, description: module's home flag as an integer }
+      - { name: pts_mean_vs_opp, description: module's mean points in previous games against this opponent }
+      - { name: reb_mean_vs_opp, description: module's mean rebounds in previous games against this opponent }
+      - { name: ast_mean_vs_opp, description: module's mean assists in previous games against this opponent }
+      - { name: feature_version, description: the feature scheme (asof_v1) }
