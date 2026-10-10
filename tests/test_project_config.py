@@ -56,7 +56,9 @@ def test_no_warehouse_file_is_git_ignored() -> None:
         p.relative_to(root).as_posix()
         for d in ("dbt", "scripts")
         for p in (root / d).rglob("*")
-        if p.is_file() and not any(part in ("target", "logs", "dbt_packages") for part in p.parts)
+        if p.is_file()
+        and not any(part in ("target", "logs", "dbt_packages", "__pycache__") for part in p.parts)
+        and p.name != ".user.yml"  # dbt's per-machine usage id: ignored on purpose
     ]
     assert files
     proc = subprocess.run(

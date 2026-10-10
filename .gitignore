@@ -155,6 +155,8 @@ data/
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+# dbt's anonymous-usage id (stats are off in dbt_project.yml; the file is per machine).
+dbt/.user.yml
 .dbt-state/
 site/
 # Prediction and residual products live in the HF dataset repo, never in git.
