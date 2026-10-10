@@ -159,7 +159,8 @@ def test_opening_nights_end_to_end(
     db = tmp_path / "w" / "nba.duckdb"
     db.parent.mkdir()
     statuses = _dbt(db, wh, "build", *NIGHTLY_WITHOUT_SINGULAR, "--full-refresh")
-    assert set(statuses.values()) <= {"success", "pass", "warn"}, statuses
+    # "no-op" is what dbt 1.12 records for an exposure selected by fqn:* (nothing to run).
+    assert set(statuses.values()) <= {"success", "pass", "warn", "no-op"}, statuses
     assert statuses["brz_predictions"] == "success" and statuses["slv_game_logs"] == "success"
     assert _query(
         db,
@@ -191,7 +192,8 @@ def test_opening_nights_end_to_end(
     _write_root(merged, wh)
     rehearsal.stage_products(root, wh)
     statuses = _dbt(db, wh, "build", *NIGHTLY_WITHOUT_SINGULAR)
-    assert set(statuses.values()) <= {"success", "pass", "warn"}, statuses
+    # "no-op" is what dbt 1.12 records for an exposure selected by fqn:* (nothing to run).
+    assert set(statuses.values()) <= {"success", "pass", "warn", "no-op"}, statuses
     assert _query(
         db, "select count(*) from gold.fct_prediction where run_kind = 'nightly' and has_actual"
     ) == [(8,)]
@@ -254,5 +256,20 @@ def test_opening_nights_end_to_end(
     assert exported == exported_expected, exported ^ exported_expected
     assert exported.isdisjoint({"fct_paper_bet", "brz_lines", "slv_lines"})
     assert exported >= {"fct_prediction", "mart_policy_metrics", "mart_drift", "mart_ledger"}
+    # The small marts the site reads are also written as JSON (meta export_json, ADR-0033);
+    # the manifest names each JSON path and the publisher pushes them with the parquet files.
+    json_expected = {
+        n["alias"]
+        for n in dbt_manifest["nodes"].values()
+        if n["resource_type"] == "model"
+        and "gold" in n["tags"]
+        and (n["config"].get("meta") or {}).get("export_json", False) is True
+    }
+    json_written = {m["model"] for m in manifest if m["json_path"]}
+    assert json_written == json_expected, json_written ^ json_expected
+    assert json_expected >= {"mart_holdout_metrics", "mart_policy_sweep", "mart_ledger_coverage"}
+    assert "fct_prediction" not in json_expected and "fct_decision_policy" not in json_expected
+    for name in json_expected:
+        assert isinstance(json.loads((out_dir / f"{name}.json").read_text()), list)
     assert publish.publish(out_dir, dry_run=True) is None
-    assert len(publish.export_files(out_dir)) == len(exported) + 1  # plus the manifest
+    assert len(publish.export_files(out_dir)) == len(exported) + len(json_expected) + 1

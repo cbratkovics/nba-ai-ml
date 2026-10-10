@@ -170,6 +170,7 @@ models:
     description: One row per (season, run_kind, model_revision, population, target) with model and last-10 baseline MAE recomputed from fct_prediction; reconciles to the committed reports (ADR-0011).
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -192,6 +193,7 @@ models:
     description: One row per (season, run_kind, model_revision, game_date, population, target) with the daily model and baseline MAE; the replay all-rows rows reconcile to reports/replay_all_rows_<season>.json.
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -212,6 +214,7 @@ models:
     description: One row per season against the season contract (1,230 games unless the season_exceptions seed declares a documented shortfall), with players-per-game range and row counts.
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     columns:
       - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }], data_tests: [unique] }
       - { name: games, data_type: integer, description: distinct games in the warehouse }
@@ -232,6 +235,7 @@ models:
     description: One row per nightly ingest run date with the number of restated rows and the maximum and percentile restatement lag in days, against the silver lookback (ADR-0008).
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     columns:
       - { name: report_date, data_type: date, description: run date, constraints: [{ type: not_null }], data_tests: [unique] }
       - { name: n_changed, data_type: integer, description: restated rows in the run }
@@ -293,6 +297,7 @@ models:
     description: One row per (season, run_kind, model_revision, population, target) with the decision policy's coverage and hit rate at the chosen threshold, both causal baselines, and the band coverages, recomputed from fct_decision_policy; the replay rows reconcile to reports/policy_<season>.json (ADR-0015).
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -328,6 +333,7 @@ models:
     description: One row per (season, run_kind, model_revision, population, target, threshold), the coverage curve of the decision policy over the artifact's threshold grid with both causal baselines; the replay rows reconcile point for point to reports/policy_<season>.json.
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -448,6 +454,7 @@ models:
     description: One row per (season, source_group, book, market) with the ledger's record as ratios of sums over the bets (ADR-0030); api and manual lines separately and together; every row carries n and 95% half-widths; evaluation is out_of_sample and never pooled with the replay.
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -480,6 +487,7 @@ models:
     description: "One row per (season, source_group, market, side) with hit rate, n and ROI for overs and unders separately (ADR-0030 amendment 3): the model is a squared-error regressor and a book's line sits near the median, so the rule may lean to overs on a right-skewed stat; nothing is adjusted, this shows it. Ratios of sums with 95% half-widths."
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -507,6 +515,7 @@ models:
     description: One row per (season, source_group, market, edge_bucket) with hit rate and ROI by how far the prediction sat from the line; ratios of sums; buckets start at the rule's threshold.
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     data_tests:
       - unique_combination:
           arguments:
@@ -531,6 +540,7 @@ models:
     description: "One row per season with how much of the season the ledger covers and what is open (ADR-0031), the counts every ledger page shows: captured nights against game nights, bets per captured night, unmatched lines, pending bets, lines excluded by the timestamp rules."
     config:
       contract: { enforced: true }
+      meta: { export_json: true }
     columns:
       - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }], data_tests: [unique] }
       - { name: game_nights, data_type: integer, description: game dates with a nightly slate }

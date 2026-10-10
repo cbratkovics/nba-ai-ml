@@ -1,5 +1,8 @@
-{#- Export every gold model (except meta export=false) to <out_dir>/<alias>.parquet plus
-    _export_manifest.json (model, row count, exported_at_utc, target, invocation id, git commit).
+{#- Export every gold model (except meta export=false) to <out_dir>/<alias>.parquet, and the
+    small marts the site reads (meta export_json=true, ADR-0033) to <out_dir>/<alias>.json as
+    well (a JSON array of row objects, the shape a browser fetch wants), plus
+    _export_manifest.json (model, row count, parquet path, json path or null, exported_at_utc,
+    target, invocation id, git commit).
     Run after `dbt build`:  dbt run-operation export_gold [--args "{out_dir: data/warehouse/export}"]
     The nightly job pushes the exported marts to the Hugging Face dataset repo under gold/. -#}
 {% macro export_gold(out_dir='data/warehouse/export') %}
@@ -18,12 +21,20 @@
             {% set path = out_dir ~ '/' ~ node.alias ~ '.parquet' %}
             {% do run_query("copy (select * from " ~ relation ~ ") to '" ~ path ~ "' (format parquet, compression zstd)") %}
             {% set n = run_query("select count(*) from " ~ relation).columns[0].values()[0] %}
-            {% do manifest_rows.append("select '" ~ node.alias ~ "' as model, " ~ n ~ " as row_count, '" ~ path ~ "' as path") %}
+            {% if (node.config.get('meta') or {}).get('export_json', false) %}
+                {% set json_path = out_dir ~ '/' ~ node.alias ~ '.json' %}
+                {% do run_query("copy (select * from " ~ relation ~ ") to '" ~ json_path ~ "' (format json, array true)") %}
+                {% set json_cell = "'" ~ json_path ~ "'" %}
+                {% do log("export_gold: " ~ json_path ~ " (" ~ n ~ " rows)", info=true) %}
+            {% else %}
+                {% set json_cell = "cast(null as varchar)" %}
+            {% endif %}
+            {% do manifest_rows.append("select '" ~ node.alias ~ "' as model, " ~ n ~ " as row_count, '" ~ path ~ "' as path, " ~ json_cell ~ " as json_path") %}
             {% do log("export_gold: " ~ path ~ " (" ~ n ~ " rows)", info=true) %}
         {% endfor %}
         {% set commit = env_var('GITHUB_SHA', '') %}
         {% do run_query(
-            "copy (select model, row_count, path, '" ~ run_started_at.strftime('%Y-%m-%dT%H:%M:%S+00:00') ~ "' as exported_at_utc, '"
+            "copy (select model, row_count, path, json_path, '" ~ run_started_at.strftime('%Y-%m-%dT%H:%M:%S+00:00') ~ "' as exported_at_utc, '"
             ~ target.name ~ "' as target, '" ~ invocation_id ~ "' as invocation_id, '" ~ commit ~ "' as code_commit from ("
             ~ manifest_rows | join(' union all ') ~ ") order by model) to '" ~ out_dir ~ "/_export_manifest.json' (format json, array true)"
         ) %}
