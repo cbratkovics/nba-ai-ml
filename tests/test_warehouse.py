@@ -57,7 +57,10 @@ def test_publish_dry_run_lists_marts_and_manifest(tmp_path: Path, capsys, monkey
     export = tmp_path / "export"
     export.mkdir()
     (export / "fct_prediction.parquet").write_bytes(b"x")
+    (export / "mart_holdout_metrics.parquet").write_bytes(b"x")
+    (export / "mart_holdout_metrics.json").write_text("[]")
     (export / "_export_manifest.json").write_text("[]")
+    (export / "notes.txt").write_text("not an export")
     assert publish.publish(export, dry_run=True) is None
     out = capsys.readouterr().out
     assert (
@@ -66,4 +69,10 @@ def test_publish_dry_run_lists_marts_and_manifest(tmp_path: Path, capsys, monkey
     pushed = []
     monkeypatch.setattr("nba.storage.hf.push_gold", lambda files: pushed.append(files) or "sha1")
     assert publish.publish(export) == "sha1"
-    assert [p.name for p in pushed[0]] == ["fct_prediction.parquet", "_export_manifest.json"]
+    # Parquet and JSON exports in name order, the manifest last, nothing else.
+    assert [p.name for p in pushed[0]] == [
+        "fct_prediction.parquet",
+        "mart_holdout_metrics.json",
+        "mart_holdout_metrics.parquet",
+        "_export_manifest.json",
+    ]

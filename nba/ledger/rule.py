@@ -181,3 +181,34 @@ def profit_units(outcome: str, american: float, units: float = RULE["stake"]["un
     if outcome == "lost":
         return -units
     return 0.0  # push, void, pending
+
+
+MIRROR_PATH = "frontend/lib/ledger_rule.json"
+
+
+def mirror() -> dict[str, Any]:
+    """The rule and its hash as the site imports them (frontend/lib/ledger_rule.json), so the
+    ledger page states the registered rule without reading anything private; a test checks
+    the committed file against this."""
+    return {"rule_hash": rule_hash(), "rule": RULE}
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(description="print the rule hash, or write the site mirror")
+    parser.add_argument("--mirror", action="store_true", help=f"write {MIRROR_PATH}")
+    parser.add_argument("--root", type=Path, default=Path("."))
+    args = parser.parse_args(argv)
+    if args.mirror:
+        path = args.root / MIRROR_PATH
+        path.write_text(json.dumps(mirror(), indent=2) + "\n")
+        print(f"RULE {RULE['version']} {rule_hash()[:12]} -> {path}")
+    else:
+        print(rule_hash())
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

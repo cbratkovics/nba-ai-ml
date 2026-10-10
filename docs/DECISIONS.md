@@ -767,3 +767,137 @@ plain statement that the model has no availability information.
 (date, `use_reserve`, `dry_run`); needs the `ODDS_API_KEY` secret (owner step); until it
 exists a scheduled run stops green with a notice. Nothing in it writes to the public repo.
 
+
+## ADR-0032 — Features in SQL with a row-for-row parity proof against the feature module (implemented locally, 2026-10-10; Phase 3)
+
+**Context.** The 23 `asof_v1` features (`nba/features/asof.py`) existed only in pandas. The
+warehouse recomputed two of them (`<stat>_mean_season_prior` in `fct_player_game`, ADR-0015)
+and the population rule, but an analyst reading the lineage graph could not see the model's
+inputs, and nothing proved that a SQL rendering of the feature rules agrees with the module the
+published model was trained on. The owner approved the audit's option (iii) (`docs/AE_AUDIT.md`
+§6, 2a): the Python module stays the one feature implementation and the reference; SQL is
+proven against it, not the other way round.
+
+**Decision.**
+- `int_player_game_features` (new `intermediate` layer, schema `intermediate`, tag
+  `intermediate`) recomputes all 23 features over `slv_game_logs` with window functions:
+  `rows between N preceding and 1 preceding` ordered by `(game_date, game_id)` within
+  `player_id` for the rolling means (the module's `shift(1)` then `rolling(N, min_periods=1)`,
+  windows running across seasons); `unbounded preceding and 1 preceding` per
+  `(player_id, season)` for the season means and `games_played_season`; per
+  `(player_id, opponent)` across seasons for the opponent means; `game_date − lag(game_date)`
+  as a double for `days_rest` (null on the first game, as the module's NaN); `back_to_back`
+  as `coalesce(days_rest = 1, false)` (the module's `NaN == 1` is false); `home` cast to the
+  module's integer. No contract and no export: nothing outside the warehouse reads it, and
+  the parity test below is its contract.
+- The loader (`nba.warehouse.load`, and `python -m nba.warehouse.features` alone) runs the
+  module over the same game-log files it loaded and writes
+  `<warehouse_root>/features/asof_v1.parquet`; `brz_features_asof_v1` types it (empty and
+  typed when the file is absent, in which case the proof fails on every row rather than
+  passing on nothing).
+- `tests/intermediate/assert_int_features_match_feature_module.sql` full-outer-joins the two
+  on `(player_id, game_id)` and returns every row that is on one side only, has a null on
+  one side only, differs on an integer feature at all, or differs on a double feature by more
+  than `var('tol_feature_parity')`. It runs inside every `dbt build` (local, CI, MotherDuck)
+  and on fixture rows in `tests/test_feature_parity.py`, which also perturbs one value of the
+  module's file by 0.01 and asserts the test fails on exactly that row.
+
+**Evidence and the tolerance** (`reports/feature_parity_asof_v1.json`, written by
+`python -m nba.warehouse.parity` from the local build of dataset revision `949cbd39`):
+130,414 rows on each side, 130,414 joined, zero null mismatches on all 23 features. The largest
+absolute difference per feature is **0.0 on 19 features** (every points, rebounds and assists
+mean, `games_played_season`, `days_rest`, `back_to_back`, `home`) and
+**2.13 × 10⁻¹⁴ on the four minutes means** (`minutes_mean_last5` 1.42e-14, `last10` 1.42e-14,
+`last20` 2.13e-14, `minutes_mean_season` 2.13e-14): minutes are fractional, so pandas' running
+sum and DuckDB's window aggregate round differently; at a tolerance of 0 the test fails on
+42,828 rows, all on those four columns (14,441 / 19,214 / 23,645 / 22,195). The owner's rule
+was to report the largest observed difference per feature and set the tolerance from it:
+`tol_feature_parity = 1e-12`, about 50× the largest observed difference and a thousand times
+below the smallest formula difference possible (one game's minutes off by 0.01 inside a
+20-game mean is 5 × 10⁻⁴). `tests/test_feature_parity.py` fails if the var stops covering the
+report, if it drifts more than two orders of magnitude above the evidence, or if the report's
+feature list is not the module's. The audit's earlier proposal of 1e-9 was a guess; this is
+the measured value.
+
+**Cost.** `build_features` over 130k rows takes about 75 s of pandas on the development
+machine, so the loader step grows by that much in CI and in the weekly refresh; the SQL model
+builds in about one second.
+
+**What switching the source of truth would take** (not this season; the model is pinned).
+The slate would read `int_player_game_features` for history and still need the module's
+`features_for_pending` semantics for games that have not been played: a SQL step that appends
+the pending `(player, game)` rows with zeroed statistics, recomputes, and keeps only the
+pending rows (the shift-by-one makes the zeros harmless, exactly as in Python). It would also
+need `FEATURE_VERSION` re-pinned to name the SQL as the producer, the model's `feature_names`
+check pointed at the SQL column order, a replay of 2025-26 through the SQL path with the same
+equivalence test the Python path passed (`reports/replay_2025-26.json`), and MotherDuck on the
+nightly serving path, which ADR-0006's "no managed database on the serving path" forbids. The
+honest position for 2026-27 is therefore: SQL is proven equal, Python serves.
+
+**Status.** Implemented locally and in the test suite; runs in GitHub Actions with the next
+CI build of this branch and the next `warehouse.yml` refresh after merge (run ids will be
+recorded in `reports/runs.json`).
+
+## ADR-0033 — The site reads gold through JSON exports, with the product files as fallback; exposures close the DAG (implemented locally, 2026-10-10; Phase 3)
+
+**Context.** Until now no page read the warehouse. Each page fetched the pipeline's product
+files and two committed JSON summaries (`all_rows_baseline.json`, `policy_summary.json`), and
+the gold marts that recompute the same numbers (with the reconciliation tests behind them)
+were reachable only by the agent, as parquet. The audit (§6, 2b) ruled out the two
+alternatives: a page fetching parquet through a WASM DuckDB adds a runtime dependency to the
+serving path, and `fct_decision_policy` (181k rows) must never be fetched by a browser.
+
+**Decision.**
+- `export_gold` also writes `<out_dir>/<alias>.json` (a JSON array of row objects) for the
+  gold models whose config carries `meta: { export_json: true }`: `mart_holdout_metrics` (6
+  rows, 2.3 KB), `mart_policy_metrics` (6, 4.2 KB), `mart_policy_sweep` (230, 136 KB),
+  `mart_daily_metrics` (978, 264 KB), `mart_season_coverage`, `mart_restatement_lag`, and the
+  four ledger marts (`mart_ledger`, `_by_side`, `_by_edge`, `_coverage`; empty until the first
+  bet). `_export_manifest.json` gains a `json_path` column. `nba.warehouse.publish` pushes the
+  JSON files next to the parquet under `gold/`; the readiness test asserts the JSON set equals
+  the `export_json` set and that neither fact table is in it.
+- `frontend/lib/data.ts` gets `getGoldMart(mart)` (404 → null, like every other fetch),
+  `pinnedRows()` (a page uses only rows of the pinned model revision, the replay season and
+  the run kind it asks for; a mart is never trusted to hold one row), and
+  `goldSourceNote()` (the file and the export timestamp from the manifest).
+- Pages, each naming the source it actually rendered: `/` draws the all-rows comparison from
+  `mart_holdout_metrics` (population `all`) and adds a warehouse cross-check of the
+  training-population MAE next to the `metrics.json` table; the headline holdout table itself
+  stays on `metrics.json`, the frozen artifact, because the mart reproduces the replay rows
+  (169 fewer than the holdout) and a page must not swap the headline number for one that
+  differs in the third decimal. `/replay` draws the daily chart from `mart_daily_metrics`
+  (population `all`) and the season figures from `mart_holdout_metrics`. `/decisions` draws
+  hit rates, coverage, both baselines, band coverage and the whole coverage curve from
+  `mart_policy_metrics` and `mart_policy_sweep`; thresholds, band quantiles and the verdict
+  sentences remain the artifact's, since the marts apply them rather than recompute them, and
+  the page says so. Fallbacks are the files the pages read before (`all_rows_baseline.json`,
+  `daily_mae.json`, `policy_summary.json`), with the sentence "the gold export was not
+  available at render time". `/predictions` and `/brief` are unchanged (cut in the audit).
+- New `/ledger` page (deferred from Phase 2): the pre-registered rule from a committed mirror
+  of `nba/ledger/rule.py` (`frontend/lib/ledger_rule.json`, written by
+  `python -m nba.ledger.rule --mirror`, checked by a test against the rule and its hash),
+  coverage and pending counts from `mart_ledger_coverage`, the headline and manual ledgers
+  from `mart_ledger` (hit rate with its 95% half width, break-even from the prices bet, units,
+  the reading-rule verdict), the split by side from `mart_ledger_by_side`, and the "what this
+  is not" paragraph. It reads no raw line and renders honestly empty before 2026-10-20.
+- `dbt/models/exposures.yml`: six `dashboard` exposures (one per page, URL = the route),
+  `agent_nightly_brief` (application; the four marts its tools read plus the files), 
+  `hf_gold_export` (application; exactly the exported gold set), `policy_evaluate` and
+  `drift_reference_and_calibration` (analysis; the gold tables those scripts read), and
+  `ledger_recommendations` (application, private). `tests/test_dbt_exposures.py` parses the
+  project and checks: every `frontend/app/**/page.tsx` has a dashboard exposure; every mart a
+  page fetches is listed in its exposure and carries `export_json`; the export exposure equals
+  the exported set; the analysis exposures name tables their scripts contain as `gold.<table>`;
+  no dashboard depends on a private table; the README's exposure count is current.
+
+**Why this shape.** The warehouse becomes a producer the site depends on without becoming a
+runtime dependency: a fetch of a static JSON file at `resolve/main` with one-hour ISR, exactly
+as before. A number shown from gold is a number a dbt test reconciled to the committed
+artifact; a number shown from the fallback is the artifact itself; the page distinguishes the
+two in its source line. Nothing moves until the next `warehouse.yml` refresh pushes the JSON
+files; until then every page renders its fallback (verified by `next build` with the files
+absent).
+
+**Status.** Implemented locally (type-checked, built); pushes of the JSON files happen with the
+next `warehouse.yml` dispatch after merge, recorded in `reports/runs.json`; Vercel redeploys
+from `main` (owner step, unchanged).

@@ -1,0 +1,45 @@
+version: 2
+
+# Intermediate = internal recomputations that gold may build on. Not exported, no enforced
+# contract: nothing outside the warehouse reads these tables, and the singular test that
+# compares each one with its reference implementation is the contract that matters (ADR-0032).
+models:
+  - name: int_player_game_features
+    description: One row per (player_id, game_id) with the 23 asof_v1 features of nba/features/asof.py recomputed in SQL over slv_game_logs (every feature from the player's games strictly before this one). Proven equal to the Python module's output row for row by tests/intermediate/assert_int_features_match_feature_module.sql (tolerance var tol_feature_parity, set from reports/feature_parity_asof_v1.json). Not on the serving path; the slate still calls the Python module.
+    config:
+      meta: { export: false }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [player_id, game_id]
+    columns:
+      - { name: player_id, description: nba.com player id, data_tests: [not_null] }
+      - { name: game_id, description: ten-character nba.com game id, data_tests: [not_null] }
+      - { name: game_date, description: game date }
+      - { name: season, description: season label }
+      - { name: team, description: team abbreviation as stored for that game }
+      - { name: opponent, description: opponent abbreviation }
+      - { name: pts_mean_last5, description: mean points over the previous 5 games (fewer when fewer exist; null on the first game) }
+      - { name: pts_mean_last10, description: mean points over the previous 10 games }
+      - { name: pts_mean_last20, description: mean points over the previous 20 games }
+      - { name: reb_mean_last5, description: mean rebounds over the previous 5 games }
+      - { name: reb_mean_last10, description: mean rebounds over the previous 10 games }
+      - { name: reb_mean_last20, description: mean rebounds over the previous 20 games }
+      - { name: ast_mean_last5, description: mean assists over the previous 5 games }
+      - { name: ast_mean_last10, description: mean assists over the previous 10 games }
+      - { name: ast_mean_last20, description: mean assists over the previous 20 games }
+      - { name: minutes_mean_last5, description: mean minutes over the previous 5 games }
+      - { name: minutes_mean_last10, description: mean minutes over the previous 10 games (the ledger rule's eligibility floor, ADR-0030) }
+      - { name: minutes_mean_last20, description: mean minutes over the previous 20 games }
+      - { name: pts_mean_season, description: mean points over the previous games of the same season (null on the season debut) }
+      - { name: reb_mean_season, description: mean rebounds over the previous games of the same season }
+      - { name: ast_mean_season, description: mean assists over the previous games of the same season }
+      - { name: minutes_mean_season, description: mean minutes over the previous games of the same season }
+      - { name: games_played_season, description: previous games in the same season (0 on the season debut) }
+      - { name: days_rest, description: "days since the player's previous game, any season; null on the first game in the data" }
+      - { name: back_to_back, description: 1 when the previous game was the day before, else 0 (0 on the first game) }
+      - { name: home, description: 1 when the player's team was at home }
+      - { name: pts_mean_vs_opp, description: mean points in previous games against this opponent, across seasons }
+      - { name: reb_mean_vs_opp, description: mean rebounds in previous games against this opponent }
+      - { name: ast_mean_vs_opp, description: mean assists in previous games against this opponent }
+      - { name: feature_version, description: the feature scheme these columns implement (var feature_version, asof_v1) }

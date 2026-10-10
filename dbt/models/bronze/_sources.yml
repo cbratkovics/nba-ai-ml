@@ -50,6 +50,11 @@ sources:
         meta:
           formatter: template
           external_location: "read_json_auto('{{ var('warehouse_root') }}/drift/*.json', filename = true, union_by_name = true)"
+      - name: features_asof_v1
+        description: features/asof_v1.parquet, the Python feature module's 23 as-of features over the loaded game logs (nba/warehouse/features.py, written by the loader); the reference side of the feature parity proof (ADR-0032). Never served.
+        meta:
+          formatter: template
+          external_location: "read_parquet('{{ var('warehouse_root') }}/features/asof_v1.parquet', filename = true)"
       - name: load_manifest
         description: load_manifest.json written by the loader, with the dataset revision and file counts of this load.
         meta:

@@ -83,3 +83,17 @@ def test_prices() -> None:
     assert rule.profit_units("won", +120) == pytest.approx(1.2)
     assert rule.profit_units("lost", -110) == -1.0
     assert rule.profit_units("push", -110) == 0.0 == rule.profit_units("void", +100)
+
+
+def test_site_mirror_matches_the_rule_and_its_hash() -> None:
+    """frontend/lib/ledger_rule.json is the rule the ledger page states (ADR-0033)."""
+    import json
+
+    from nba import config
+
+    committed = json.loads((config.REPO_ROOT / rule.MIRROR_PATH).read_text())
+    assert committed == rule.mirror(), "run: python -m nba.ledger.rule --mirror"
+    assert committed["rule_hash"] == rule.rule_hash()
+    data_ts = (config.REPO_ROOT / "frontend" / "lib" / "data.ts").read_text()
+    assert "export const LEDGER_SEASON = '2026-27'" in data_ts
+    assert rule.RULE["first_live_date"] == config.REGULAR_SEASON_WINDOWS["2026-27"][0]

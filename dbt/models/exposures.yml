@@ -1,0 +1,223 @@
+version: 2
+
+# Where the warehouse's tables end up (ADR-0033): the lineage graph ends at things a person
+# looks at or a program runs, so `dbt docs` answers "who reads this mart" and a change to a
+# mart lists its consumers. Every consumer that reads a gold export, a source file, or a
+# committed report is listed; tests/test_dbt_exposures.py checks that every site page has an
+# exposure and that the export exposure names exactly the exported gold models.
+exposures:
+  - name: site_overview
+    label: "Site: / (overview)"
+    type: dashboard
+    maturity: high
+    url: https://nba-ai-ml.vercel.app/
+    description: >
+      The holdout table from reports/metrics.json (the frozen model's own evaluation), the
+      all-rows comparison from gold/mart_holdout_metrics.json (population all on the replay rows;
+      fallback the committed copy of the all-rows report), the warehouse cross-check of the
+      training-population MAE from the same mart, and the replay-equivalence table from
+      replay/<season>/replay.json.
+    depends_on:
+      - ref('mart_holdout_metrics')
+      - source('repo_reports', 'metrics_json')
+      - source('repo_reports', 'replay_report')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: site_predictions
+    label: "Site: /predictions"
+    type: dashboard
+    maturity: medium
+    url: https://nba-ai-ml.vercel.app/predictions
+    description: >
+      Tonight's slate from predictions/latest.json (the same rows the predictions parquet
+      files hold) and the rolling MAE from predictions/rolling_metrics.json, both written by the
+      nightly job; shows the last replayed date until the season starts. Not pointed at gold:
+      mart_daily_metrics has no nightly rows before the first in-season run.
+    depends_on:
+      - source('warehouse_files', 'predictions')
+      - source('warehouse_files', 'residuals')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: site_replay
+    label: "Site: /replay"
+    type: dashboard
+    maturity: high
+    url: https://nba-ai-ml.vercel.app/replay
+    description: >
+      The daily MAE chart from gold/mart_daily_metrics.json (population all on the replay rows,
+      reconciled day by day to the all-rows report; fallback replay/<season>/daily_mae.json),
+      the season figures from gold/mart_holdout_metrics.json (fallback the committed all-rows
+      report), and one replayed slate per selected date from replay/<season>/slates/<date>.json.
+    depends_on:
+      - ref('mart_daily_metrics')
+      - ref('mart_holdout_metrics')
+      - source('warehouse_files', 'replay_residuals')
+      - source('repo_reports', 'replay_all_rows')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: site_decisions
+    label: "Site: /decisions"
+    type: dashboard
+    maturity: high
+    url: https://nba-ai-ml.vercel.app/decisions
+    description: >
+      Today's calls from decisions/latest.json (the nightly job applying the committed policy to
+      the slate) and the replay evaluation of the policy from gold/mart_policy_metrics.json and
+      gold/mart_policy_sweep.json (fallback the committed policy_summary.json derived from
+      reports/policy_<season>.json, which also supplies thresholds, band quantiles and verdict text).
+    depends_on:
+      - ref('mart_policy_metrics')
+      - ref('mart_policy_sweep')
+      - ref('fct_decision_policy')
+      - source('repo_reports', 'policy_report')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: site_ledger
+    label: "Site: /ledger"
+    type: dashboard
+    maturity: low
+    url: https://nba-ai-ml.vercel.app/ledger
+    description: >
+      The paper ledger's aggregates (ADR-0030, ADR-0031): the pre-registered rule from the
+      committed mirror of nba/ledger/rule.py, coverage and pending counts from
+      gold/mart_ledger_coverage.json, the headline and manual ledgers from gold/mart_ledger.json,
+      and the split by side from gold/mart_ledger_by_side.json. Reads no raw line; the private
+      lines never leave the warehouse.
+    depends_on:
+      - ref('mart_ledger')
+      - ref('mart_ledger_by_side')
+      - ref('mart_ledger_coverage')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: site_brief
+    label: "Site: /brief"
+    type: dashboard
+    maturity: medium
+    url: https://nba-ai-ml.vercel.app/brief
+    description: >
+      The nightly analyst brief (brief/<date>.json), written by the agent below from the marts
+      it reads; the page itself fetches only the brief files and the replay's daily MAE file.
+    depends_on:
+      - ref('mart_drift')
+      - ref('mart_restatement_lag')
+      - ref('mart_daily_metrics')
+      - ref('fct_decision_policy')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: agent_nightly_brief
+    label: "Agent: nightly brief (nba.agent)"
+    type: application
+    maturity: medium
+    url: https://github.com/cbratkovics/nba-ai-ml/blob/main/docs/agent.md
+    description: >
+      The tool-using analyst that writes brief/<date>.json. Its tools read the exported gold
+      marts from <root>/gold/<mart>.parquet with file fallbacks (ADR-0019): get_daily_report reads
+      mart_drift and mart_restatement_lag, get_rolling_metrics reads mart_daily_metrics
+      (population all) and fct_decision_policy (min10); the other tools read the stored game
+      logs and the daily and drift reports directly.
+    depends_on:
+      - ref('mart_drift')
+      - ref('mart_restatement_lag')
+      - ref('mart_daily_metrics')
+      - ref('fct_decision_policy')
+      - source('warehouse_files', 'game_logs')
+      - source('warehouse_files', 'daily_reports')
+      - source('warehouse_files', 'drift_reports')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: hf_gold_export
+    label: "Hugging Face: gold/ in cbratkovics/nba-game-logs"
+    type: application
+    maturity: high
+    url: https://huggingface.co/datasets/cbratkovics/nba-game-logs/tree/main/gold
+    description: >
+      The export_gold macro writes every gold model without meta export=false to parquet (and
+      the small marts with meta export_json=true to JSON as well); nba.warehouse.publish pushes
+      them to gold/ after the weekly full refresh (warehouse.yml) and after any nightly that
+      built the warehouse. The agent reads the parquet files, the site the JSON files. The
+      depends_on list is exactly the exported set; a test fails when it drifts.
+    depends_on:
+      - ref('dim_game')
+      - ref('dim_player_asof')
+      - ref('dim_team')
+      - ref('fct_decision_policy')
+      - ref('fct_player_game')
+      - ref('fct_prediction')
+      - ref('mart_daily_metrics')
+      - ref('mart_drift')
+      - ref('mart_holdout_metrics')
+      - ref('mart_ledger')
+      - ref('mart_ledger_by_edge')
+      - ref('mart_ledger_by_side')
+      - ref('mart_ledger_coverage')
+      - ref('mart_policy_metrics')
+      - ref('mart_policy_sweep')
+      - ref('mart_restatement_lag')
+      - ref('mart_season_coverage')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: policy_evaluate
+    label: "Analysis: python -m nba.decisions.evaluate"
+    type: analysis
+    maturity: high
+    url: https://github.com/cbratkovics/nba-ai-ml/blob/main/nba/decisions/evaluate.py
+    description: >
+      Writes reports/policy_<season>.json (thresholds, bands, hit rates against both causal
+      baselines, coverage curves; ADR-0015) from gold.fct_prediction joined to
+      gold.fct_player_game on the replay rows, then the site's committed policy_summary.json.
+      The policy marts read that report back through brz_policy_report and reconcile to it.
+    depends_on:
+      - ref('fct_prediction')
+      - ref('fct_player_game')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: drift_reference_and_calibration
+    label: "Analysis: python -m nba.drift.reference / nba.drift.calibrate"
+    type: analysis
+    maturity: high
+    url: https://github.com/cbratkovics/nba-ai-ml/blob/main/nba/drift/reference.py
+    description: >
+      Write reports/drift_reference_<feature>_<model>.json (the day-aligned reference bins per
+      feature, ADR-0016 to ADR-0018) and reports/drift_calibration_<season>.json from
+      gold.fct_player_game, population min10. The nightly drift check reads the reference back.
+    depends_on:
+      - ref('fct_player_game')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com
+
+  - name: ledger_recommendations
+    label: "Private: python -m nba.ledger.recommend"
+    type: application
+    maturity: low
+    url: https://github.com/cbratkovics/nba-ai-ml/blob/main/nba/ledger/recommend.py
+    description: >
+      The owner's private view of a captured night (ADR-0031): the rule applied to that night's
+      lines and predictions, written to recommendations/<date>.json in the private lines repo
+      with the coverage header read from the exported mart_ledger_coverage. Never public; the
+      ledger page shows only the marts' aggregates.
+    depends_on:
+      - ref('mart_ledger_coverage')
+      - source('lines_files', 'lines')
+      - source('warehouse_files', 'predictions')
+    owner:
+      name: Christopher Bratkovics
+      email: cbratkovics@gmail.com

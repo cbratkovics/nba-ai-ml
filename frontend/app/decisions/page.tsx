@@ -5,21 +5,111 @@ import {
   POLICY_SUMMARY,
   POPULATIONS,
   POPULATION_LABEL,
+  REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
+  getGoldManifest,
+  getGoldMart,
   getLatestDecisions,
   getReplayDaily,
+  goldSourceNote,
   modelIdentity,
+  pinnedRows,
+  type GoldExportManifestRow,
+  type GoldPolicyMetric,
+  type GoldPolicySweepPoint,
   type PolicyTarget,
   type Population,
+  type Target,
 } from '@/lib/data'
 
 export const revalidate = 3600
 
 const pct = (v: number | null | undefined, digits = 1) => (v === null || v === undefined ? '–' : `${(v * 100).toFixed(digits)}%`)
 
-function PolicyTable({ population }: { population: Population }) {
-  const block = POLICY_SUMMARY.populations[population]
+interface PolicyView {
+  source: 'gold' | 'artifact'
+  targets: Record<Target, PolicyTarget>
+  note: string
+}
+
+/**
+ * The replay evaluation of the policy for one population. From the warehouse's
+ * mart_policy_metrics (hit rates, coverage, both baselines, band coverage) and
+ * mart_policy_sweep (the coverage curve) when the gold export is published; two dbt tests
+ * hold those rows to the committed artifact, which is the fallback. The thresholds, the band
+ * quantiles and the verdict sentence are policy parameters and text from the artifact in
+ * both cases, since the marts apply them rather than recompute them.
+ */
+function policyView(
+  population: Population,
+  metrics: GoldPolicyMetric[],
+  sweep: GoldPolicySweepPoint[],
+  manifest: GoldExportManifestRow[] | null,
+): PolicyView {
+  const artifact = POLICY_SUMMARY.populations[population].targets
+  const rows = metrics.filter((m) => m.population === population)
+  const complete = TARGETS.every((t) => rows.some((m) => m.target === t))
+  if (!complete) {
+    return {
+      source: 'artifact',
+      targets: artifact,
+      note: `Source: the committed artifact ${POLICY_SUMMARY.source_file} (the gold exports mart_policy_metrics.json and mart_policy_sweep.json were not available at render time).`,
+    }
+  }
+  const targets = {} as Record<Target, PolicyTarget>
+  for (const t of TARGETS) {
+    const m = rows.find((x) => x.target === t)!
+    const a = artifact[t]
+    const curve = sweep
+      .filter((p) => p.population === population && p.target === t)
+      .sort((x, y) => x.threshold - y.threshold)
+      .map((p) => ({
+        threshold: p.threshold,
+        coverage: p.coverage,
+        n_resolved: p.n_resolved,
+        hit_rate: p.hit_rate,
+        season_mean_same_rows_hit_rate: p.season_mean_same_rows_hit_rate,
+        season_mean_own_hit_rate: p.season_mean_own_hit_rate,
+      }))
+    targets[t] = {
+      n: m.n,
+      threshold: m.threshold,
+      n_called: m.n_called,
+      coverage: m.coverage,
+      n_resolved: m.n_resolved,
+      n_push: m.n_push,
+      n_hit: m.n_hit,
+      hit_rate: m.hit_rate,
+      baselines: {
+        coin_flip: { hit_rate: m.coin_flip_hit_rate, n: m.n_resolved, half_width_95: m.coin_flip_half_width_95 },
+        season_mean_sign: {
+          n: m.season_mean_same_rows_n,
+          n_hit: m.season_mean_same_rows_n_hit,
+          n_miss: m.season_mean_same_rows_n_miss,
+          n_tie: m.season_mean_same_rows_n_tie,
+          n_missing: m.season_mean_same_rows_n_missing,
+          hit_rate: m.season_mean_same_rows_hit_rate,
+          same_rows: true,
+          abstentions_scored_as: a.baselines.season_mean_sign.abstentions_scored_as,
+          own_threshold_n_called: a.baselines.season_mean_sign.own_threshold_n_called,
+          own_threshold_hit_rate: a.baselines.season_mean_sign.own_threshold_hit_rate,
+        },
+      },
+      model_beats_both: m.model_beats_both,
+      verdict: a.verdict,
+      bands: { quantiles: a.bands.quantiles, coverage_50: m.band_coverage_50, coverage_80: m.band_coverage_80 },
+      coverage_curve: curve.length > 0 ? curve : a.coverage_curve,
+    }
+  }
+  return {
+    source: 'gold',
+    targets,
+    note: `Source: ${goldSourceNote('mart_policy_metrics', manifest)} and mart_policy_sweep.json, ${REPLAY_SEASON} replay rows; the dbt tests assert_policy_metrics_reconcile_to_policy_report and assert_policy_sweep_reconciles_to_policy_report hold these rows to the committed artifact ${POLICY_SUMMARY.source_file} (counts exact, rates within 1e-6), which supplies the thresholds, the band quantiles and the verdict text.`,
+  }
+}
+
+function PolicyTable({ targets }: { targets: Record<Target, PolicyTarget> }) {
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full text-sm">
@@ -37,7 +127,7 @@ function PolicyTable({ population }: { population: Population }) {
         </thead>
         <tbody>
           {TARGETS.map((t) => {
-            const tb: PolicyTarget = block.targets[t]
+            const tb: PolicyTarget = targets[t]
             const half = tb.baselines.coin_flip.half_width_95
             return (
               <tr key={t} className="border-b border-white/5 text-text-primary">
@@ -69,8 +159,7 @@ function PolicyTable({ population }: { population: Population }) {
   )
 }
 
-function BandsTable({ population }: { population: Population }) {
-  const block = POLICY_SUMMARY.populations[population]
+function BandsTable({ targets }: { targets: Record<Target, PolicyTarget> }) {
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full text-sm">
@@ -87,7 +176,7 @@ function BandsTable({ population }: { population: Population }) {
         </thead>
         <tbody>
           {TARGETS.map((t) => {
-            const b = block.targets[t].bands
+            const b = targets[t].bands
             return (
               <tr key={t} className="border-b border-white/5 text-text-primary">
                 <td className="py-2 pr-4">{TARGET_LABEL[t]}</td>
@@ -109,10 +198,21 @@ function BandsTable({ population }: { population: Population }) {
 }
 
 export default async function DecisionsPage() {
-  const [latest, daily] = await Promise.all([getLatestDecisions(), getReplayDaily()])
+  const [latest, daily, goldMetrics, goldSweep, manifest] = await Promise.all([
+    getLatestDecisions(),
+    getReplayDaily(),
+    getGoldMart<GoldPolicyMetric>('mart_policy_metrics'),
+    getGoldMart<GoldPolicySweepPoint>('mart_policy_sweep'),
+    getGoldManifest(),
+  ])
   const d = latest.data
   const s = POLICY_SUMMARY
-  const losing = POPULATIONS.filter((p) => !s.populations[p].model_beats_both_everywhere)
+  const metrics = pinnedRows(goldMetrics.data, REPLAY_SEASON)
+  const sweep = pinnedRows(goldSweep.data, REPLAY_SEASON)
+  const views = Object.fromEntries(
+    POPULATIONS.map((p) => [p, policyView(p, metrics, sweep, manifest.data)]),
+  ) as Record<Population, PolicyView>
+  const losing = POPULATIONS.filter((p) => !TARGETS.every((t) => views[p].targets[t].model_beats_both))
 
   return (
     <div className="space-y-8">
@@ -122,10 +222,14 @@ export default async function DecisionsPage() {
           A line-free directional call per player and stat: <span className="text-text-primary">over</span> when the
           model&apos;s prediction exceeds the player&apos;s last-10-game mean by more than a threshold,{' '}
           <span className="text-text-primary">under</span> when it falls short by more, otherwise no call. There are no
-          sportsbook lines. A call resolves against the same last-10 mean once the box score exists. Thresholds and the
-          bands around each prediction were chosen per population on the {s.season} replay rows, so the hit rates below
-          are in-sample policy-fit results, not out-of-sample validation or demonstrated betting performance; the full
-          coverage curve is shown so any other threshold can be read off.
+          sportsbook lines on this page (the{' '}
+          <Link href="/ledger" className="text-secondary hover:underline">
+            paper ledger
+          </Link>{' '}
+          is where real lines enter). A call resolves against the same last-10 mean once the box score exists. Thresholds
+          and the bands around each prediction were chosen per population on the {s.season} replay rows, so the hit rates
+          below are in-sample policy-fit results, not out-of-sample validation or demonstrated betting performance; the
+          full coverage curve is shown so any other threshold can be read off.
         </p>
       </section>
 
@@ -156,7 +260,7 @@ export default async function DecisionsPage() {
               The nightly job writes decisions only on days with a slate, and the 2026-27 season starts in October. The last
               replayed date was {daily.data?.last_date ?? 'not published'}
               {daily.data ? ` (${daily.data.season} replay)` : ''}. Until then this page shows the replay evaluation of the
-              policy from the committed artifact, {s.source_file}.
+              policy.
             </p>
             <p className="text-xs">
               Checked {latest.url} (HTTP {latest.status}).
@@ -167,10 +271,12 @@ export default async function DecisionsPage() {
 
       {POPULATIONS.map((p) => {
         const block = s.populations[p]
+        const view = views[p]
+        const beatsEverywhere = TARGETS.every((t) => view.targets[t].model_beats_both)
         return (
           <section key={p} className="glass-card p-8">
             <h2 className="text-xl font-semibold text-text-primary">
-              Replay evaluation, {POPULATION_LABEL[p].toLowerCase()} ({block.n.toLocaleString()} rows)
+              Replay evaluation, {POPULATION_LABEL[p].toLowerCase()} ({view.targets.pts.n.toLocaleString()} rows)
             </h2>
             <p className="mt-2 text-sm text-text-secondary">
               Population: {block.description}. Two causal baselines are scored on the rows the model calls: a coin flip
@@ -180,25 +286,26 @@ export default async function DecisionsPage() {
               season mean on a season debut) it is scored as a coin flip, 0.5, and those abstentions are counted. Threshold
               rule: the largest grid value that still calls at least {(s.min_coverage * 100).toFixed(0)}% of the rows.
             </p>
-            {!block.model_beats_both_everywhere && (
+            {!beatsEverywhere && (
               <p className="mt-3 text-sm text-danger">
-                {TARGETS.filter((t) => !block.targets[t].model_beats_both)
-                  .map((t) => block.targets[t].verdict)
+                {TARGETS.filter((t) => !view.targets[t].model_beats_both)
+                  .map((t) => view.targets[t].verdict)
                   .join(' ')}
               </p>
             )}
-            {block.model_beats_both_everywhere && (
-              <p className="mt-3 text-sm text-success">{TARGETS.map((t) => block.targets[t].verdict).join(' ')}</p>
+            {beatsEverywhere && (
+              <p className="mt-3 text-sm text-success">{TARGETS.map((t) => view.targets[t].verdict).join(' ')}</p>
             )}
-            <PolicyTable population={p} />
+            <PolicyTable targets={view.targets} />
             <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-text-secondary">Coverage curve</h3>
             <div className="mt-2">
-              <CoverageCurveChart targets={block.targets} />
+              <CoverageCurveChart targets={view.targets} />
             </div>
             <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-text-secondary">
               Bands: residual quantiles (actual minus prediction)
             </h3>
-            <BandsTable population={p} />
+            <BandsTable targets={view.targets} />
+            <p className="mt-3 text-xs text-text-secondary">{view.note}</p>
           </section>
         )
       })}

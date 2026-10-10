@@ -775,6 +775,28 @@
       "conclusion": "success",
       "started_at": "2026-10-10T22:17:44Z",
       "note": "capture.yml dry run from the branch with the season guard: date 2026-10-10 out of season, 0 events in the day window, 46 upcoming basketball_nba events listed from 2026-10-20 on, no priced call; provider headers remaining=500 used=0 (zero credits spent)"
+    },
+    {
+      "run_id": 38094100710,
+      "workflow": "ci.yml",
+      "event": "push",
+      "branch": "analytics-engineering",
+      "commit": "3b85bcc",
+      "conclusion": "success",
+      "started_at": "2026-10-10T23:10:33Z",
+      "target": "local",
+      "note": "CI on the Phase 3 head (push event): lint-and-test incl. tests/test_feature_parity.py and tests/test_dbt_exposures.py; dbt job loaded the warehouse, wrote features/asof_v1.parquet, built the project with the parity test and the eleven exposures (ADR-0032, ADR-0033)"
+    },
+    {
+      "run_id": 38094103648,
+      "workflow": "ci.yml",
+      "event": "pull_request",
+      "branch": "analytics-engineering",
+      "commit": "3b85bcc",
+      "conclusion": "success",
+      "started_at": "2026-10-10T23:10:36Z",
+      "target": "local",
+      "note": "CI on PR #10 (pull_request event), same head; green"
     }
   ],
   "hf_commits": [

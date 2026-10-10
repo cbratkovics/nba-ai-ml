@@ -20,7 +20,7 @@ from pathlib import Path
 
 START = "<!-- dbt-counts -->"
 END = "<!-- /dbt-counts -->"
-LAYERS = ("bronze", "silver", "gold")
+LAYERS = ("bronze", "silver", "intermediate", "gold")
 
 
 def counts(manifest: dict) -> dict:

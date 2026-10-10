@@ -7,9 +7,15 @@ import {
   REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
+  getGoldManifest,
+  getGoldMart,
   getMetricsReport,
   getReplaySummary,
+  goldSourceNote,
   modelIdentity,
+  pinnedRows,
+  type GoldHoldoutMetric,
+  type Target,
 } from '@/lib/data'
 
 export const revalidate = 3600
@@ -20,13 +26,58 @@ const PREDICTORS = [
   { key: 'baseline_season', label: 'Season-to-date mean' },
 ] as const
 
+/**
+ * The all-rows comparison: from the warehouse's mart_holdout_metrics (population `all` on the
+ * replay rows, which a dbt test reconciles to the all-rows report) when the gold export is
+ * published, otherwise from the committed copy of that report. Both carry the same numbers;
+ * the page says which one it rendered.
+ */
+function allRowsView(gold: GoldHoldoutMetric[], manifest: Parameters<typeof goldSourceNote>[1]) {
+  const rows = gold.filter((g) => g.population === 'all')
+  const complete = TARGETS.every((t) => rows.some((g) => g.target === t))
+  if (complete) {
+    const model = {} as Record<Target, number | null>
+    const baseline = {} as Record<Target, number | null>
+    for (const t of TARGETS) {
+      const g = rows.find((x) => x.target === t)!
+      model[t] = g.model_mae
+      baseline[t] = g.baseline_last10_mae
+    }
+    return {
+      source: 'gold' as const,
+      n: Math.max(...rows.map((g) => g.n)),
+      nDates: null as number | null,
+      model,
+      baseline,
+      baselineWins: TARGETS.filter((t) => baseline[t]! < model[t]!),
+      note: `Source: ${goldSourceNote('mart_holdout_metrics', manifest)}, population all on the ${REPLAY_SEASON} replay rows; the warehouse test assert_daily_metrics_reconcile_to_all_rows_report holds these rows to the committed report ${ALL_ROWS_BASELINE.source_file}, which is the fallback.`,
+    }
+  }
+  const d = ALL_ROWS_BASELINE
+  return {
+    source: 'committed' as const,
+    n: d.n,
+    nDates: d.n_dates as number | null,
+    model: d.model_mae,
+    baseline: d.baseline_last10_mae,
+    baselineWins: d.baseline_wins,
+    note: `Source: ${d.source_file} in the repository, a committed copy of the replay's daily MAE file in the dataset repo (the gold export mart_holdout_metrics.json was not available at render time).`,
+  }
+}
+
 export default async function HomePage() {
-  const [metrics, replay] = await Promise.all([getMetricsReport(), getReplaySummary()])
+  const [metrics, replay, holdout, manifest] = await Promise.all([
+    getMetricsReport(),
+    getReplaySummary(),
+    getGoldMart<GoldHoldoutMetric>('mart_holdout_metrics'),
+    getGoldManifest(),
+  ])
   const m = metrics.data
   const r = replay.data
-  const allRows = { n: ALL_ROWS_BASELINE.n, model: ALL_ROWS_BASELINE.model_mae, baseline: ALL_ROWS_BASELINE.baseline_last10_mae }
-  const d = ALL_ROWS_BASELINE
-  const baselineWins = ALL_ROWS_BASELINE.baseline_wins
+  const gold = pinnedRows(holdout.data, REPLAY_SEASON)
+  const allRows = allRowsView(gold, manifest.data)
+  const baselineWins = allRows.baselineWins
+  const goldMin10 = TARGETS.map((t) => gold.find((g) => g.population === 'min10' && g.target === t) ?? null)
 
   return (
     <div className="space-y-8">
@@ -109,6 +160,16 @@ export default async function HomePage() {
               Population: {POPULATION.headline(m.split.min_minutes)}. Source: metrics.json for model{' '}
               {modelIdentity(undefined, m.git_sha)}, trained {m.generated_at.slice(0, 10)}, dataset{' '}
               {m.dataset.version}.
+              {goldMin10.every((g) => g !== null) && (
+                <>
+                  {' '}
+                  Warehouse cross-check ({goldSourceNote('mart_holdout_metrics', manifest.data)}, population min10 on the
+                  replay rows, n {goldMin10[0]!.n.toLocaleString()}): model MAE{' '}
+                  {TARGETS.map((t, i) => `${TARGET_LABEL[t].toLowerCase()} ${goldMin10[i]!.model_mae.toFixed(3)}`).join(', ')}
+                  ; the dbt test assert_holdout_metrics_reconcile_to_metrics_json holds these within 0.005 of the table
+                  above (the replay never slated 169 of the holdout rows).
+                </>
+              )}
             </p>
           </>
         ) : (
@@ -124,9 +185,9 @@ export default async function HomePage() {
           <>
             <p className="mt-2 text-sm text-text-secondary">
               The same model and the last-10-game baseline on {POPULATION.allRows}:{' '}
-              {allRows.n.toLocaleString()} rows over {d.n_dates} game dates of {d.season}, row-weighted from the
-              committed copy of the replay&apos;s daily MAE file. This population is wider than the headline one (it includes
-              games under 10 minutes), and on it{' '}
+              {allRows.n.toLocaleString()} rows{allRows.nDates ? ` over ${allRows.nDates} game dates` : ''} of {REPLAY_SEASON},
+              row-weighted{allRows.source === 'gold' ? ' in the warehouse' : " from the committed copy of the replay's daily MAE file"}.
+              This population is wider than the headline one (it includes games under 10 minutes), and on it{' '}
               {baselineWins.length === TARGETS.length
                 ? 'the last-10 baseline has the lower MAE on every target'
                 : baselineWins.length === 0
@@ -167,8 +228,7 @@ export default async function HomePage() {
               </table>
             </div>
             <p className="mt-3 text-xs text-text-secondary">
-              Population: {POPULATION.allRows}. Source: {d.source_file} in the repository, a committed copy of
-              the replay&apos;s daily MAE file in the dataset repo; the same numbers drive the{' '}
+              Population: {POPULATION.allRows}. {allRows.note} The same numbers drive the{' '}
               <Link href="/replay" className="text-secondary hover:underline">replay page</Link>.
             </p>
           </>

@@ -3,13 +3,22 @@ import ReplaySlateTable from '@/components/ReplaySlateTable'
 import Link from 'next/link'
 import {
   ALL_ROWS_BASELINE,
+  POPULATION,
   REPLAY_SEASON,
   TARGETS,
   TARGET_LABEL,
+  dailyRowsToDays,
+  getGoldManifest,
+  getGoldMart,
   getReplayDaily,
   getReplaySlate,
   getReplaySlateIndex,
+  goldSourceNote,
   modelIdentity,
+  pinnedRows,
+  type GoldDailyMetric,
+  type GoldHoldoutMetric,
+  type Target,
 } from '@/lib/data'
 
 // The date comes from the query string, so this route renders per request; the
@@ -20,8 +29,13 @@ export const dynamic = 'force-dynamic'
 const fmt = (v: number | null, digits = 3) => (v === null ? '–' : v.toFixed(digits))
 
 export default async function ReplayPage({ searchParams }: { searchParams: { date?: string } }) {
-  const [daily, index] = await Promise.all([getReplayDaily(), getReplaySlateIndex()])
-  const d = daily.data
+  const [daily, index, goldDaily, goldHoldout, manifest] = await Promise.all([
+    getReplayDaily(),
+    getReplaySlateIndex(),
+    getGoldMart<GoldDailyMetric>('mart_daily_metrics'),
+    getGoldMart<GoldHoldoutMetric>('mart_holdout_metrics'),
+    getGoldManifest(),
+  ])
   const dates = index.data?.dates ?? []
   const known = new Set(dates.map((x) => x.date))
   const requested =
@@ -31,9 +45,49 @@ export default async function ReplayPage({ searchParams }: { searchParams: { dat
   const slate = selected && known.has(selected) ? await getReplaySlate(selected) : null
   const s = slate?.data ?? null
 
-  // Season numbers come from the committed report, not from the fetched daily file.
-  const season = { n: ALL_ROWS_BASELINE.n, model: ALL_ROWS_BASELINE.model_mae, baseline: ALL_ROWS_BASELINE.baseline_last10_mae }
-  const baselineWins = ALL_ROWS_BASELINE.baseline_wins
+  // The daily chart: the warehouse's mart_daily_metrics (population all on the replay rows,
+  // reconciled day by day to the all-rows report by a dbt test) when the gold export is
+  // published, otherwise the replay's daily_mae.json. The page says which one it rendered.
+  const goldDays = dailyRowsToDays(pinnedRows(goldDaily.data, REPLAY_SEASON), 'all')
+  const d = goldDays.length
+    ? {
+        source: 'gold' as const,
+        days: goldDays,
+        n_dates: goldDays.length,
+        first_date: goldDays[0].date,
+        last_date: goldDays[goldDays.length - 1].date,
+        population: POPULATION.allRows,
+        note: goldSourceNote('mart_daily_metrics', manifest.data),
+      }
+    : daily.data
+      ? { source: 'file' as const, ...daily.data, note: `${daily.url} (the replay's daily MAE file)` }
+      : null
+
+  // Season numbers: the warehouse's mart_holdout_metrics (population all) when published,
+  // otherwise the committed copy of the all-rows report.
+  const goldSeason = pinnedRows(goldHoldout.data, REPLAY_SEASON).filter((g) => g.population === 'all')
+  const seasonFromGold = TARGETS.every((t) => goldSeason.some((g) => g.target === t))
+  const pick = (t: Target, key: 'model_mae' | 'baseline_last10_mae') =>
+    goldSeason.find((g) => g.target === t)![key]
+  const season = seasonFromGold
+    ? {
+        source: 'gold' as const,
+        n: Math.max(...goldSeason.map((g) => g.n)),
+        model: Object.fromEntries(TARGETS.map((t) => [t, pick(t, 'model_mae')])) as Record<Target, number | null>,
+        baseline: Object.fromEntries(TARGETS.map((t) => [t, pick(t, 'baseline_last10_mae')])) as Record<
+          Target,
+          number | null
+        >,
+      }
+    : {
+        source: 'committed' as const,
+        n: ALL_ROWS_BASELINE.n,
+        model: ALL_ROWS_BASELINE.model_mae,
+        baseline: ALL_ROWS_BASELINE.baseline_last10_mae,
+      }
+  const baselineWins = TARGETS.filter(
+    (t) => season.model[t] !== null && season.baseline[t] !== null && season.baseline[t]! < season.model[t]!,
+  )
 
   return (
     <div className="space-y-8">
@@ -76,8 +130,14 @@ export default async function ReplayPage({ searchParams }: { searchParams: { dat
               })}
             </div>
             <p className="mt-3 text-xs text-text-secondary">
-              The season figures above come from the committed copy of this daily file in the repository (the
-              all-rows replay report cited on the overview); the chart below reads the published copy.
+              Season figures:{' '}
+              {season.source === 'gold'
+                ? `${goldSourceNote('mart_holdout_metrics', manifest.data)}, population all.`
+                : `${ALL_ROWS_BASELINE.source_file}, the committed copy of the replay's daily MAE file (the gold export was not available at render time).`}{' '}
+              Daily chart: {d.note}.{' '}
+              {d.source === 'gold'
+                ? 'The warehouse test assert_daily_metrics_reconcile_to_all_rows_report holds these rows to the committed report day by day.'
+                : 'The gold export mart_daily_metrics.json was not available at render time.'}
             </p>
             <div className="mt-6">
               <ReplayChart days={d.days} />

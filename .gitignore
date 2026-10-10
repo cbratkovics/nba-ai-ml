@@ -76,6 +76,8 @@ data/cache/
 !frontend/lib/all_rows_baseline.json
 # Derived from reports/policy_<season>.json; checked by tests/test_policy.py.
 !frontend/lib/policy_summary.json
+# Mirror of nba/ledger/rule.py RULE with its hash; checked by tests/test_ledger_rule.py (ADR-0033).
+!frontend/lib/ledger_rule.json
 # The agent traces the evals replay offline; recorded by nba.agent.loop, key-scrubbed, and
 # refused by the tests if a key remains (docs/agent.md). Were ignored by *.json until Phase 4.
 !tests/traces/*.trace.json
@@ -150,6 +152,8 @@ reports/*
 !reports/runs.json
 # Replay evidence for the pre-registered ledger rule (ADR-0030).
 !reports/ledger_rule_evidence_*.json
+# Measured SQL-vs-feature-module parity; the dbt tolerance is set from it (ADR-0032).
+!reports/feature_parity_*.json
 benchmark_results/frontend/.env.local
 
 # Game-log Parquet lives on Hugging Face, never in git (data/warehouse/ is the loader's copy).

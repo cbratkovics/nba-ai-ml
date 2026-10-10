@@ -55,6 +55,8 @@ def write_manifest(
         # From the private lines repo (ADR-0031); 0 without a token.
         config.LINES_DIR.as_posix(): _count(root, config.LINES_DIR.as_posix(), "*.parquet"),
         config.CAPTURES_DIR.as_posix(): _count(root, config.CAPTURES_DIR.as_posix(), "*.json"),
+        # Written by the loader itself from the game logs (nba/warehouse/features.py).
+        "features": _count(root, "features", "*.parquet"),
     }
     manifest = {
         "loaded_at": loaded_at or datetime.now(UTC).isoformat(timespec="seconds"),
@@ -106,7 +108,18 @@ def load(root: Path = DEFAULT_ROOT, revision: str | None = None, season: str | N
                     if f.is_file():
                         shutil.copyfile(f, dest / f.name)
     load_private_lines(root)
+    write_features(root)
     return write_manifest(root, sha, season)
+
+
+def write_features(root: Path) -> int:
+    """The feature module's output over the loaded game logs, for the parity proof
+    (nba/warehouse/features.py, ADR-0032). Returns the row count."""
+    from nba.warehouse import features
+
+    path, n = features.write_features(root)
+    print(f"LOAD features: {n} rows -> {path}")
+    return n
 
 
 def load_private_lines(root: Path) -> int | None:
@@ -148,6 +161,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.offline:
         existing = args.root / MANIFEST_FILE
         rev = json.loads(existing.read_text())["dataset_revision"] if existing.exists() else None
+        if (args.root / config.HF_DATASET_PREFIX).is_dir():
+            write_features(args.root)
         manifest = write_manifest(args.root, rev, args.season)
     else:
         manifest = load(args.root, args.revision, args.season)

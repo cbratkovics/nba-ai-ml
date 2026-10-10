@@ -23,6 +23,14 @@ lookback); the unique tests on `(player_id, game_id)` and `(player_id, game_id, 
 are what the writers only imply. A plausibility test warns on a box score above 70 points, 30
 rebounds or 25 assists unless the `known_stat_exceptions` seed lists it with a verification.
 
+**Intermediate** (`int_*`) — internal recomputations with a parity proof against their
+reference implementation (ADR-0032). `int_player_game_features` renders the model's 23
+`asof_v1` features in SQL over `slv_game_logs`; `assert_int_features_match_feature_module`
+compares it row for row with the Python feature module's own output over the same files
+(`brz_features_asof_v1`, written by the loader) and fails on any difference above 1e-12 (the
+largest observed is 2.1e-14, on the minutes means; `reports/feature_parity_asof_v1.json`).
+Not exported and not on the serving path: SQL is proven equal, Python serves.
+
 **Snapshot** (`snp_player_team`) — SCD2 history of each player's current team.
 
 **Gold** — contracted marts: `dim_game`, `dim_team`, `dim_player_asof` (team stints, the

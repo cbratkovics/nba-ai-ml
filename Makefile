@@ -1,4 +1,4 @@
-.PHONY: help install test lint lint-sql dbt-load dbt-build dbt-full dbt-nightly dbt-docs dbt-export policy drift-reference drift-calibrate check-docs frontend-build
+.PHONY: help install test lint lint-sql dbt-load dbt-build dbt-full dbt-nightly dbt-docs dbt-export policy parity drift-reference drift-calibrate check-docs frontend-build
 
 PY ?= .venv/bin/python
 DBT ?= .venv/bin/dbt
@@ -17,6 +17,7 @@ help:
 	@echo "dbt-docs     - dbt docs generate --static, then the description check"
 	@echo "dbt-export   - export gold marts to data/warehouse/export"
 	@echo "policy       - write reports/policy_<season>.json from the built gold marts, then rebuild (dbt-full) so the policy marts reconcile"
+	@echo "parity       - write reports/feature_parity_asof_v1.json (largest SQL-vs-module difference per feature) from the built warehouse"
 	@echo "drift-reference  - write reports/drift_reference_<feature>_<model>.json from gold.fct_player_game"
 	@echo "drift-calibrate  - write reports/drift_calibration_<season>.json over the replay season's dates"
 	@echo "Set DBT_TARGET=motherduck and MOTHERDUCK_TOKEN to build on MotherDuck (database nba)."
@@ -50,6 +51,9 @@ dbt-nightly:
 
 policy:
 	$(PY) -m nba.decisions.evaluate --duckdb $(NBA_DUCKDB_PATH)
+
+parity:
+	$(PY) -m nba.warehouse.parity --duckdb $(NBA_DUCKDB_PATH)
 
 drift-reference:
 	$(PY) -m nba.drift.reference --duckdb $(NBA_DUCKDB_PATH)

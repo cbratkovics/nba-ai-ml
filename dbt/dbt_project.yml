@@ -59,6 +59,11 @@ vars:
   # The policy marts recompute reports/policy_<season>.json from the same rows with the same
   # thresholds (ADR-0015), so the tolerance is float noise.
   tol_policy: 0.000001
+  # Feature parity (ADR-0032): int_player_game_features against the Python feature module
+  # over the same rows. Observed largest difference 2.1e-14 (the minutes means; every integer
+  # stat exact), reports/feature_parity_asof_v1.json; 1e-12 leaves ~50x headroom for
+  # summation order and is a thousand times below any formula difference.
+  tol_feature_parity: 0.000000000001
   # The pre-registered paper-bet rule (ADR-0030): mirrored from nba/ledger/rule.py and checked by
   # tests/test_project_config.py, so fct_paper_bet and the recommendations view apply one rule.
   ledger_rule_version: "ledger_rule_v1"
@@ -85,6 +90,11 @@ models:
     silver:
       +schema: silver
       +tags: ["silver"]
+    # Internal recomputations with a parity proof against their reference implementation
+    # (ADR-0032); never exported, no enforced contract (see models/intermediate/_intermediate.yml).
+    intermediate:
+      +schema: intermediate
+      +tags: ["intermediate"]
     gold:
       +schema: gold
       +tags: ["gold"]

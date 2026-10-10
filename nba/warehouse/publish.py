@@ -1,11 +1,11 @@
 """Push the exported gold marts (dbt run-operation export_gold) to the dataset repo.
 
-Files land under gold/<alias>.parquet plus gold/_export_manifest.json, so a consumer can read
-a mart the same way it reads every other product: by public URL at resolve/main. Today the
-analyst tools are the only reader (nba/agent/tools.py); the site reads the product files and
-will read small JSON exports of the marts from Phase 3 (docs/AE_AUDIT.md). Nothing else in the
-repo is touched. Run by warehouse.yml after every full refresh and by nightly.yml after a
-night that built the warehouse (ADR-0022).
+Files land under gold/<alias>.parquet, gold/<alias>.json for the small marts the site reads
+(ADR-0033), plus gold/_export_manifest.json, so a consumer can read a mart the same way it
+reads every other product: by public URL at resolve/main. The analyst tools read the parquet
+files (nba/agent/tools.py); the site reads the JSON files with the product files as fallback
+(frontend/lib/data.ts). Nothing else in the repo is touched. Run by warehouse.yml after every
+full refresh and by nightly.yml after a night that built the warehouse (ADR-0022).
 
 Usage:
     python -m nba.warehouse.publish [--export-dir data/warehouse/export] [--dry-run]
@@ -21,9 +21,18 @@ from nba import config
 DEFAULT_EXPORT_DIR = Path("data") / "warehouse" / "export"
 
 
+MANIFEST_FILE = "_export_manifest.json"
+
+
 def export_files(export_dir: Path) -> list[Path]:
-    files = sorted(p for p in export_dir.glob("*.parquet") if p.is_file())
-    manifest = export_dir / "_export_manifest.json"
+    """Every exported mart: the parquet files, the JSON copies of the small marts the site
+    reads (meta export_json, ADR-0033), then the manifest last."""
+    files = sorted(
+        p
+        for p in export_dir.iterdir()
+        if p.is_file() and p.suffix in (".parquet", ".json") and p.name != MANIFEST_FILE
+    )
+    manifest = export_dir / MANIFEST_FILE
     if manifest.exists():
         files.append(manifest)
     return files
