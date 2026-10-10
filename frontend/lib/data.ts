@@ -8,6 +8,7 @@
  */
 
 import allRowsBaseline from './all_rows_baseline.json'
+import ledgerRule from './ledger_rule.json'
 import policySummary from './policy_summary.json'
 
 export const DATASET_REPO = 'cbratkovics/nba-game-logs'
@@ -21,6 +22,8 @@ export const MODEL_REPO = 'cbratkovics/nba-stat-predictor'
 export const MODEL_REVISION = 'fb427de136e1d6c4b591ae30cf30488f44935182'
 export const MODEL_COMMIT = '50a3b2e33b443d1db19274cea27467072ebfb3f8'
 export const REPLAY_SEASON = '2025-26'
+/** The out-of-sample season of the paper ledger (nba/ledger/rule.py first_live_date). */
+export const LEDGER_SEASON = '2026-27'
 export const REVALIDATE_SECONDS = 3600
 
 /** `commit <git> / HF <revision>`; a revision other than the pinned one is shown alone. */
@@ -70,6 +73,9 @@ export const DATASET_PATHS = {
   briefLatest: 'brief/latest.json',
   brief: (date: string) => `brief/${date}.json`,
   decisionsLatest: 'decisions/latest.json',
+  /** gold/<mart>.json: the small gold marts the warehouse exports as JSON (ADR-0033). */
+  gold: (mart: GoldMart) => `gold/${mart}.json`,
+  goldManifest: 'gold/_export_manifest.json',
 }
 /** Path read from the model repo. */
 export const MODEL_PATHS = { metrics: 'metrics.json' }
@@ -431,6 +437,260 @@ export interface BriefIndex {
   latest: string | null
 }
 
+// ---------- the pre-registered paper-bet rule (ADR-0030) ----------
+
+/**
+ * The committed mirror of nba/ledger/rule.py RULE with its hash, rendered by
+ * `python -m nba.ledger.rule --mirror` and checked by a test, so the ledger page states the
+ * rule the warehouse applied without reading anything private.
+ */
+export interface LedgerRuleMirror {
+  rule_hash: string
+  rule: {
+    version: string
+    status: string
+    registered_on: string
+    first_live_date: string
+    model: { revision: string; feature_version: string }
+    markets: { api: string[]; manual: string[] }
+    books: { api: string[]; manual: string[] }
+    line_sources: { api: string; manual: string }
+    snapshot: { scheduled_utc: string; scope: string }
+    eligibility: {
+      min_prior_games_season: number
+      min_minutes_mean_last10: number
+      max_input_staleness_days: number
+      why: string
+    }
+    edge: { threshold_by_market: Record<string, number>; measured_against: string; why: string }
+    stake: { units: number; risked: string; profit_on_win: string }
+    settlement: Record<string, string>
+    side_bias: string
+    reading: { too_early_below_settled_bets: number; then: string; power_note: string }
+    headline: string
+    reporting: string
+  }
+}
+export const LEDGER_RULE = ledgerRule as LedgerRuleMirror
+
+// ---------- the gold marts the site reads (ADR-0033) ----------
+
+/**
+ * The warehouse's weekly full refresh (and any nightly that built it) exports these marts
+ * to gold/<mart>.json in the dataset repo. A page reads the mart first and falls back to
+ * the product file it read before when the mart is not published; either way it names the
+ * source it rendered from. Marts are filtered to the pinned model and the replay season on
+ * the page, never trusted to hold one row.
+ */
+export type GoldMart =
+  | 'mart_holdout_metrics'
+  | 'mart_daily_metrics'
+  | 'mart_policy_metrics'
+  | 'mart_policy_sweep'
+  | 'mart_ledger'
+  | 'mart_ledger_by_side'
+  | 'mart_ledger_by_edge'
+  | 'mart_ledger_coverage'
+
+export type RunKind = 'replay' | 'nightly'
+
+export interface GoldHoldoutMetric {
+  season: string
+  run_kind: RunKind
+  model_revision: string
+  feature_version: string
+  dataset_revision: string
+  population: Population
+  target: Target
+  n: number
+  model_mae: number
+  model_rmse: number
+  baseline_last10_mae: number
+  model_minus_baseline_mae: number
+}
+
+export interface GoldDailyMetric {
+  season: string
+  run_kind: RunKind
+  model_revision: string
+  feature_version: string
+  game_date: string
+  population: Population
+  target: Target
+  n: number
+  model_mae: number
+  baseline_last10_mae: number
+}
+
+export interface GoldPolicyMetric {
+  season: string
+  run_kind: RunKind
+  model_revision: string
+  population: Population
+  target: Target
+  threshold: number
+  n: number
+  n_called: number
+  coverage: number
+  n_resolved: number
+  n_push: number
+  n_hit: number
+  hit_rate: number | null
+  net_correct: number
+  coin_flip_hit_rate: number
+  coin_flip_half_width_95: number | null
+  season_mean_same_rows_n: number
+  season_mean_same_rows_n_hit: number
+  season_mean_same_rows_n_miss: number
+  season_mean_same_rows_n_tie: number
+  season_mean_same_rows_n_missing: number
+  season_mean_same_rows_hit_rate: number | null
+  model_beats_both: boolean
+  band_coverage_50: number | null
+  band_coverage_80: number | null
+}
+
+export interface GoldPolicySweepPoint {
+  season: string
+  run_kind: RunKind
+  model_revision: string
+  population: Population
+  target: Target
+  threshold: number
+  n: number
+  n_called: number
+  coverage: number
+  n_resolved: number
+  n_push: number
+  n_hit: number
+  hit_rate: number | null
+  net_correct: number
+  season_mean_same_rows_n: number
+  season_mean_same_rows_n_hit: number
+  season_mean_same_rows_n_miss: number
+  season_mean_same_rows_n_tie: number
+  season_mean_same_rows_n_missing: number
+  season_mean_same_rows_hit_rate: number | null
+  season_mean_own_n_called: number
+  season_mean_own_hit_rate: number | null
+}
+
+/** mart_ledger: the paper ledger per (season, source_group, book, market); ADR-0030/0031. */
+export interface GoldLedgerRow {
+  season: string
+  source_group: 'api' | 'manual' | string
+  is_headline: boolean
+  book: string
+  market: string
+  n_bets: number
+  n_settled: number
+  n_won: number
+  n_lost: number
+  n_push: number
+  n_void: number
+  n_pending: number
+  nights_with_bets: number
+  hit_rate: number | null
+  hit_rate_half_width_95: number | null
+  breakeven_hit_rate: number | null
+  units_staked: number
+  units_profit: number
+  roi_units: number | null
+  roi_half_width_95: number | null
+  /** too early (under 100 settled) / beats break-even / below break-even / inconclusive (ADR-0030). */
+  verdict: string
+  evaluation: 'out_of_sample'
+}
+
+export interface GoldLedgerBySide {
+  season: string
+  source_group: string
+  is_headline: boolean
+  market: string
+  side: 'over' | 'under' | string
+  n_bets: number
+  n_settled: number
+  n_won: number
+  n_pending: number
+  hit_rate: number | null
+  hit_rate_half_width_95: number | null
+  breakeven_hit_rate: number | null
+  units_staked: number
+  units_profit: number
+  roi_units: number | null
+  roi_half_width_95: number | null
+  evaluation: 'out_of_sample'
+}
+
+export interface GoldLedgerCoverage {
+  season: string
+  game_nights: number
+  nights_captured: number
+  nights_refused: number
+  nights_no_games: number
+  games_in_scope: number
+  games_out_of_scope: number
+  credits_charged: number
+  lines_total: number
+  lines_manual: number
+  lines_unmatched_player: number
+  lines_with_prediction: number
+  lines_ineligible: number
+  lines_prediction_after_line: number
+  lines_after_tipoff: number
+  bets_total: number
+  bets_settled: number
+  bets_pending: number
+  bets_void: number
+  nights_with_bets: number
+  bets_per_captured_night: number | null
+}
+
+export interface GoldExportManifestRow {
+  model: string
+  row_count: number
+  path: string
+  json_path: string | null
+  exported_at_utc: string
+  target: string
+  invocation_id: string
+  code_commit: string
+}
+
+/** Which rows of a gold mart a page may use: the pinned model on the given season and run kind. */
+export function pinnedRows<T extends { season: string; run_kind: RunKind; model_revision: string }>(
+  rows: T[] | null,
+  season: string,
+  runKind: RunKind = 'replay',
+): T[] {
+  return (rows ?? []).filter((r) => r.season === season && r.run_kind === runKind && r.model_revision === MODEL_REVISION)
+}
+
+/** The gold daily rows of one population pivoted into the daily_mae.json day shape, in date order. */
+export function dailyRowsToDays(rows: GoldDailyMetric[], population: Population): ReplayDay[] {
+  const byDate = new Map<string, ReplayDay>()
+  for (const r of rows) {
+    if (r.population !== population) continue
+    const day = byDate.get(r.game_date) ?? {
+      date: r.game_date,
+      n: r.n,
+      model: { pts: NaN, reb: NaN, ast: NaN },
+      baseline_last10: { pts: NaN, reb: NaN, ast: NaN },
+    }
+    day.model[r.target] = r.model_mae
+    day.baseline_last10[r.target] = r.baseline_last10_mae
+    byDate.set(r.game_date, day)
+  }
+  return Array.from(byDate.values()).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+}
+
+/** A short source line for a page: the gold file and when the warehouse exported it. */
+export function goldSourceNote(mart: GoldMart, manifest: GoldExportManifestRow[] | null): string {
+  const row = manifest?.find((m) => m.model === mart)
+  const when = row ? `, exported ${row.exported_at_utc.slice(0, 10)} on target ${row.target}` : ''
+  return `${DATASET_PATHS.gold(mart)} in the dataset repo (the warehouse's gold export${when})`
+}
+
 // ---------- fetching ----------
 
 export interface Fetched<T> {
@@ -483,3 +743,7 @@ export const getLatestBrief = () => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_
 export const getBrief = (date: string) => fetchJson<Brief>(`${DATASET_BASE}/${DATASET_PATHS.brief(date)}`)
 export const getLatestDecisions = () =>
   fetchJson<DecisionsLatest>(`${DATASET_BASE}/${DATASET_PATHS.decisionsLatest}`)
+/** One exported gold mart as a JSON array; null (404) until the warehouse has pushed it. */
+export const getGoldMart = <T,>(mart: GoldMart) => fetchJson<T[]>(`${DATASET_BASE}/${DATASET_PATHS.gold(mart)}`)
+export const getGoldManifest = () =>
+  fetchJson<GoldExportManifestRow[]>(`${DATASET_BASE}/${DATASET_PATHS.goldManifest}`)
