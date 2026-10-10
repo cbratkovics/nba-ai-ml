@@ -23,12 +23,31 @@ def test_dbt_vars_mirror_config() -> None:
     assert v["dataset_revision"] == config.DATASET_REVISION
     assert v["feature_version"] == asof.FEATURE_VERSION
     assert v["holdout_season"] == config.HOLDOUT_SEASON
-    assert v["seasons"] == list(config.SEASONS)
+    assert "seasons" not in v, "the season list is the seasons seed, not a var (ADR-0024)"
     assert v["targets"] == list(config.TARGETS)
     assert v["min_minutes"] == config.MIN_MINUTES
     # conftest relaxes config.FULL_SEASON_GAMES for the fixture; compare with the real value.
     assert v["full_season_games"] == 30 * 82 // 2
     assert v["lookback_days"] == 2 * config.DAILY_LOOKBACK_DAYS
+
+
+def test_seasons_seed_is_the_one_season_list() -> None:
+    """The seed holds every season the pipeline knows (config.SEASONS) plus the current one by
+    the October rule, each labelled by the same rule the package uses (ADR-0024)."""
+    import csv
+    from datetime import date
+
+    from nba.ingest.schedule import season_for_date
+
+    rows = list(csv.DictReader((config.REPO_ROOT / "dbt" / "seeds" / "seasons.csv").open()))
+    seasons = [r["season"] for r in rows]
+    assert seasons == sorted(seasons) and len(set(seasons)) == len(seasons)
+    assert set(config.SEASONS) <= set(seasons)
+    assert season_for_date(date.today()) in seasons, "add this season to dbt/seeds/seasons.csv"
+    for r in rows:
+        assert r["season"] == f"{r['start_year']}-{(int(r['start_year']) + 1) % 100:02d}"
+        assert r["status"] in ("complete", "current", "upcoming")
+    assert [r["season"] for r in rows if r["status"] == "complete"] == list(config.SEASONS)
 
 
 def test_constraints_pin_the_dev_extra() -> None:
