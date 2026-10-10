@@ -100,7 +100,9 @@ def synthetic_schedule(game_logs: pd.DataFrame, d: date, histories: pd.DataFrame
 def write_dump(dump_dir: Path, game_logs: pd.DataFrame, d: date, team_histories: Path) -> dict:
     """TeamHistories.csv, a header-only PlayerStatistics.csv and the synthetic schedule."""
     dump_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(team_histories, dump_dir / kaggle_dump.TEAM_HISTORY_FILE)
+    target = dump_dir / kaggle_dump.TEAM_HISTORY_FILE
+    if team_histories.resolve() != target.resolve():  # the default downloads it into dump_dir
+        shutil.copyfile(team_histories, target)
     header = list(kaggle_dump.BOX_SCORE_COLUMNS) + list(kaggle_dump.BOX_SCORE_DERIVED)
     pd.DataFrame(columns=header).to_csv(dump_dir / kaggle_dump.BOX_SCORE_FILE, index=False)
     histories = kaggle_dump.load_team_histories(dump_dir)

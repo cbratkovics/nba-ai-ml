@@ -47,6 +47,12 @@ def test_write_dump_gives_the_ingest_an_empty_window(
     box = kaggle_dump.load_box_scores(dump, start=pd.Timestamp("2026-10-01"), allow_empty=True)
     assert box.empty and "gameDate" in box.columns
     assert schedule.schedule_path(dump, date(2026, 10, 20)) == dump / "LeagueSchedule26_27.csv"
+    # The workflow downloads TeamHistories.csv into the dump directory itself (run 38008812416
+    # failed on copying it onto itself).
+    again = rehearsal.write_dump(
+        dump, game_logs, date(2026, 10, 20), dump / kaggle_dump.TEAM_HISTORY_FILE
+    )
+    assert again["n_games"] == info["n_games"]
 
 
 def test_run_writes_a_slate_without_pushing_and_stages_it(
