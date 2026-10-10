@@ -62,6 +62,10 @@ RESIDUAL_COLUMNS: tuple[str, ...] = (
     "in_metrics_population",
     "model_revision",
     "dataset_revision",
+    # ADR-0029: the box score's game id when the slate ran on a provisional (Odds API) id,
+    # else the game id itself; and the tip-off the slate recorded (ADR-0030 timestamp test).
+    "resolved_game_id",
+    "tip_off_utc",
 )
 
 
@@ -80,15 +84,35 @@ def mae(frame: pd.DataFrame) -> dict[str, float | None]:
     return out
 
 
+def resolve(predictions: pd.DataFrame, game_logs: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """Predictions with `resolved_game_id`: the real game id for rows the slate keyed by a
+    provisional Odds API id (matched by date and team, ADR-0029), else the game id itself.
+    Returns the frame and how many provisional rows could not be resolved yet."""
+    from nba.lines import schedule as lines_schedule
+
+    frame = predictions.copy()
+    frame["game_date"] = pd.to_datetime(frame["date"])
+    resolved, unmatched = lines_schedule.resolve_game_ids(frame, game_logs)
+    out = predictions.copy()
+    out["resolved_game_id"] = resolved["game_id"].to_numpy()
+    if "tip_off_utc" not in out.columns:
+        out["tip_off_utc"] = pd.NaT
+    return out, unmatched
+
+
 def join_actuals(predictions: pd.DataFrame, game_logs: pd.DataFrame) -> pd.DataFrame:
     """Predictions with actual stats, residuals, and the missing-actual flags."""
-    keys = ["player_id", "game_id"]
     actual_cols = {"pts": "actual_pts", "reb": "actual_reb", "ast": "actual_ast"}
-    actuals = game_logs[keys + ["minutes", *actual_cols]].rename(columns=actual_cols)
+    actuals = game_logs[["player_id", "game_id", "minutes", *actual_cols]].rename(
+        columns={**actual_cols, "game_id": "resolved_game_id"}
+    )
     ingested_games = set(game_logs["game_id"])
-    df = predictions.merge(actuals, on=keys, how="left", indicator=True)
+    predictions, _ = resolve(predictions, game_logs)
+    df = predictions.merge(
+        actuals, on=["player_id", "resolved_game_id"], how="left", indicator=True
+    )
     df["has_actual"] = df["_merge"] == "both"
-    df["game_ingested"] = df["game_id"].isin(ingested_games)
+    df["game_ingested"] = df["resolved_game_id"].isin(ingested_games)
     for t in config.TARGETS:
         df[f"resid_{t}"] = df[f"actual_{t}"] - df[f"pred_{t}"]
     both_baselines = df[[f"{t}_mean_last10" for t in config.TARGETS]].notna().all(axis=1) & df[
@@ -102,10 +126,16 @@ def join_actuals(predictions: pd.DataFrame, game_logs: pd.DataFrame) -> pd.DataF
 
 def unpredicted_actuals(predictions: pd.DataFrame, game_logs: pd.DataFrame) -> int:
     """Actual rows in the predicted games that no prediction covered (e.g. post-trade debuts)."""
-    games = set(predictions["game_id"])
+    resolved, _ = resolve(predictions, game_logs)
+    games = set(resolved["resolved_game_id"])
     played = game_logs[game_logs["game_id"].isin(games)]
     keys = ["player_id", "game_id"]
-    covered = played.merge(predictions[keys], on=keys, how="left", indicator=True)
+    covered = played.merge(
+        resolved[["player_id", "resolved_game_id"]].rename(columns={"resolved_game_id": "game_id"}),
+        on=keys,
+        how="left",
+        indicator=True,
+    )
     return int((covered["_merge"] == "left_only").sum())
 
 
@@ -140,6 +170,7 @@ def compute(
     residuals_dir: Path,
 ) -> ResidualResult:
     df = join_actuals(predictions, game_logs)
+    _, n_unresolved = resolve(predictions, game_logs)
     with_actuals = df[df["has_actual"]]
     restricted = with_actuals[with_actuals["in_metrics_population"]]
     missing = df[~df["has_actual"]]
@@ -148,6 +179,7 @@ def compute(
     line = {
         "date": d.isoformat(),
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "n_unresolved_provisional_games": n_unresolved,
         "n_predicted": int(len(df)),
         "n_games_predicted": int(df["game_id"].nunique()),
         "n_games_ingested": int(df.loc[df["game_ingested"], "game_id"].nunique()),

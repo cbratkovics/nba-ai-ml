@@ -68,7 +68,7 @@ edges_{{ t }} as (
         p.actual_{{ t }} as actual,
         p.has_actual
     from both_populations as p
-    left join history as h on p.player_id = h.player_id and p.game_id = h.game_id
+    left join history as h on p.player_id = h.player_id and p.box_score_game_id = h.game_id
     left join thresholds as th on p.population = th.population and th.target = '{{ t }}'
 ),
 

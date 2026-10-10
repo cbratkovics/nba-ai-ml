@@ -1,0 +1,105 @@
+name: Capture lines
+
+# The paper ledger's daily snapshot of DraftKings points lines from The Odds API free plan
+# (ADR-0031). Scheduled once a day at the fixed snapshot time (20:00 UTC: 16:00 EDT, 15:00
+# EST); games already under way at the snapshot are out of scope by rule and counted. Every
+# priced call goes through the fail-closed credit guard (nba/lines/guard.py): the run plans
+# the night's cost, refuses when it would cross the monthly ceiling, logs every call, and
+# never retries. Raw lines go to the private dataset repo only. A dispatch can capture a
+# missed night (--use-reserve lets it dip into the reserve).
+#
+# Needs the repository secrets ODDS_API_KEY and HF_TOKEN (the private repo).
+
+on:
+  schedule:
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Game date (Eastern, YYYY-MM-DD); default today"
+        required: false
+        default: ""
+      use_reserve:
+        description: "Allow this manual capture to dip into the reserve credits"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Plan and ask the guard only; fetch nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Require secrets
+        id: secrets
+        # Until ODDS_API_KEY exists the scheduled run says so and stops green, so an unarmed
+        # schedule never produces a red run a day; a dispatch without the key is an error.
+        run: |
+          missing=""
+          for v in HF_TOKEN ODDS_API_KEY; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "::notice::Capture not armed: missing repository secret(s):$missing"
+              exit 0
+            fi
+            echo "::error::Missing repository secret(s):$missing"
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install project
+        if: steps.secrets.outputs.ready == 'true'
+        run: python -m pip install --quiet "."
+
+      - name: Pull the stored game logs (for name matching)
+        if: steps.secrets.outputs.ready == 'true'
+        run: python -m nba.storage.hf pull-dataset
+
+      - name: Capture tonight's lines through the credit guard
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          set -o pipefail
+          args=(--root .)
+          if [ "${{ github.event_name }}" = "schedule" ]; then args+=(--trigger schedule); else args+=(--trigger dispatch); fi
+          if [ -n "${{ inputs.date }}" ]; then args+=(--date "${{ inputs.date }}"); fi
+          if [ "${{ inputs.use_reserve }}" = "true" ]; then args+=(--use-reserve); fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
+          python -m nba.lines.capture "${args[@]}" 2>&1 | tee capture.log
+
+      - name: Recommendations for the captured night (private)
+        if: steps.secrets.outputs.ready == 'true' && inputs.dry_run != true
+        run: |
+          set -o pipefail
+          if [ -n "${{ inputs.date }}" ]; then
+            python -m nba.ledger.recommend --date "${{ inputs.date }}" --root . 2>&1 | tee -a capture.log
+          else
+            python -m nba.ledger.recommend --root . 2>&1 | tee -a capture.log
+          fi
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "## Capture"; grep -E "^(CAPTURE|RECOMMEND) " capture.log || echo "(no outcome lines)"; } >> "$GITHUB_STEP_SUMMARY"

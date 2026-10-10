@@ -37,6 +37,18 @@ COLUMN_ALIASES: dict[str, str] = {
 }
 REQUIRED: tuple[str, ...] = ("game_id", "game_datetime_est", "home_team_id", "away_team_id")
 REGULAR_SEASON_PREFIX = "002"
+SCHEDULE_SOURCE_KAGGLE = "kaggle_dump"
+# Columns every schedule frame carries, from this loader or from the Odds API fallback.
+GAME_COLUMNS: tuple[str, ...] = (
+    "game_id",
+    "game_date",
+    "home",
+    "away",
+    "season",
+    "tip_off_utc",
+    "event_id",
+    "schedule_source",
+)
 
 
 def schedule_file_name(season: str) -> str:
@@ -90,6 +102,14 @@ def load_schedule(path: Path, histories: pd.DataFrame) -> pd.DataFrame:
     out["home"], _ = resolve_teams(out["home_team_id"], blank, blank, years, histories)
     out["away"], _ = resolve_teams(out["away_team_id"], blank, blank, years, histories)
     assert out["game_id"].str.len().eq(GAME_ID_WIDTH).all()
+    # Tip-off in UTC (the file's times are Eastern), the schedule's provenance, and no event
+    # id: the same three columns the Odds API fallback carries (nba/lines/schedule.py), so the
+    # slate stamps every prediction with its tip-off whichever schedule it came from.
+    out["tip_off_utc"] = (
+        out["game_datetime_est"].dt.tz_localize("America/New_York").dt.tz_convert("UTC")
+    )
+    out["event_id"] = pd.Series([pd.NA] * len(out), index=out.index, dtype="string")
+    out["schedule_source"] = SCHEDULE_SOURCE_KAGGLE
     return out.sort_values(["game_date", "game_id"]).reset_index(drop=True)
 
 

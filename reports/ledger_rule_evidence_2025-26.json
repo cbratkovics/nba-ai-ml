@@ -1,0 +1,181 @@
+{
+  "kind": "ledger_rule_evidence",
+  "season": "2025-26",
+  "generated_at": "2026-10-10T00:56:56+00:00",
+  "git_sha": "191531cc3756430a05946e9fd9fb37a3baca6c35",
+  "feature_version": "asof_v1",
+  "model_revision": "fb427de136e1d6c4b591ae30cf30488f44935182",
+  "dataset_revision": "949cbd396e4bf2989206fd1bca840b3c375ff8cf",
+  "target": "pts",
+  "population": {
+    "rows": 26648,
+    "min10": 22244,
+    "min10_definition": "minutes >= 10 and both baselines defined (at least one earlier game this season)",
+    "scored_rows": 26031
+  },
+  "proxy": {
+    "definition": "pre-game proxy for min10: at least one prior game this season and the player's last-10 minutes mean at or above the floor; both known before tip-off",
+    "table": [
+      {
+        "minutes_floor": 0.0,
+        "n_selected": 26066,
+        "n_selected_in_min10": 22244,
+        "precision": 0.853372209007903,
+        "recall": 1.0,
+        "n_scored": 25777,
+        "model_mae": 4.858678826098537,
+        "baseline_last10_mae": 4.673370948384527,
+        "min10_share_scored": 0.8563835977809675
+      },
+      {
+        "minutes_floor": 10.0,
+        "n_selected": 23160,
+        "n_selected_in_min10": 21205,
+        "precision": 0.915587219343696,
+        "recall": 0.9532907750404603,
+        "n_scored": 22964,
+        "model_mae": 4.892264470597326,
+        "baseline_last10_mae": 4.886323451751949,
+        "min10_share_scored": 0.9170440689775301
+      },
+      {
+        "minutes_floor": 12.0,
+        "n_selected": 22043,
+        "n_selected_in_min10": 20599,
+        "precision": 0.9344916753617929,
+        "recall": 0.9260474734759935,
+        "n_scored": 21871,
+        "model_mae": 4.918522083046064,
+        "baseline_last10_mae": 4.9542389066336305,
+        "min10_share_scored": 0.935713959123954
+      },
+      {
+        "minutes_floor": 15.0,
+        "n_selected": 20076,
+        "n_selected_in_min10": 19204,
+        "precision": 0.9565650527993624,
+        "recall": 0.863333932745909,
+        "n_scored": 19933,
+        "model_mae": 4.988745688815222,
+        "baseline_last10_mae": 5.062228047291761,
+        "min10_share_scored": 0.9574073145035871
+      },
+      {
+        "minutes_floor": 18.0,
+        "n_selected": 17712,
+        "n_selected_in_min10": 17230,
+        "precision": 0.9727868112014454,
+        "recall": 0.7745909009171013,
+        "n_scored": 17592,
+        "model_mae": 5.1058415270795265,
+        "baseline_last10_mae": 5.19778265463378,
+        "min10_share_scored": 0.9734538426557526
+      },
+      {
+        "minutes_floor": 20.0,
+        "n_selected": 15985,
+        "n_selected_in_min10": 15680,
+        "precision": 0.9809196121363779,
+        "recall": 0.7049091889947852,
+        "n_scored": 15880,
+        "model_mae": 5.197921167805087,
+        "baseline_last10_mae": 5.300113575026988,
+        "min10_share_scored": 0.9812342569269521
+      },
+      {
+        "minutes_floor": 24.0,
+        "n_selected": 12112,
+        "n_selected_in_min10": 11990,
+        "precision": 0.9899273447820344,
+        "recall": 0.539021758676497,
+        "n_scored": 12036,
+        "model_mae": 5.390026405343148,
+        "baseline_last10_mae": 5.500891406468425,
+        "min10_share_scored": 0.9900299102691924
+      },
+      {
+        "minutes_floor": 28.0,
+        "n_selected": 7713,
+        "n_selected_in_min10": 7662,
+        "precision": 0.9933877868533645,
+        "recall": 0.3444524366121201,
+        "n_scored": 7662,
+        "model_mae": 5.678113585829966,
+        "baseline_last10_mae": 5.805972268834447,
+        "min10_share_scored": 0.9933437744714174
+      }
+    ]
+  },
+  "staleness": {
+    "definition": "days_rest: days since the player's newest game in the stored logs at prediction time (the feature module's input staleness); training-population rows",
+    "n": 22244,
+    "p50": 2.0,
+    "p90": 4.0,
+    "p95": 6.0,
+    "p99": 16.0,
+    "max": 126.0,
+    "share_above": {
+      "7": 0.03726847689264521,
+      "10": 0.01757777378169394,
+      "14": 0.011463765509800395
+    },
+    "by_bucket": [
+      {
+        "days_rest_from_exclusive": 0.0,
+        "days_rest_to_inclusive": 1.0,
+        "n": 3579,
+        "model_mae": 4.915672284102516,
+        "baseline_last10_mae": 5.03798491642163
+      },
+      {
+        "days_rest_from_exclusive": 1.0,
+        "days_rest_to_inclusive": 2.0,
+        "n": 12715,
+        "model_mae": 4.762088225844295,
+        "baseline_last10_mae": 4.888130629365391
+      },
+      {
+        "days_rest_from_exclusive": 2.0,
+        "days_rest_to_inclusive": 3.0,
+        "n": 3388,
+        "model_mae": 4.725848889701456,
+        "baseline_last10_mae": 4.83721374224621
+      },
+      {
+        "days_rest_from_exclusive": 3.0,
+        "days_rest_to_inclusive": 5.0,
+        "n": 1334,
+        "model_mae": 4.677225503577649,
+        "baseline_last10_mae": 4.848986221175127
+      },
+      {
+        "days_rest_from_exclusive": 5.0,
+        "days_rest_to_inclusive": 7.0,
+        "n": 372,
+        "model_mae": 4.607858123819768,
+        "baseline_last10_mae": 4.966919482846902
+      },
+      {
+        "days_rest_from_exclusive": 7.0,
+        "days_rest_to_inclusive": 10.0,
+        "n": 431,
+        "model_mae": 4.658329803525321,
+        "baseline_last10_mae": 5.048488196516039
+      },
+      {
+        "days_rest_from_exclusive": 10.0,
+        "days_rest_to_inclusive": 14.0,
+        "n": 135,
+        "model_mae": 4.25628516439138,
+        "baseline_last10_mae": 4.75045267489712
+      },
+      {
+        "days_rest_from_exclusive": 14.0,
+        "days_rest_to_inclusive": 30.0,
+        "n": 121,
+        "model_mae": 4.381167106566042,
+        "baseline_last10_mae": 5.193506493506494
+      }
+    ]
+  }
+}

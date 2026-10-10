@@ -56,6 +56,27 @@ sources:
           formatter: template
           external_location: "read_json_auto('{{ var('warehouse_root') }}/load_manifest.json', filename = true)"
 
+  - name: lines_files
+    description: >
+      Raw sportsbook lines and capture records from the private lines repo
+      cbratkovics/nba-lines (ADR-0031), pulled by the warehouse loader when a token is
+      present; absent otherwise (CI), when the bronze copies render empty and typed. Never
+      exported: only aggregates leave the warehouse.
+    loader: python -m nba.warehouse.load (private repo, HF_TOKEN)
+    meta:
+      owner: Christopher Bratkovics
+    tables:
+      - name: lines
+        description: lines/<date>.parquet and lines/<date>_manual.parquet, one row per (capture, book, market, player) with the point and both prices.
+        meta:
+          formatter: template
+          external_location: "read_parquet('{{ var('warehouse_root') }}/lines/*.parquet', filename = true, union_by_name = true)"
+      - name: captures
+        description: captures/<date>.json, the decision to capture written before any priced call, completed with the outcome.
+        meta:
+          formatter: template
+          external_location: "read_json_auto('{{ var('warehouse_root') }}/captures/*.json', filename = true, union_by_name = true)"
+
   - name: repo_reports
     description: The committed evaluation reports under reports/; the published numbers come from these files and the gold marts must reconcile to them.
     loader: git (reports/*.json, committed by hand from Actions artifacts)

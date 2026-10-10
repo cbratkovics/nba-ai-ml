@@ -170,6 +170,28 @@ SEASON_CALENDAR: dict[str, dict[str, tuple[str, str]]] = {
 # (ADR-0018). The dump's schedule-file publish timing for 2025-26 is not recorded, so 14.
 NO_SCHEDULE_STREAK_WARN: int = 14
 
+# Paper ledger (ADR-0030): the frozen model against DraftKings points lines from The Odds API
+# free plan, captured once a day at a fixed time, settled from the box scores when they arrive.
+# Raw lines are private (HF_LINES_REPO); the public repo and site carry aggregates only.
+HF_LINES_REPO: str = "cbratkovics/nba-lines"  # private dataset repo
+ODDS_API_BASE: str = "https://api.the-odds-api.com/v4"
+ODDS_SPORT: str = "basketball_nba"
+ODDS_REGIONS: str = "us"
+ODDS_BOOKMAKERS: tuple[str, ...] = ("draftkings",)  # Caesars is paid-only on the free plan
+ODDS_MARKETS: tuple[str, ...] = ("player_points",)  # rebounds and assists only by hand
+# Credit guard (nba/lines/guard.py): the free plan's monthly quota, the share never planned
+# into (docs/AE_AUDIT.md §9.2), and a reserve inside the plan for a manual re-capture.
+ODDS_MONTHLY_CREDITS: int = 500
+ODDS_SAFETY_MARGIN: float = 0.15
+ODDS_RESERVE_CREDITS: int = 50
+# The scheduled snapshot (UTC; 16:00 EDT / 15:00 EST). Games that commenced before the
+# snapshot are out of scope by rule and counted (ADR-0030).
+CAPTURE_SNAPSHOT_UTC: str = "20:00"
+LINES_DIR: Path = Path("lines")
+CAPTURES_DIR: Path = Path("captures")
+RECOMMENDATIONS_DIR: Path = Path("recommendations")
+ODDS_USAGE_FILE: Path = Path("usage") / "odds_api.jsonl"
+
 # Local paths (relative to the repo root).
 DATA_DIR: Path = Path("data") / "game_logs"
 MODELS_DIR: Path = Path("models")
@@ -203,6 +225,8 @@ KAGGLE_USERNAME: str | None = os.environ.get("KAGGLE_USERNAME") or None
 KAGGLE_KEY: str | None = os.environ.get("KAGGLE_KEY") or None
 # Groq API key for the analyst agent (free tier). Read here only.
 GROQ_API_KEY: str | None = os.environ.get("GROQ_API_KEY") or None
+# The Odds API key (free plan). Read here only; used by nba.lines.odds_api.
+ODDS_API_KEY: str | None = os.environ.get("ODDS_API_KEY") or None
 
 
 def groq_api_key() -> str | None:

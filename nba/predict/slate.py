@@ -53,6 +53,14 @@ OUTPUT_COLUMNS: tuple[str, ...] = (
     "reb_mean_season",
     "ast_mean_season",
     "games_played_season",
+    # Added for the paper ledger (ADR-0030): the pre-game eligibility proxy inputs, the input
+    # staleness stamp, and the game's tip-off and schedule provenance (ADR-0029). Earlier
+    # files lack them; the warehouse reads them as nulls.
+    "minutes_mean_last10",
+    "input_staleness_days",
+    "tip_off_utc",
+    "event_id",
+    "schedule_source",
     "model_revision",
     "dataset_revision",
     "generated_at",
@@ -135,14 +143,31 @@ def score_pending(
     models: model.Models,
     dataset_revision: str,
     generated_at: str | None = None,
+    games: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Features + predictions for pending rows, in OUTPUT_COLUMNS order."""
+    """Features + predictions for pending rows, in OUTPUT_COLUMNS order.
+
+    `games` (the schedule rows for the date) supplies tip_off_utc, event_id and
+    schedule_source per game_id; without it those columns are null."""
     generated_at = generated_at or datetime.now(UTC).isoformat(timespec="seconds")
     features = asof.features_for_pending(game_logs, pending)
     preds = model.predict(models, features)
     out = pd.concat([features, preds], axis=1)
     out = out.merge(pending[["player_id", "game_id", "player_name"]], on=["player_id", "game_id"])
     out["date"] = out["game_date"].dt.date.astype("string")
+    # days_rest for a pending row is the gap from the player's newest stored game to the
+    # slate date: how old the newest input is (ADR-0030 staleness cap).
+    out["input_staleness_days"] = out["days_rest"].astype("float64")
+    if games is not None and {"tip_off_utc", "event_id", "schedule_source"} <= set(games.columns):
+        attrs = games[["game_id", "tip_off_utc", "event_id", "schedule_source"]].drop_duplicates()
+        out = out.merge(attrs, on="game_id", how="left")
+    else:
+        out["tip_off_utc"] = pd.NaT
+        out["event_id"] = pd.Series([pd.NA] * len(out), index=out.index, dtype="string")
+        out["schedule_source"] = pd.Series([pd.NA] * len(out), index=out.index, dtype="string")
+    out["tip_off_utc"] = pd.to_datetime(out["tip_off_utc"], utc=True)
+    out["event_id"] = out["event_id"].astype("string")
+    out["schedule_source"] = out["schedule_source"].astype("string")
     out["model_revision"] = models.revision
     out["dataset_revision"] = dataset_revision
     out["generated_at"] = generated_at
@@ -161,39 +186,46 @@ def run_slate(
     load_models: Callable[[], model.Models],
     dataset_revision: str,
     histories: pd.DataFrame | None = None,
+    fallback: pd.DataFrame | None = None,
 ) -> SlateResult:
     """Build and score the slate for one date.
 
     `load_models` is only called when the date has games, so NO_SCHEDULE and NO_GAMES
-    outcomes never touch the model repo.
+    outcomes never touch the model repo. `fallback` is a schedule frame from another source
+    (nba/lines/schedule.py, The Odds API events; ADR-0029) used only when the dump has no
+    schedule file for the date's season; the Kaggle file wins whenever it exists.
     """
     season = schedule.season_for_date(d)
     path = schedule.schedule_path(schedule_dir, d)
-    if path is None:
+    if path is None and (fallback is None or fallback.empty):
         name = schedule.schedule_file_name(season)
         return SlateResult(
             SlateStatus.NO_SCHEDULE,
             d,
             f"SLATE {d}: no schedule file for season {season} ({name} not found in {schedule_dir})",
         )
-    if histories is None:
-        histories = kaggle_dump.load_team_histories(schedule_dir)
-    sched = schedule.load_schedule(path, histories)
+    if path is None:
+        sched, source_name = fallback, str(fallback["schedule_source"].iloc[0])
+    else:
+        if histories is None:
+            histories = kaggle_dump.load_team_histories(schedule_dir)
+        sched, source_name = schedule.load_schedule(path, histories), path.name
     games = schedule.games_on(sched, d)
     if games.empty:
         return SlateResult(
             SlateStatus.NO_GAMES,
             d,
-            f"SLATE {d}: no games on this date ({path.name} lists {len(sched)} "
+            f"SLATE {d}: no games on this date ({source_name} lists {len(sched)} "
             f"regular-season games, none on {d})",
         )
     models = load_models()
     pending = pending_rows(game_logs, games, d)
-    predictions = score_pending(game_logs, pending, models, dataset_revision)
+    predictions = score_pending(game_logs, pending, models, dataset_revision, games=games)
     return SlateResult(
         SlateStatus.OK,
         d,
-        f"SLATE {d}: {len(games)} games, {len(predictions)} player predictions",
+        f"SLATE {d}: {len(games)} games, {len(predictions)} player predictions "
+        f"(schedule: {source_name})",
         predictions=predictions,
         n_games=int(len(games)),
         n_players=int(len(predictions)),

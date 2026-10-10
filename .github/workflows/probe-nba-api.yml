@@ -9,7 +9,8 @@ name: Probe NBA data sources from a GitHub runner
 #   1. stats.nba.com via nba_api (LeagueGameFinder for yesterday, PlayerGameLog)
 #   2. live endpoints: nba_api live ScoreBoard, the cdn.nba.com liveData boxscore JSON
 #      fetched directly, and nba_api live BoxScore for a 2025-26 game
-#   3. kaggle.com dataset API without credentials (status only; 401/403 is fine)
+#   3. the official NBA injury report PDF host and hub page (status only; ADR-0029 follow-up)
+#   4. kaggle.com dataset API without credentials (status only; 401/403 is fine)
 
 on:
   workflow_dispatch:
@@ -156,6 +157,31 @@ jobs:
               print(f"PROBE live_boxscore: http_status={status_of(bs)} game_id={g.get('gameId')} players={players} elapsed={time.perf_counter() - start:.2f}s")
           except Exception as exc:
               print(f"PROBE live_boxscore: FAILED {type(exc).__name__}: {exc} elapsed={time.perf_counter() - start:.2f}s")
+          EOF
+
+      - name: Probe the official NBA injury report (reachability only; nothing is parsed or stored)
+        # docs/AE_AUDIT.md §9.5: the PDFs sit on ak-static.cms.nba.com, an Akamai sibling of the
+        # blocked cdn.nba.com. One GET of a known 2025-26 report and one GET of the hub page;
+        # prints status, content type and size. Nothing is built on this (owner decision).
+        run: |
+          python - <<'EOF'
+          import time
+
+          import requests
+
+          TIMEOUT = 10
+          HEADERS = {"User-Agent": "nba-ai-ml-probe/1.0 (personal portfolio project; +https://github.com/cbratkovics/nba-ai-ml)"}
+          for label, url in (
+              ("injury_pdf", "https://ak-static.cms.nba.com/referee/injury/Injury-Report_2026-04-27_11_30AM.pdf"),
+              ("injury_hub", "https://official.nba.com/nba-injury-report-2025-26-season/"),
+          ):
+              start = time.perf_counter()
+              try:
+                  r = requests.get(url, headers=HEADERS, timeout=TIMEOUT, stream=True)
+                  head = r.raw.read(5) if r.ok else b""
+                  print(f"PROBE {label}: http_status={r.status_code} content_type={r.headers.get('content-type')} content_length={r.headers.get('content-length')} starts_with_pdf={head.startswith(b'%PDF-')} elapsed={time.perf_counter() - start:.2f}s")
+              except Exception as exc:
+                  print(f"PROBE {label}: FAILED {type(exc).__name__}: {exc} elapsed={time.perf_counter() - start:.2f}s")
           EOF
 
       - name: Probe kaggle.com reachability (no credentials)

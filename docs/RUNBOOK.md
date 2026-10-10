@@ -68,6 +68,41 @@ were not blocked.
   against another source (the owner's machine can reach nba.com; runners cannot) and seed it
   with the verification, as `docs/reconciliation.md` finding 9 did.
 
+### `source-stalled` — "Nightly WARN: box scores not arriving (source stalled)" (ADR-0031)
+
+**Means:** two or more consecutive slated nights scored no box score at all
+(`n_with_actuals = 0` in `predictions/rolling_metrics.json`). The Kaggle dump has not
+published those games; this is the second ADR-0029 risk, distinct from "no schedule" (the
+schedule came from The Odds API, the slate ran, the lines were captured, nothing settles).
+
+**Do:** check the dataset's `lastUpdated` on Kaggle. Nothing in the pipeline needs
+changing: predictions and captures continue, paper bets stay `pending` and settle on the
+first build after the box scores arrive (settlement is computed from the facts, never
+stored). `mart_ledger_coverage.bets_pending` shows how much is waiting. If the dump has
+stopped for good, there is no free, documented box-score source (docs/AE_AUDIT.md §9.5) and
+the ledger cannot settle; say so on the ledger page rather than finding a scraper.
+
+## Lines and the paper ledger (ADR-0030, ADR-0031)
+
+| Signal | Means | Do |
+|---|---|---|
+| `capture.yml` summary `CAPTURE <date>: REFUSED by the credit guard (...)` | the night's plan would cross the monthly ceiling (375 scheduled, 425 manual) or the provider reports fewer credits left than the margin keeps back | nothing tonight; the night is recorded as `refused` and counts against coverage. Read `usage/odds_api.jsonl` in the private repo. A manual `Run workflow` with `use_reserve` may capture it if the reserve allows |
+| `CAPTURE ... no in-scope games` | every game had tipped before the snapshot (a holiday matinee slate) | expected; counted as `games_out_of_scope` |
+| `Capture not armed: missing repository secret(s)` | `ODDS_API_KEY` (or `HF_TOKEN`) is not set | add the secret (Settings → Secrets → Actions); the free key comes from the-odds-api.com |
+| `n_unmatched > 0` in the capture record | a sportsbook name did not match a player deterministically | look at `lines/<date>.parquet` rows with `match_method = unmatched`; add a confirmed row to `nba/lines/aliases.csv` (raw name, player_id, date, how you confirmed it); never a fuzzy match |
+| `UnknownTeamError` in the capture log | The Odds API used a team name not in `nba/lines/teams.py` | add it (abbreviation as the game logs spell it; San Antonio is SAN) |
+| `RECOMMEND <date>: 0 paper bets` early in the season | every player is a season debut (`no prior game this season`) | expected on opening night and the first few days; the rule needs one prior game |
+| a hand-read line to add | | `python -m nba.lines.manual template > lines.csv`, fill it from your own account (prices as American odds, time read in UTC with `Z`), then `python -m nba.lines.manual ingest lines.csv` |
+| `assert_predictions_precede_their_lines` fails | a prediction was stamped after its line was captured: the nightly and the capture ran out of order | find why (a re-run of the nightly after 20:00 UTC?); do not change the test; the bet is already excluded |
+
+How many bets before the numbers mean anything (ADR-0030): under 100 settled bets the
+`verdict` column reads "too early"; above that the interval and the break-even rate implied
+by the prices taken are shown, and a verdict is given only when the interval excludes
+break-even. Separating a true 55 % hit rate from the 52.4 % break-even of −110 takes about
+1,400 settled bets ((1.96 × √(0.55 × 0.45) / 0.026)² ≈ 1,406); at 100 the half-width is
+±0.10, at 400 ±0.05. Headline numbers are API lines only; manual lines are reported in their
+own rows.
+
 ## Red runs
 
 | Symptom | Likely cause | Do |
@@ -101,7 +136,8 @@ A dispatched run with `publish: true` (the default) pushes `gold/`; record the r
 
 ## Opening-night checklist (2026-27, first game 2026-10-20)
 
-- [ ] `LeagueSchedule26_27.csv` present in the dump, or the ADR-0029 fallback merged.
+- [ ] `LeagueSchedule26_27.csv` present in the dump, or `ODDS_API_KEY` set so the ADR-0029 fallback (`SLATE … schedule from The Odds API events`) produces the slate.
+- [ ] `ODDS_API_KEY` set and one `capture.yml` dispatch with `dry_run: true` showing `plan of N credits allowed`; then the 20:00 UTC schedule captures opening night (expect `0 paper bets`: every player is a season debut).
 - [ ] The first in-season `nightly.yml` run shows `SLATE … games, … player predictions`,
       `DECISIONS …`, `WAREHOUSE build: slate written`, a dbt `Done. PASS=` line with
       `ERROR=0`, and a `PUBLISH pushed gold marts` line; `gold/_export_manifest.json` carries

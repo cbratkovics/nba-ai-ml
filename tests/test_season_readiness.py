@@ -240,10 +240,19 @@ def test_opening_nights_end_to_end(
     out_dir.mkdir()
     _dbt(db, wh, "run-operation", "export_gold", "--args", json.dumps({"out_dir": str(out_dir)}))
     manifest = json.loads((out_dir / "_export_manifest.json").read_text())
-    assert len(manifest) == 13 and {m["model"] for m in manifest} >= {
-        "fct_prediction",
-        "mart_policy_metrics",
-        "mart_drift",
+    # Exactly the gold models without meta export=false are exported; the raw-lines tables
+    # (fct_paper_bet, slv_lines, brz_lines) must never be among them (ADR-0031).
+    dbt_manifest = json.loads((db.parent / "target" / "manifest.json").read_text())
+    exported_expected = {
+        n["alias"]
+        for n in dbt_manifest["nodes"].values()
+        if n["resource_type"] == "model"
+        and "gold" in n["tags"]
+        and (n["config"].get("meta") or {}).get("export", True) is not False
     }
+    exported = {m["model"] for m in manifest}
+    assert exported == exported_expected, exported ^ exported_expected
+    assert exported.isdisjoint({"fct_paper_bet", "brz_lines", "slv_lines"})
+    assert exported >= {"fct_prediction", "mart_policy_metrics", "mart_drift", "mart_ledger"}
     assert publish.publish(out_dir, dry_run=True) is None
-    assert len(publish.export_files(out_dir)) == 14
+    assert len(publish.export_files(out_dir)) == len(exported) + 1  # plus the manifest

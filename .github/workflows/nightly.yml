@@ -34,9 +34,13 @@ on:
         required: false
         default: ""
       rehearsal:
-        description: "Rehearse a game night (nba.rehearsal, ADR-0028): synthetic schedule, no pushes, local warehouse target, publish dry-run"
+        description: "Rehearse a game night (nba.rehearsal, ADR-0028): synthetic schedule, no pushes, publish dry-run"
         type: boolean
         default: false
+      rehearsal_target:
+        description: "Warehouse target for a rehearsal: local (DuckDB file uploaded as an artifact) or motherduck (a scratch database nba_rehearsal, dropped afterwards)"
+        required: false
+        default: "local"
 
 permissions:
   contents: read
@@ -148,8 +152,9 @@ jobs:
         if: steps.gate.outputs.verdict == 'build'
         env:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
-          # A rehearsal builds a scratch local DuckDB file, never the MotherDuck warehouse.
-          DBT_TARGET: ${{ inputs.rehearsal && 'local' || '' }}
+          # A rehearsal never builds the `nba` warehouse: target local (a DuckDB file), or
+          # motherduck with the scratch database below (ADR-0028).
+          DBT_TARGET: ${{ (inputs.rehearsal && inputs.rehearsal_target != 'motherduck') && 'local' || '' }}
         run: |
           if [ -n "$MOTHERDUCK_TOKEN" ] && [ "${DBT_TARGET:-}" != "local" ]; then
             echo "target=motherduck" >> "$GITHUB_OUTPUT"; echo "building on MotherDuck (nba)"
@@ -163,9 +168,15 @@ jobs:
           MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
           DBT_TARGET: ${{ steps.target.outputs.target }}
           NBA_DUCKDB_PATH: .duckdb/nba.duckdb
+          # The scratch database a MotherDuck rehearsal builds into (created below, dropped
+          # in the last step); the real warehouse `nba` is the profile's default.
+          NBA_MOTHERDUCK_DATABASE: ${{ (inputs.rehearsal && inputs.rehearsal_target == 'motherduck') && 'nba_rehearsal' || 'nba' }}
         run: |
           mkdir -p .duckdb
           python -m nba.warehouse.load --root data/warehouse
+          if [ "${{ inputs.rehearsal }}" = "true" ] && [ "${{ inputs.rehearsal_target }}" = "motherduck" ]; then
+            python -m nba.rehearsal create-scratch --database "$NBA_MOTHERDUCK_DATABASE"
+          fi
           if [ "${{ inputs.rehearsal }}" = "true" ]; then
             # Rehearsal: a first pass creates the scratch warehouse from the published files
             # (seeds included, since no full refresh preceded it), then tonight's local products
@@ -207,7 +218,7 @@ jobs:
         run: python -m nba.warehouse.publish --export-dir data/warehouse/export --dry-run
 
       - name: Upload the local warehouse file (fallback target or rehearsal)
-        if: steps.gate.outputs.verdict == 'build' && steps.target.outputs.target == 'local'
+        if: steps.gate.outputs.verdict == 'build' && (steps.target.outputs.target == 'local' || inputs.rehearsal)
         uses: actions/upload-artifact@v4
         with:
           name: warehouse-local-${{ github.run_id }}
@@ -217,3 +228,9 @@ jobs:
             dbt.log
             dbt-rehearsal-first-pass.log
           if-no-files-found: warn
+
+      - name: Rehearsal only - drop the scratch MotherDuck database
+        if: always() && inputs.rehearsal && inputs.rehearsal_target == 'motherduck'
+        env:
+          MOTHERDUCK_TOKEN: ${{ secrets.MOTHERDUCK_TOKEN }}
+        run: python -m nba.rehearsal drop-scratch --database nba_rehearsal

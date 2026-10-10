@@ -22,6 +22,7 @@ from typing import Any
 SUMMARY_PATH = Path("data") / "nightly_summary.json"
 HOLD_LABEL = "nightly-hold"
 WARN_LABEL = "nightly-warn"
+STALL_LABEL = "source-stalled"
 
 
 def issues(summary: dict[str, Any]) -> list[dict[str, str]]:
@@ -55,6 +56,22 @@ def issues(summary: dict[str, Any]) -> list[dict[str, str]]:
                     "publishing the season's LeagueSchedule file (AUDIT.md risk 5).\n\n"
                     "Check the dump's file list; until a schedule exists no slate can be "
                     "written."
+                ),
+            }
+        )
+    source = summary.get("source") or {}
+    if source.get("stalled"):
+        out.append(
+            {
+                "label": STALL_LABEL,
+                "title": "Nightly WARN: box scores not arriving (source stalled)",
+                "body": (
+                    f"Run date {date}: {source.get('stall_streak')} consecutive slated nights "
+                    "scored no box score (last residual line "
+                    f"{source.get('last_residual_date')}). The Kaggle dump has not published "
+                    "those games (ADR-0029). Predictions keep running; paper bets stay pending "
+                    "and settle whenever the box scores arrive (ADR-0031). Check the dump's "
+                    "lastUpdated on Kaggle; nothing settles until it resumes."
                 ),
             }
         )

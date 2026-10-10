@@ -33,6 +33,12 @@ with nightly as (
         reb_mean_season,
         ast_mean_season,
         games_played_season,
+        minutes_mean_last10,
+        input_staleness_days,
+        tip_off_utc,
+        event_id,
+        schedule_source,
+        cast(generated_at as timestamp) as prediction_generated_at,
         model_revision,
         dataset_revision,
         source_file
@@ -59,6 +65,12 @@ replay as (
         cast(null as double) as reb_mean_season,
         cast(null as double) as ast_mean_season,
         cast(null as integer) as games_played_season,
+        cast(null as double) as minutes_mean_last10,
+        cast(null as double) as input_staleness_days,
+        cast(null as timestamp) as tip_off_utc,
+        cast(null as varchar) as event_id,
+        cast(null as varchar) as schedule_source,
+        cast(null as timestamp) as prediction_generated_at,
         model_revision,
         dataset_revision,
         source_file
@@ -93,6 +105,12 @@ select
     reb_mean_season,
     ast_mean_season,
     games_played_season,
+    minutes_mean_last10,
+    input_staleness_days,
+    tip_off_utc,
+    event_id,
+    schedule_source,
+    prediction_generated_at,
     dataset_revision,
     source_file
 from unioned

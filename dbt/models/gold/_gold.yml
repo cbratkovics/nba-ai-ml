@@ -137,6 +137,14 @@ models:
       - { name: team, data_type: varchar, description: team the roster rule assigned }
       - { name: opponent, data_type: varchar, description: opponent }
       - { name: home, data_type: boolean, description: home flag }
+      - { name: box_score_game_id, data_type: varchar, description: "the game id the box score carries: the game id itself, or the real id a provisional Odds API id resolved to (ADR-0029)", constraints: [{ type: not_null }] }
+      - { name: tip_off_utc, data_type: timestamp, description: scheduled tip-off in UTC (nightly rows; null on replay rows) }
+      - { name: event_id, data_type: varchar, description: The Odds API event id when the schedule came from it }
+      - { name: schedule_source, data_type: varchar, description: kaggle_dump or odds_api (nightly rows) }
+      - { name: minutes_mean_last10, data_type: double, description: last-10 mean of minutes at scoring time (nightly rows; the pre-game eligibility proxy input, ADR-0030) }
+      - { name: games_played_season, data_type: integer, description: earlier games in the season at scoring time (nightly rows) }
+      - { name: input_staleness_days, data_type: double, description: "days from the player's newest stored game to the slate date (nightly rows; ADR-0030)" }
+      - { name: prediction_generated_at, data_type: timestamp, description: when the slate was scored (nightly rows; null on replay rows) }
       - { name: pred_pts, data_type: double, description: predicted points, constraints: [{ type: not_null }] }
       - { name: pred_reb, data_type: double, description: predicted rebounds, constraints: [{ type: not_null }] }
       - { name: pred_ast, data_type: double, description: predicted assists, constraints: [{ type: not_null }] }
@@ -376,3 +384,172 @@ models:
       - { name: no_schedule_streak, data_type: integer, description: consecutive runs ending at the no-schedule line }
       - { name: no_schedule_warn, data_type: boolean, description: whether the streak reached the warning length }
       - { name: source_file, data_type: varchar, description: report file }
+
+  - name: fct_paper_bet
+    description: One row per (game_date, source, book, market, player_id) matched line with the frozen model's prediction, the pre-registered rule applied (ADR-0030; the dbt vars mirror nba/ledger/rule.py and a test pins the hash) and the outcome computed from the box score when it exists, so settlement is idempotent and backfills itself. Carries raw lines and prices; never exported (ADR-0031).
+    config:
+      contract: { enforced: true }
+      meta: { export: false }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [game_date, source, book, market, player_id]
+    columns:
+      - { name: game_date, data_type: date, description: Eastern-time game date, constraints: [{ type: not_null }] }
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: source, data_type: varchar, description: api or manual, constraints: [{ type: not_null }] }
+      - { name: book, data_type: varchar, description: sportsbook key, constraints: [{ type: not_null }] }
+      - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
+      - { name: player_id, data_type: bigint, description: matched nba.com player id, constraints: [{ type: not_null }] }
+      - { name: player_name, data_type: varchar, description: player name on the slate, else as the book wrote it }
+      - { name: player_name_raw, data_type: varchar, description: player name as the book wrote it }
+      - { name: team, data_type: varchar, description: "the player's team as matched" }
+      - { name: capture_id, data_type: varchar, description: capture the line came from }
+      - { name: event_id, data_type: varchar, description: The Odds API event id (API rows) }
+      - { name: game_id, data_type: varchar, description: "the slate's game id (provisional, evt-prefixed, when the schedule came from the Odds API); null when no prediction exists for the player and night" }
+      - { name: box_score_game_id, data_type: varchar, description: "the box score's game id the bet settles against (ADR-0029)" }
+      - { name: model_revision, data_type: varchar, description: model revision that scored the prediction }
+      - { name: feature_version, data_type: varchar, description: feature module version }
+      - { name: line, data_type: double, description: the posted line, constraints: [{ type: not_null }] }
+      - { name: over_price, data_type: integer, description: American price of the over }
+      - { name: under_price, data_type: integer, description: American price of the under }
+      - { name: snapshot_at_utc, data_type: timestamp, description: when the line was captured or read }
+      - { name: line_last_update_utc, data_type: timestamp, description: "the book's last update of the market" }
+      - { name: prediction_generated_at, data_type: timestamp, description: when the slate was scored }
+      - { name: tip_off_utc, data_type: timestamp, description: scheduled tip-off in UTC }
+      - { name: prediction, data_type: double, description: "the frozen model's prediction for the market's stat" }
+      - { name: baseline_last10, data_type: double, description: "the player's last-10 mean of the stat at scoring time" }
+      - { name: edge, data_type: double, description: prediction minus line }
+      - { name: threshold, data_type: double, description: "the market's edge threshold from the rule" }
+      - { name: games_played_season, data_type: integer, description: earlier games this season at scoring time }
+      - { name: minutes_mean_last10, data_type: double, description: last-10 minutes mean at scoring time }
+      - { name: input_staleness_days, data_type: double, description: days from the newest input game to the slate date }
+      - { name: has_prediction, data_type: boolean, description: a nightly prediction exists for the player and night, constraints: [{ type: not_null }] }
+      - { name: prior_game_ok, data_type: boolean, description: at least one prior game this season, constraints: [{ type: not_null }] }
+      - { name: minutes_ok, data_type: boolean, description: last-10 minutes mean at or above the floor, constraints: [{ type: not_null }] }
+      - { name: staleness_ok, data_type: boolean, description: inputs no older than the cap, constraints: [{ type: not_null }] }
+      - { name: prediction_before_line, data_type: boolean, description: prediction stamped before the line was captured, constraints: [{ type: not_null }] }
+      - { name: line_before_tipoff, data_type: boolean, description: line captured before tip-off, constraints: [{ type: not_null }] }
+      - { name: eligible, data_type: boolean, description: every eligibility condition holds, constraints: [{ type: not_null }] }
+      - { name: side, data_type: varchar, description: "over, under or pass at the market's threshold", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [over, under, pass] } } }] }
+      - { name: is_bet, data_type: boolean, description: eligible and side is over or under, constraints: [{ type: not_null }] }
+      - { name: price, data_type: integer, description: American price on the bet side }
+      - { name: implied_probability, data_type: double, description: break-even probability of the price taken }
+      - { name: units, data_type: double, description: "units risked on the bet: one, every bet", constraints: [{ type: not_null }] }
+      - { name: actual, data_type: double, description: "the player's actual stat once the box score exists" }
+      - { name: game_ingested, data_type: boolean, description: the game is in the stored logs, constraints: [{ type: not_null }] }
+      - { name: played, data_type: boolean, description: the player has a box-score row, constraints: [{ type: not_null }] }
+      - { name: outcome, data_type: varchar, description: "pending while the game's box score is absent; void when it is present and the player has no row (any minutes played, even under one, means the action stands); won, lost or push otherwise; null when not a bet", data_tests: [{ accepted_values: { arguments: { values: [pending, won, lost, push, void] } } }] }
+      - { name: profit_units, data_type: double, description: "profit of the bet in units: a win pays the captured American price, a loss costs the unit; 0 for push, void and pending" }
+      - { name: rule_version, data_type: varchar, description: the pre-registered rule version, constraints: [{ type: not_null }] }
+      - { name: rule_hash, data_type: varchar, description: sha256 of the rule text (nba/ledger/rule.py), constraints: [{ type: not_null }] }
+
+  - name: mart_ledger
+    description: One row per (season, source_group, book, market) with the ledger's record as ratios of sums over the bets (ADR-0030); api and manual lines separately and together; every row carries n and 95% half-widths; evaluation is out_of_sample and never pooled with the replay.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, source_group, book, market]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: source_group, data_type: varchar, description: "api, manual or all", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [api, manual, all] } } }] }
+      - { name: is_headline, data_type: boolean, description: "true for source_group api: the headline numbers; manual lines never enter them (ADR-0030)", constraints: [{ type: not_null }] }
+      - { name: book, data_type: varchar, description: "sportsbook key, or all for the combined rows", constraints: [{ type: not_null }] }
+      - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
+      - { name: n_bets, data_type: integer, description: bets placed on paper, constraints: [{ type: not_null }] }
+      - { name: n_settled, data_type: integer, description: bets won or lost }
+      - { name: n_won, data_type: integer, description: bets won }
+      - { name: n_lost, data_type: integer, description: bets lost }
+      - { name: n_push, data_type: integer, description: pushes (counted, not scored) }
+      - { name: n_void, data_type: integer, description: voids (did not play; counted, not scored) }
+      - { name: n_pending, data_type: integer, description: bets whose box score has not arrived }
+      - { name: nights_with_bets, data_type: integer, description: distinct game dates with a bet }
+      - { name: hit_rate, data_type: double, description: n_won / n_settled }
+      - { name: hit_rate_half_width_95, data_type: double, description: 1.96 * sqrt(p (1 - p) / n_settled) }
+      - { name: breakeven_hit_rate, data_type: double, description: mean implied probability of the prices taken on settled bets }
+      - { name: units_staked, data_type: double, description: "units risked on settled bets: one unit per bet, every bet (additive)" }
+      - { name: units_profit, data_type: double, description: "profit in units on settled bets: a win pays the captured American price, a loss costs the unit (additive)" }
+      - { name: roi_units, data_type: double, description: "units_profit / units_staked (a ratio of sums; not additive, never averaged across rows)" }
+      - { name: roi_half_width_95, data_type: double, description: 1.96 * sd(profit per bet) / sqrt(n_settled) }
+      - { name: verdict, data_type: varchar, description: "too early under 100 settled bets; else beats break-even / below break-even when the hit rate's 95% interval excludes breakeven_hit_rate, else inconclusive (ADR-0030)", constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [too early, beats break-even, below break-even, inconclusive] } } }] }
+      - { name: evaluation, data_type: varchar, description: out_of_sample (the 2026-27 ledger); never pooled with in-sample results, constraints: [{ type: not_null }] }
+
+  - name: mart_ledger_by_side
+    description: "One row per (season, source_group, market, side) with hit rate, n and ROI for overs and unders separately (ADR-0030 amendment 3): the model is a squared-error regressor and a book's line sits near the median, so the rule may lean to overs on a right-skewed stat; nothing is adjusted, this shows it. Ratios of sums with 95% half-widths."
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, source_group, market, side]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: source_group, data_type: varchar, description: "api, manual or all", constraints: [{ type: not_null }] }
+      - { name: is_headline, data_type: boolean, description: "true for source_group api", constraints: [{ type: not_null }] }
+      - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
+      - { name: side, data_type: varchar, description: over or under, constraints: [{ type: not_null }], data_tests: [{ accepted_values: { arguments: { values: [over, under] } } }] }
+      - { name: n_bets, data_type: integer, description: bets on the side, constraints: [{ type: not_null }] }
+      - { name: n_settled, data_type: integer, description: bets won or lost }
+      - { name: n_won, data_type: integer, description: bets won }
+      - { name: n_pending, data_type: integer, description: bets pending }
+      - { name: hit_rate, data_type: double, description: n_won / n_settled }
+      - { name: hit_rate_half_width_95, data_type: double, description: 1.96 * sqrt(p (1 - p) / n_settled) }
+      - { name: breakeven_hit_rate, data_type: double, description: mean implied probability of the prices taken on settled bets }
+      - { name: units_staked, data_type: double, description: "units risked on settled bets (one per bet)" }
+      - { name: units_profit, data_type: double, description: profit in units at the captured prices }
+      - { name: roi_units, data_type: double, description: units_profit / units_staked }
+      - { name: roi_half_width_95, data_type: double, description: 1.96 * sd(profit per bet) / sqrt(n_settled) }
+      - { name: evaluation, data_type: varchar, description: out_of_sample, constraints: [{ type: not_null }] }
+
+  - name: mart_ledger_by_edge
+    description: One row per (season, source_group, market, edge_bucket) with hit rate and ROI by how far the prediction sat from the line; ratios of sums; buckets start at the rule's threshold.
+    config:
+      contract: { enforced: true }
+    data_tests:
+      - unique_combination:
+          arguments:
+            columns: [season, source_group, market, edge_bucket]
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }] }
+      - { name: source_group, data_type: varchar, description: "api, manual or all", constraints: [{ type: not_null }] }
+      - { name: is_headline, data_type: boolean, description: "true for source_group api", constraints: [{ type: not_null }] }
+      - { name: market, data_type: varchar, description: prop market, constraints: [{ type: not_null }] }
+      - { name: edge_bucket, data_type: varchar, description: "|prediction - line| band", constraints: [{ type: not_null }] }
+      - { name: n_bets, data_type: integer, description: bets in the band, constraints: [{ type: not_null }] }
+      - { name: n_settled, data_type: integer, description: bets won or lost }
+      - { name: n_won, data_type: integer, description: bets won }
+      - { name: n_pending, data_type: integer, description: bets pending }
+      - { name: hit_rate, data_type: double, description: n_won / n_settled }
+      - { name: units_staked, data_type: double, description: units at risk on settled bets }
+      - { name: units_profit, data_type: double, description: profit in units }
+      - { name: roi_units, data_type: double, description: units_profit / units_staked }
+      - { name: evaluation, data_type: varchar, description: out_of_sample, constraints: [{ type: not_null }] }
+
+  - name: mart_ledger_coverage
+    description: "One row per season with how much of the season the ledger covers and what is open (ADR-0031), the counts every ledger page shows: captured nights against game nights, bets per captured night, unmatched lines, pending bets, lines excluded by the timestamp rules."
+    config:
+      contract: { enforced: true }
+    columns:
+      - { name: season, data_type: varchar, description: season label, constraints: [{ type: not_null }], data_tests: [unique] }
+      - { name: game_nights, data_type: integer, description: game dates with a nightly slate }
+      - { name: nights_captured, data_type: integer, description: capture records with status captured }
+      - { name: nights_refused, data_type: integer, description: captures the credit guard refused }
+      - { name: nights_no_games, data_type: integer, description: captures with no game after the snapshot }
+      - { name: games_in_scope, data_type: integer, description: games whose lines were captured }
+      - { name: games_out_of_scope, data_type: integer, description: games already under way at the snapshot (out of scope by rule) }
+      - { name: credits_charged, data_type: integer, description: Odds API credits the provider reported charging }
+      - { name: lines_total, data_type: integer, description: line rows (api and manual) }
+      - { name: lines_manual, data_type: integer, description: hand-entered line rows }
+      - { name: lines_unmatched_player, data_type: integer, description: line rows whose player name did not match }
+      - { name: lines_with_prediction, data_type: integer, description: matched lines with a nightly prediction }
+      - { name: lines_ineligible, data_type: integer, description: lines with a prediction that failed an eligibility condition }
+      - { name: lines_prediction_after_line, data_type: integer, description: lines whose prediction was stamped after the capture (pipeline order broken; the build fails on these) }
+      - { name: lines_after_tipoff, data_type: integer, description: lines captured or read after tip-off (excluded) }
+      - { name: bets_total, data_type: integer, description: paper bets }
+      - { name: bets_settled, data_type: integer, description: bets won or lost }
+      - { name: bets_pending, data_type: integer, description: bets waiting for a box score }
+      - { name: bets_void, data_type: integer, description: bets voided (did not play) }
+      - { name: nights_with_bets, data_type: integer, description: distinct game dates with a bet }
+      - { name: bets_per_captured_night, data_type: double, description: bets_total / nights_captured }

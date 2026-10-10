@@ -70,6 +70,11 @@ models:
       - { name: model_revision, description: model revision }
       - { name: dataset_revision, description: dataset revision }
       - { name: generated_at, description: when the slate was scored }
+      - { name: minutes_mean_last10, description: last-10 mean of minutes (the pre-game eligibility proxy input, ADR-0030) }
+      - { name: input_staleness_days, description: days from the player's newest stored game to the slate date (ADR-0030) }
+      - { name: tip_off_utc, description: scheduled tip-off in UTC }
+      - { name: event_id, description: The Odds API event id when the schedule came from it (ADR-0029) }
+      - { name: schedule_source, description: kaggle_dump or odds_api }
   - name: brz_residuals
     description: Typed copy of the nightly residual files; empty until the first in-season run.
     columns: &residual_columns
@@ -99,6 +104,8 @@ models:
       - { name: in_metrics_population, description: training-population flag }
       - { name: model_revision, description: model revision }
       - { name: dataset_revision, description: dataset revision }
+      - { name: resolved_game_id, description: "the box score's game id (differs from game_id only for provisional Odds API ids, ADR-0029)" }
+      - { name: tip_off_utc, description: scheduled tip-off in UTC }
   - name: brz_replay_residuals
     description: Typed copy of the holdout-season replay residual files (one per replayed date).
     columns: *residual_columns
@@ -251,3 +258,46 @@ models:
       - { name: feature, description: "model feature; null on the one row of a run without PSI" }
       - { name: psi, description: population stability index of the feature in the window }
       - { name: flagged, description: whether the feature is at or above the threshold }
+  - name: brz_lines
+    description: Typed copy of the private lines files (API snapshots and hand-entered rows), one row per (capture, book, market, player). Empty without the private repo. Never exported (ADR-0031).
+    columns:
+      - { name: source_file, description: parquet file }
+      - { name: capture_id, description: capture the row belongs to (date, policy version, trigger; manual files use <date>-manual) }
+      - { name: snapshot_at_utc, description: when the snapshot was taken (API) or the line was read (manual) }
+      - { name: source, description: api or manual }
+      - { name: book, description: sportsbook key (draftkings; caesars by hand only) }
+      - { name: event_id, description: The Odds API event id (API rows) }
+      - { name: commence_time_utc, description: scheduled tip-off in UTC (API rows) }
+      - { name: game_date, description: Eastern-time game date }
+      - { name: home_team, description: home team abbreviation (API rows) }
+      - { name: away_team, description: away team abbreviation (API rows) }
+      - { name: team, description: "the player's team as matched" }
+      - { name: player_name_raw, description: player name as the book wrote it }
+      - { name: player_id, description: matched nba.com player id; null when unmatched }
+      - { name: match_method, description: "team, league, alias or unmatched (ADR-0031)" }
+      - { name: market, description: "player_points, player_rebounds or player_assists" }
+      - { name: line, description: the posted line (point) }
+      - { name: over_price, description: American price of the over }
+      - { name: under_price, description: American price of the under }
+      - { name: line_last_update_utc, description: "the book's last update of the market (API) or the read time (manual)" }
+  - name: brz_captures
+    description: One row per capture record, written before any priced call and completed with the outcome (ADR-0031). Empty without the private repo. Never exported.
+    columns:
+      - { name: source_file, description: capture file }
+      - { name: capture_id, description: capture id }
+      - { name: game_date, description: the night captured }
+      - { name: trigger, description: schedule or dispatch }
+      - { name: policy_version, description: capture policy version }
+      - { name: snapshot_at_utc, description: when the capture ran }
+      - { name: decided_before_fetch, description: the decision record preceded every priced call }
+      - { name: status, description: "decided, refused, captured or no_games" }
+      - { name: n_events, description: games on the date }
+      - { name: n_in_scope, description: games commencing after the snapshot }
+      - { name: n_out_of_scope, description: games already under way (out of scope by rule) }
+      - { name: planned_cost, description: credits the plan would cost }
+      - { name: charged, description: credits the provider reported charging }
+      - { name: n_calls_ok, description: priced calls that succeeded }
+      - { name: n_calls_failed, description: priced calls that failed (never retried) }
+      - { name: n_lines, description: line rows captured }
+      - { name: n_players, description: distinct player names captured }
+      - { name: n_unmatched, description: line rows whose player name did not match }
