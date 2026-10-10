@@ -39,6 +39,35 @@ from nba.predict import model, residuals, slate
 from nba.storage import hf, local
 
 SUMMARY_PATH = Path("data") / "nightly_summary.json"
+# Consecutive slated nights without a single box score before the source counts as stalled.
+STALL_WARN = 2
+
+
+def stall_streak(lines: list[dict[str, Any]]) -> int:
+    """Consecutive residual lines, newest first, that predicted players and found no actuals."""
+    streak = 0
+    for line in sorted(lines, key=lambda ln: ln.get("date", ""), reverse=True):
+        if (
+            int(line.get("n_predicted", 0) or 0) > 0
+            and int(line.get("n_with_actuals", 0) or 0) == 0
+        ):
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def stall_status(predictions_dir: Path) -> dict[str, Any]:
+    path = predictions_dir / residuals.ROLLING_FILE
+    lines: list[dict[str, Any]] = []
+    if path.exists():
+        lines = [json.loads(ln) for ln in path.read_text().splitlines() if ln.strip()]
+    streak = stall_streak(lines)
+    return {
+        "stall_streak": streak,
+        "stalled": streak >= STALL_WARN,
+        "last_residual_date": lines[-1]["date"] if lines else None,
+    }
 
 
 @dataclass
@@ -52,6 +81,7 @@ class NightlySummary:
     slate: dict[str, Any] = field(default_factory=dict)
     decisions: dict[str, Any] = field(default_factory=dict)
     drift: dict[str, Any] = field(default_factory=dict)
+    source: dict[str, Any] = field(default_factory=dict)
     products_pushed: list[str] = field(default_factory=list)
     products_revision: str | None = None
     lines: list[str] = field(default_factory=list)
@@ -125,12 +155,29 @@ def run(
         rolling = residuals.append_rolling_line(predictions_dir, result.line)
         written += [residuals_dir / f"{yesterday.isoformat()}.parquet", rolling]
         summary.residuals = {
-            k: result.line[k] for k in ("n_predicted", "n_with_actuals", "n_missing_actuals", "mae")
+            k: result.line[k]
+            for k in (
+                "n_predicted",
+                "n_with_actuals",
+                "n_missing_actuals",
+                "n_unresolved_provisional_games",
+                "mae",
+            )
         }
         summary.log(result.message)
     else:
         summary.residuals = {"status": "no_predictions"}
         summary.log(f"RESIDUALS {yesterday}: no predictions file {pred_path}; nothing to score")
+
+    # 2c. Source stall (ADR-0031): nights that were slated but whose box scores never arrived,
+    # counted from the rolling residual lines; distinct from "no schedule". Bets stay pending
+    # and settle whenever the dump resumes; the workflow opens one issue at STALL_WARN nights.
+    summary.source = stall_status(predictions_dir)
+    if summary.source["stall_streak"] >= STALL_WARN:
+        summary.log(
+            f"SOURCE {d}: box scores missing for {summary.source['stall_streak']} consecutive "
+            "slated nights (source stalled)"
+        )
 
     # 2b. Analyst brief for yesterday. Never allowed to fail the job: the loop catches
     # every Groq/limit error and writes an agent_unavailable brief; anything else that
@@ -167,13 +214,34 @@ def run(
         summary.agent = {"status": "agent_unavailable", "error": f"{type(exc).__name__}: {exc}"}
         summary.log(f"AGENT {yesterday}: agent_unavailable ({type(exc).__name__}: {exc})")
 
-    # 3. Slate for today.
-    outcome = slate.run_slate(d, game_logs, dump_dir, load_models, dataset_revision)
+    # 3. Slate for today. Without a schedule file for the season, The Odds API's free events
+    # endpoint stands in (ADR-0029); the Kaggle file wins whenever it exists.
+    fallback = None
+    schedule_source = "kaggle_dump" if schedule.schedule_path(dump_dir, d) else None
+    if schedule_source is None and config.ODDS_API_KEY:
+        try:
+            from nba.lines import capture as lines_capture
+            from nba.lines import odds_api
+            from nba.lines import schedule as lines_schedule
+
+            start, end = lines_capture.eastern_day_bounds_utc(d)
+            events = odds_api.OddsApi().events(commence_from=start, commence_to=end).data
+            fallback = lines_schedule.fallback_schedule(events)
+            schedule_source = lines_schedule.SOURCE_ODDS_API
+            summary.log(f"SLATE {d}: schedule from The Odds API events ({len(fallback)} games)")
+        except Exception as exc:  # noqa: BLE001 - the fallback must never fail the night
+            summary.log(f"SLATE {d}: schedule fallback unavailable ({type(exc).__name__}: {exc})")
+    outcome = slate.run_slate(
+        d, game_logs, dump_dir, load_models, dataset_revision, fallback=fallback
+    )
     summary.log(outcome.message)
     summary.slate = {
         "status": outcome.status.value,
         "n_games": outcome.n_games,
         "n_players": outcome.n_players,
+        "schedule_source": schedule_source
+        if outcome.status is not slate.SlateStatus.NO_SCHEDULE
+        else None,
     }
     if outcome.status is slate.SlateStatus.OK:
         parquet, latest = slate.write_outputs(outcome, predictions_dir)
