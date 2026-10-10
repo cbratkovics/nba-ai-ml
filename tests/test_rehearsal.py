@@ -101,6 +101,32 @@ def test_run_writes_a_slate_without_pushing_and_stages_it(
     assert not any(n.startswith("decisions/") for n in names)  # not a warehouse source family
 
 
+def test_scratch_database_helpers_refuse_the_real_warehouse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """create/drop only ever touch nba_rehearsal*; the real `nba` database is unreachable here."""
+    executed: list[str] = []
+
+    class Con:
+        def execute(self, sql):
+            executed.append(sql)
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(rehearsal, "_motherduck", lambda token: Con())
+    with pytest.raises(ValueError, match="refusing"):
+        rehearsal.drop_scratch("nba", token="t")
+    with pytest.raises(ValueError, match="refusing"):
+        rehearsal.create_scratch("nba_prod", token="t")
+    rehearsal.create_scratch("nba_rehearsal", token="t")
+    rehearsal.drop_scratch("nba_rehearsal", token="t")
+    assert executed == [
+        "create database if not exists nba_rehearsal",
+        "drop database if exists nba_rehearsal cascade",
+    ]
+
+
 def test_hugging_face_writes_are_refused_during_a_rehearsal(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
