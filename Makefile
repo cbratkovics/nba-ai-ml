@@ -28,6 +28,7 @@ lint:
 	.venv/bin/ruff check . && .venv/bin/ruff format --check .
 
 lint-sql:
+	mkdir -p .duckdb
 	.venv/bin/sqlfluff lint dbt/models dbt/tests dbt/snapshots
 
 test: lint lint-sql

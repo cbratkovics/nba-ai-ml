@@ -30,7 +30,11 @@ jobs:
         run: ruff format --check .
 
       - name: sqlfluff (dbt models, tests, snapshots; .sqlfluff)
-        run: sqlfluff lint dbt/models dbt/tests dbt/snapshots
+        # The dbt templater opens the local DuckDB file to render the project; the folder
+        # must exist (the file is created empty and never built here).
+        run: |
+          mkdir -p .duckdb
+          sqlfluff lint dbt/models dbt/tests dbt/snapshots
 
       - name: Pytest
         # Includes tests/test_dbt_incremental.py, which shells out to dbt against a scratch
