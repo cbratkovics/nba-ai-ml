@@ -543,8 +543,13 @@ MotherDuck itself (the weekly full refresh does exercise MotherDuck, but with
 `--full-refresh`); a rehearsal against a scratch MotherDuck database (`NBA_MOTHERDUCK_DATABASE`)
 would close that gap and is offered to the owner as an option, since it writes to MotherDuck.
 
-**Record.** The first rehearsal run id and its outcome are recorded in `reports/runs.json`
-with `note: rehearsal` when the owner has dispatched it (or approved the dispatch).
+**Record.** Dispatched from the branch on 2026-10-10 (`reports/runs.json`): run `38008812416`
+failed in the rehearsal step (the downloaded `TeamHistories.csv` was copied onto itself; fixed
+in the next commit); run `38008927282` **succeeded**: synthetic schedule of 15 games, 483
+player predictions and a decisions file, `WAREHOUSE build: slate written`, target `local`,
+first pass `PASS=106`, three product files staged, incremental pass `PASS=106`, export
+(`fct_prediction` 38,855 rows = 38,372 replay + 483 nightly, `mart_drift` 25), publish
+dry-run listing 14 files. Nothing reached Hugging Face.
 
 ## ADR-0029 — Opening night depends on one Kaggle uploader for both the schedule and the box scores (proposed, 2026-10-09; decision in Phase 2)
 

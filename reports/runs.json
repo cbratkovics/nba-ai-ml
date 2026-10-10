@@ -689,6 +689,27 @@
       "conclusion": "success",
       "started_at": "2026-10-09T16:41:15Z",
       "note": "scheduled off-season run: zero changed rows, no schedule or no games, drift insufficient, daily_reports/ and drift/ pushed"
+    },
+    {
+      "run_id": 38008812416,
+      "workflow": "nightly.yml",
+      "event": "workflow_dispatch",
+      "branch": "analytics-engineering",
+      "commit": "d28b1e2",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T00:23:06Z",
+      "note": "rehearsal (ADR-0028), failed in step 7: TeamHistories.csv copied onto itself; fixed in the next commit"
+    },
+    {
+      "run_id": 38008927282,
+      "workflow": "nightly.yml",
+      "event": "workflow_dispatch",
+      "branch": "analytics-engineering",
+      "commit": "e8b356a",
+      "conclusion": "success",
+      "started_at": "2026-10-10T00:24:42Z",
+      "target": "local",
+      "note": "rehearsal (ADR-0028): 15 synthetic games, 483 predictions, gate build, two local builds PASS=106, export, dry-run publish; nothing pushed"
     }
   ],
   "hf_commits": [
