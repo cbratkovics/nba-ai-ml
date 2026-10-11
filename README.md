@@ -1,21 +1,21 @@
 # NBA Stat Predictor
 
-An analytics-engineering warehouse built around a frozen NBA player-stat model: every number the site shows is recomputed in dbt, reconciled to a committed artifact, and traced through lineage that ends in the pages that read it. A nightly batch job predicts points, rebounds and assists from each player's earlier games; the warehouse proves what its files say.
+An analytics-engineering warehouse built around a frozen NBA player-stat model: every number the site shows is recomputed in dbt, reconciled to a committed artifact, and traced through lineage that ends in the pages that read it. A nightly batch job predicts points, rebounds and assists from each player's earlier games; the warehouse is where each published number is checked.
 
 [![CI](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/ci.yml)
 [![Nightly](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/nightly.yml/badge.svg)](https://github.com/cbratkovics/nba-ai-ml/actions/workflows/nightly.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-lightgrey)](pyproject.toml)
 
-[dbt docs](https://cbratkovics.github.io/nba-ai-ml/) · [Live site](https://nba-ai-ml.vercel.app) · [Evaluation](docs/MODEL_CARD.md)
+[dbt docs](https://cbratkovics.github.io/nba-ai-ml/) · [Live site](https://nba-ai-ml.vercel.app) · [Evaluation](https://nba-ai-ml.vercel.app/ledger)
 
 ```mermaid
 flowchart LR
     S["Sources<br/>HF dataset files · committed reports · private lines"] --> B["Bronze<br/>15 typed copies"]
     B --> V["Silver<br/>6 grain-enforced, incremental"]
-    V --> I["Intermediate<br/>23 features in SQL, parity-tested"]
+    V --> I["Intermediate<br/>23 features in SQL"]
+    M["Python feature module<br/>asof_v1, the one that serves"] -.parity proof.- I
     V --> G["Gold<br/>19 contracted marts"]
-    I -.proof.- G
     G --> E["Exposures<br/>6 site pages · agent · HF gold/ export · analyses · private ledger view"]
 ```
 
@@ -24,7 +24,7 @@ flowchart LR
 **How trust is established**
 
 - **Contracts** on every gold model and the silver table all of them read. [→](#contracts)
-- **Reconciliation**: marts recompute the replay and match the committed reports to float noise. [→](#reconciliation-to-committed-artifacts)
+- **Reconciliation**: marts recompute the replay and match its reports to float noise, and `metrics.json` within 0.0022. [→](#reconciliation-to-committed-artifacts)
 - **Feature parity**: 23 features in SQL equal the Python module over 130,414 rows; tolerance set from the measurement. [→](#feature-parity)
 - **Tests**: 93 data tests and a unit test of the settlement rule; an artifact mismatch blocks the publish. [→](#tests)
 - **Run evidence**: "ran" means a recorded run id; counts are rendered from the manifest. [→](#run-evidence)
@@ -40,7 +40,7 @@ Every claim above, with its artifact keys and decision records ([docs/DECISIONS.
 
 ### Contracts
 
-Enforced on every gold model and on `slv_game_logs`, the one silver table every mart and the feature parity proof read; the other silver tables are incremental and keep their contracts as tests (ADR-0025). `dbt build`: <!-- dbt-counts -->41 models (15 bronze, 6 silver, 1 intermediate, 19 gold; 3 incremental, 20 with enforced contracts), 4 seeds, 1 snapshot, 93 data tests (15 singular, 78 generic), 1 unit tests, 14 sources, 11 exposures, 886 documented columns<!-- /dbt-counts -->. Built weekly on MotherDuck and on every pull request against a local DuckDB file (slim CI deferring to the cached `main` build); docs with every column described are published to GitHub Pages.
+Enforced on every gold model and on `slv_game_logs`, the one silver table every mart and the feature parity proof read; the other silver tables are incremental and keep their contracts as tests (ADR-0025). `dbt build`: <!-- dbt-counts -->41 models (15 bronze, 6 silver, 1 intermediate, 19 gold; 3 incremental, 20 with enforced contracts), 4 seeds, 1 snapshot, 93 data tests (15 singular, 78 generic), 1 unit test, 14 sources, 11 exposures, 886 documented columns<!-- /dbt-counts -->. Built weekly on MotherDuck and on every pull request against a local DuckDB file (slim CI deferring to the cached `main` build); docs with every column described are published to GitHub Pages.
 
 ### Reconciliation to committed artifacts
 
@@ -60,7 +60,7 @@ The model's 23 `asof_v1` features are rendered in SQL (`int_player_game_features
 
 ### Pre-registered out-of-sample evaluation
 
-From opening night the frozen model is evaluated against market lines, on paper, under a rule written and hashed before the first game and never tuned on the season ([`nba/ledger/rule.py`](nba/ledger/rule.py); ADR-0030, approved with amendments before the first live date). The rule: a player is eligible with a prior game this season, a last-10 minutes mean of at least 15 and inputs at most 10 days old (chosen on the 2025-26 replay, [reports/ledger_rule_evidence_2025-26.json](reports/ledger_rule_evidence_2025-26.json): proxy precision 0.957, recall 0.863); an entry is recorded when the prediction sits at least 1.75 points from the line, over above it and under below it; flat one unit; settled from the box scores whenever they arrive. Capture is one snapshot a day from a documented odds API behind a credit guard that fails closed at 425 of the free plan's 500 monthly credits, with the decision to capture written before any line is fetched so no night can be dropped afterwards, names matched deterministically with unmatched counts published, and a dbt test rejecting any row that breaks the timestamp rule (ADR-0031). Raw lines stay in a private repository; the public marts (`mart_ledger`, `mart_ledger_by_side`, `mart_ledger_by_edge`, `mart_ledger_coverage`) carry aggregates with sample sizes and 95% half-widths, labelled out of sample and never pooled with the in-sample replay. Under 100 settled entries the verdict is "too early"; above that, the interval and the break-even rate implied by the prices are shown and a verdict is given only when the interval excludes break-even. Separating a 55% hit rate from the 52.4% break-even of −110 takes about 1,400 settled entries, more than one season of points lines will produce, and the README says so now rather than later. No result exists yet.
+From opening night the frozen model is evaluated against market lines, on paper, under a rule written and hashed before the first game and never tuned on the season ([`nba/ledger/rule.py`](nba/ledger/rule.py); ADR-0030, approved with amendments before the first live date). The rule: a player is eligible with a prior game this season, a last-10 minutes mean of at least 15 and inputs at most 10 days old (chosen on the 2025-26 replay, [reports/ledger_rule_evidence_2025-26.json](reports/ledger_rule_evidence_2025-26.json): proxy precision 0.957, recall 0.863); an entry is recorded when the prediction sits at least 1.75 points from the line, over above it and under below it; flat one unit; settled from the box scores whenever they arrive. Capture is one snapshot a day from a documented odds API behind a credit guard that fails closed at 425 of the free plan's 500 monthly credits, with the decision to capture written before any line is fetched so no night can be dropped afterwards, names matched deterministically with unmatched counts published, and a dbt test rejecting any row that breaks the timestamp rule (ADR-0031). Raw lines stay in a private repository; the public marts (`mart_ledger`, `mart_ledger_by_side`, `mart_ledger_by_edge`, `mart_ledger_coverage`) carry aggregates with sample sizes and 95% half-widths, labelled out of sample and never pooled with the in-sample replay. Under 100 settled entries the verdict is "too early"; above that, the interval and the break-even rate implied by the prices are shown and a verdict is given only when the interval excludes break-even. Separating a 55% hit rate from the 52.4% break-even of −110 takes about 1,400 settled entries; how many entries a season produces is unknown until it runs and will be reported. No result exists yet.
 
 ## Architecture
 
