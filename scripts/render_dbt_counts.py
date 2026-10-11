@@ -50,14 +50,20 @@ def counts(manifest: dict) -> dict:
     }
 
 
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
 def render(c: dict) -> str:
     layers = ", ".join(f"{c['layers'][layer]} {layer}" for layer in LAYERS)
     return (
-        f"{c['models']} models ({layers}; {c['incremental']} incremental, "
-        f"{c['contracted']} with enforced contracts), {c['seeds']} seeds, "
-        f"{c['snapshots']} snapshot, {c['tests']} data tests ({c['singular_tests']} singular, "
-        f"{c['generic_tests']} generic), {c['unit_tests']} unit tests, {c['sources']} sources, "
-        f"{c['exposures']} exposures, {c['documented_columns']} documented columns"
+        f"{plural(c['models'], 'model')} ({layers}; {c['incremental']} incremental, "
+        f"{c['contracted']} with enforced contracts), {plural(c['seeds'], 'seed')}, "
+        f"{plural(c['snapshots'], 'snapshot')}, {plural(c['tests'], 'data test')} "
+        f"({c['singular_tests']} singular, {c['generic_tests']} generic), "
+        f"{plural(c['unit_tests'], 'unit test')}, {plural(c['sources'], 'source')}, "
+        f"{plural(c['exposures'], 'exposure')}, "
+        f"{plural(c['documented_columns'], 'documented column')}"
     )
 
 
