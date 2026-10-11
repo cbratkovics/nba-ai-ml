@@ -809,6 +809,28 @@
       "target": "motherduck",
       "pushed": "cbratkovics/nba-game-logs@aa30dde9",
       "note": "warehouse.yml dispatched from main after PR #10 (publish on): loader wrote features/asof_v1.parquet (130,414 rows); full refresh PASS=140 incl. assert_int_features_match_feature_module PASS on MotherDuck; export_gold wrote the ten JSON marts; gold/ pushed at aa30dde9 (first gold/*.json on the dataset repo)"
+    },
+    {
+      "run_id": 38171090986,
+      "workflow": "ci.yml",
+      "event": "push",
+      "branch": "analytics-engineering",
+      "commit": "6d2ad65",
+      "conclusion": "success",
+      "started_at": "2026-10-11T20:10:33Z",
+      "target": "local",
+      "note": "CI on the presentation head (push event): README-dependent tests, dbt job with the parity test; green"
+    },
+    {
+      "run_id": 38171093522,
+      "workflow": "ci.yml",
+      "event": "pull_request",
+      "branch": "analytics-engineering",
+      "commit": "6d2ad65",
+      "conclusion": "success",
+      "started_at": "2026-10-11T20:10:35Z",
+      "target": "local",
+      "note": "CI on PR #11 (pull_request event), same head; green"
     }
   ],
   "hf_commits": [
