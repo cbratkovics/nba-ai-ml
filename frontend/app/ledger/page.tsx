@@ -31,7 +31,7 @@ function LedgerTable({ rows }: { rows: GoldLedgerRow[] }) {
           <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-text-secondary">
             <th className="py-2 pr-4">Market</th>
             <th className="py-2 pr-4">Book</th>
-            <th className="py-2 pr-4 text-right">Bets</th>
+            <th className="py-2 pr-4 text-right">Entries</th>
             <th className="py-2 pr-4 text-right">Settled</th>
             <th className="py-2 pr-4 text-right">Won / lost / push / void</th>
             <th className="py-2 pr-4 text-right">Pending</th>
@@ -87,11 +87,12 @@ export default async function LedgerPage() {
   return (
     <div className="space-y-8">
       <section className="glass-card p-8">
-        <h1 className="text-2xl font-bold text-text-primary">Paper ledger, {LEDGER_SEASON}</h1>
+        <h1 className="text-2xl font-bold text-text-primary">Out-of-sample evaluation against market lines, {LEDGER_SEASON}</h1>
         <p className="mt-4 max-w-3xl text-text-secondary">
-          The frozen model against real sportsbook lines, out of sample, on paper: nothing here places a bet. One snapshot
-          of DraftKings player-points lines a day from The Odds API&apos;s free plan, compared with the nightly prediction
-          under a rule that was written down before the first game and is never tuned on this season&apos;s results.
+          An out-of-sample evaluation of the frozen model against market lines, on paper, under a pre-registered rule:
+          nothing here places a wager and nothing here is a pick. One snapshot a day of one book&apos;s player-points lines
+          from a documented odds API, compared with the nightly prediction under a rule that was written down before the
+          first game and is never tuned on this season&apos;s results.
           Raw lines and prices stay in a private repository; this page shows only the aggregates the warehouse computes
           from them. Every number below is labelled <span className="text-text-primary">out of sample</span>; the in-sample
           replay numbers on the{' '}
@@ -106,7 +107,7 @@ export default async function LedgerPage() {
         <h2 className="text-xl font-semibold text-text-primary">The pre-registered rule</h2>
         <p className="mt-2 text-sm text-text-secondary">
           {rule.version}, status {rule.status}, registered {rule.registered_on} for a first live date of {rule.first_live_date};
-          sha256 {LEDGER_RULE.rule_hash.slice(0, 12)} of the rule text is written on every bet row. Model{' '}
+          sha256 {LEDGER_RULE.rule_hash.slice(0, 12)} of the rule text is written on every ledger row. Model{' '}
           {rule.model.revision.slice(0, 7)} ({rule.model.feature_version}), unchanged.
         </p>
         <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
@@ -127,7 +128,7 @@ export default async function LedgerPage() {
             </dd>
           </div>
           <div className="rounded-lg bg-white/5 p-3">
-            <dt className="text-xs uppercase tracking-wide text-text-secondary">Bet when</dt>
+            <dt className="text-xs uppercase tracking-wide text-text-secondary">Entry when</dt>
             <dd className="mt-1 text-text-primary">
               |prediction − line| exceeds {thresholds.map(([m, v]) => `${(MARKET_LABEL[m] ?? m).toLowerCase()} ${v}`).join(', ')};
               over above the line, under below it. {rule.stake.risked}; {rule.stake.profit_on_win}.
@@ -138,7 +139,7 @@ export default async function LedgerPage() {
             <dt className="text-xs uppercase tracking-wide text-text-secondary">Settlement and reading</dt>
             <dd className="mt-1 text-text-primary">
               Won, lost, push on the line, void only when the box score exists and the player has no row in it; pending until
-              the box score arrives. Verdicts start at {rule.reading.too_early_below_settled_bets} settled bets and only when
+              the box score arrives. Verdicts start at {rule.reading.too_early_below_settled_bets} settled entries and only when
               the 95% interval excludes the break-even rate implied by the prices.
               <span className="block text-xs text-text-secondary">{rule.reading.power_note}.</span>
             </dd>
@@ -154,7 +155,7 @@ export default async function LedgerPage() {
       </section>
 
       <section className="glass-card p-8">
-        <h2 className="text-xl font-semibold text-text-primary">Coverage and open bets</h2>
+        <h2 className="text-xl font-semibold text-text-primary">Coverage and open entries</h2>
         {cov ? (
           <>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
@@ -169,7 +170,7 @@ export default async function LedgerPage() {
                 ['Lines without a matched player', cov.lines_unmatched_player],
                 ['Lines with a prediction', cov.lines_with_prediction],
                 ['Ineligible under the rule', cov.lines_ineligible],
-                ['Bets', cov.bets_total],
+                ['Entries', cov.bets_total],
                 ['Pending (no box score yet)', cov.bets_pending],
               ].map(([label, value]) => (
                 <div key={String(label)} className="rounded-lg bg-white/5 p-3">
@@ -190,20 +191,20 @@ export default async function LedgerPage() {
       </section>
 
       <section className="glass-card p-8">
-        <h2 className="text-xl font-semibold text-text-primary">Headline ledger (API lines, DraftKings, points)</h2>
+        <h2 className="text-xl font-semibold text-text-primary">Headline ledger (API lines, one book, points market)</h2>
         {headline.length > 0 ? (
           <>
             <LedgerTable rows={headline} />
             <p className="mt-3 text-xs text-text-secondary">
-              Out of sample. {pending.toLocaleString()} bets pending. Hit rate with its 95% half width; break-even is the mean
-              implied probability of the prices actually bet; units are flat one-unit stakes; the verdict follows the reading
+              Out of sample. {pending.toLocaleString()} entries pending. Hit rate with its 95% half width; break-even is the mean
+              implied probability of the prices on the entries taken; units are flat one-unit stakes; the verdict follows the reading
               rule above. Source: {goldSourceNote('mart_ledger', manifest.data)}.
             </p>
           </>
         ) : (
           <p className="mt-2 text-text-secondary">
             {published
-              ? `No bets yet (0 settled, ${pending.toLocaleString()} pending). The rule expects none on opening night, when no player has an earlier game this season.`
+              ? `No entries yet (0 settled, ${pending.toLocaleString()} pending). The rule expects none on opening night, when no player has an earlier game this season.`
               : `The gold export is not published at ${ledger.url} (HTTP ${ledger.status}).`}
           </p>
         )}
@@ -216,7 +217,7 @@ export default async function LedgerPage() {
                   <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-text-secondary">
                     <th className="py-2 pr-4">Market</th>
                     <th className="py-2 pr-4">Side</th>
-                    <th className="py-2 pr-4 text-right">Bets</th>
+                    <th className="py-2 pr-4 text-right">Entries</th>
                     <th className="py-2 pr-4 text-right">Settled</th>
                     <th className="py-2 pr-4 text-right">Pending</th>
                     <th className="py-2 pr-4 text-right">Hit rate (95%)</th>
@@ -262,10 +263,9 @@ export default async function LedgerPage() {
       <section className="glass-card p-8">
         <h2 className="text-xl font-semibold text-text-primary">What this is not</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          Not a betting product and not advice: a personal, non-commercial record kept where sports betting is legal, with
-          no wager placed. Not a profitability claim: {rule.reporting}. The model knows nothing about injuries or rest; a
+          Not advice and not picks: an evaluation record of a frozen model, with no wager placed and nothing to act on. Not a profitability claim: {rule.reporting}. The model knows nothing about injuries or rest; a
           line set after news the model has not seen is a line it will look &quot;wrong&quot; about. Lines are captured once a
-          day and compared with a prediction made before them; a dbt test fails the build if any bet&apos;s prediction was
+          day and compared with a prediction made before them; a dbt test fails the build if any entry&apos;s prediction was
           generated after its line or any line was read after tip-off.
         </p>
       </section>
