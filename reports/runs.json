@@ -831,6 +831,28 @@
       "started_at": "2026-10-11T20:10:35Z",
       "target": "local",
       "note": "CI on PR #11 (pull_request event), same head; green"
+    },
+    {
+      "run_id": 38171830199,
+      "workflow": "ci.yml",
+      "event": "push",
+      "branch": "analytics-engineering",
+      "commit": "329399a",
+      "conclusion": "success",
+      "started_at": "2026-10-11T20:20:58Z",
+      "target": "local",
+      "note": "CI on the PR #11 fix-up head (push event): README fixes, pluralised counts, RESUME rewrite; green"
+    },
+    {
+      "run_id": 38171831727,
+      "workflow": "ci.yml",
+      "event": "pull_request",
+      "branch": "analytics-engineering",
+      "commit": "329399a",
+      "conclusion": "success",
+      "started_at": "2026-10-11T20:21:00Z",
+      "target": "local",
+      "note": "CI on PR #11 fix-up head (pull_request event); green"
     }
   ],
   "hf_commits": [
